@@ -8,6 +8,8 @@
 
 #include "renderer/renderer.h"
 #include "core/log.h"
+#include "math/mat4.h"
+#include "math/vec3.h"
 #include "platform/platform.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
@@ -21,6 +23,7 @@ struct renderer {
 	GLuint shader_program;
 	shader_t *shader;
 	mesh_t *test_mesh;
+	float rotation;
 };
 
 static mesh_t *renderer_create_test_mesh(void);
@@ -111,12 +114,37 @@ void renderer_end_frame(const renderer_t *renderer) {
 	platform_gl_swap_buffers(renderer->platform);
 }
 
-void renderer_draw(const renderer_t *renderer) {
+void renderer_draw(renderer_t *renderer) {
+	mat4_t model;
+	mat4_t view;
+	mat4_t projection;
+	int width;
+	int height;
+	const float pi = 3.14159265358979323846f;
+
 	if (renderer == NULL) { return; }
 
+	platform_get_drawable_size(renderer->platform, &width, &height);
+
+	if (width <= 0 || height <= 0) { return; }
+
+	const float aspect_ratio = (float)width / (float)height;
+
+	model = mat4_rotation_y(renderer->rotation);
+	view = mat4_translation(vec3_create(0.0f, 0.0f, -2.5f));
+	projection = mat4_perspective(60.0f * pi / 180.0f, aspect_ratio, 0.1f,
+				      100.0f);
+
 	shader_bind(renderer->shader);
+	shader_set_mat4(
+		renderer->shader, "model", &model);
+	shader_set_mat4(renderer->shader, "view", &view);
+	shader_set_mat4(renderer->shader, "projection", &projection);
+
 	mesh_draw(renderer->test_mesh);
 	shader_unbind();
+
+	renderer->rotation += 0.01f;
 }
 
 static mesh_t *renderer_create_test_mesh(void) {

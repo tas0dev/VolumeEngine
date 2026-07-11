@@ -205,3 +205,17 @@ void shader_bind(const shader_t *shader) {
 }
 
 void shader_unbind(void) { glUseProgram(0); }
+
+void shader_set_mat4(const shader_t *shader,
+		     const char *name,
+		     const mat4_t *matrix) {
+	if (shader == NULL || name == NULL || matrix == NULL) { return; }
+
+	const GLint location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+
+	glUniformMatrix4fv(location, 1, GL_FALSE, mat4_data(matrix));
+}

@@ -17,6 +17,6 @@ renderer_t *renderer_create(platform_t *platform);
 void renderer_destroy(renderer_t *renderer);
 void renderer_begin_frame(const renderer_t *renderer);
 void renderer_end_frame(const renderer_t *renderer);
-void renderer_draw(const renderer_t *renderer);
+void renderer_draw(renderer_t *renderer);
 
 #endif

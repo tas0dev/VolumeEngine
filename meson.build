@@ -11,12 +11,14 @@ project(
 )
 
 sdl3 = dependency('sdl3')
+opengl = dependency('gl')
 
 sources = files(
         'src/main.c',
         'src/engine.c',
         'src/platform/platform.c',
         'src/core/log.c',
+        'src/renderer/renderer.c',
 )
 
 executable(
@@ -24,6 +26,7 @@ executable(
         sources,
         dependencies : [
                 sdl3,
+                opengl,
         ],
         include_directories : include_directories('src'),
         install : false,

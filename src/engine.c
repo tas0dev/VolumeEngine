@@ -1,17 +1,18 @@
 #include "engine.h"
 #include "core/log.h"
 #include "platform/platform.h"
+#include "renderer/renderer.h"
 #include <stdlib.h>
 
 struct engine {
 	platform_t *platform;
+	renderer_t *renderer;
 	bool running;
 	double previous_time;
 };
 
 engine_t *engine_create(const engine_config_t *config) {
 	platform_config_t platform_config;
-
 	if (config == NULL || config->application_name == NULL) {
 		log_error("Invalid engine configuration");
 		return NULL;
@@ -33,6 +34,13 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
+	engine->renderer = renderer_create(engine->platform);
+	if (engine->renderer == NULL) {
+		platform_destroy(engine->platform);
+		free(engine);
+		return NULL;
+	}
+
 	engine->running = true;
 	engine->previous_time = platform_get_time();
 
@@ -44,6 +52,7 @@ engine_t *engine_create(const engine_config_t *config) {
 void engine_destroy(engine_t *engine) {
 	if (engine == NULL) { return; }
 
+	renderer_destroy(engine->renderer);
 	platform_destroy(engine->platform);
 	free(engine);
 
@@ -51,15 +60,11 @@ void engine_destroy(engine_t *engine) {
 }
 
 bool engine_run(engine_t *engine) {
-	const double target_frame_time = 1.0 / 60.0;
-
 	if (engine == NULL) { return false; }
 
 	while (engine->running) {
 		double current_time;
 		double delta_time;
-		double frame_end;
-		double frame_time;
 
 		if (!platform_poll_events(engine->platform)) {
 			engine->running = false;
@@ -72,12 +77,8 @@ bool engine_run(engine_t *engine) {
 
 		(void)delta_time;
 
-		frame_end = platform_get_time();
-		frame_time = frame_end - current_time;
-
-		if (frame_time < target_frame_time) {
-			platform_sleep(target_frame_time - frame_time);
-		}
+		renderer_begin_frame(engine->renderer);
+		renderer_end_frame(engine->renderer);
 	}
 
 	return true;

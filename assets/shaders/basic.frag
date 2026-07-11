@@ -13,6 +13,8 @@ uniform vec3 material_color;
 uniform float ambient_strength;
 uniform float specular_strength;
 uniform float shininess;
+uniform float bloom_threshold;
+uniform float bloom_knee;
 
 layout(location = 0) out vec4 output_color;
 layout(location = 1) out vec4 output_brightness;
@@ -92,6 +94,34 @@ float calculate_shadow(
     return shadow / sample_count;
 }
 
+vec3 extract_bloom(
+        vec3 color,
+        float threshold,
+        float knee
+) {
+    float brightness;
+    float soft;
+    float contribution;
+
+    brightness = dot(
+            color,
+            vec3(0.2126, 0.7152, 0.0722)
+    );
+
+    soft = brightness - threshold + knee;
+    soft = clamp(soft, 0.0, 2.0 * knee);
+    soft = soft * soft / max(4.0 * knee, 0.00001);
+
+    contribution = max(
+            brightness - threshold,
+            soft
+    );
+
+    contribution /= max(brightness, 0.00001);
+
+    return color * contribution;
+}
+
 void main(void) {
     vec3 normal;
     vec3 light;
@@ -102,10 +132,10 @@ void main(void) {
     vec3 specular;
     vec3 base_color;
     vec3 color;
+    vec3 bloom_color;
     float diffuse_factor;
     float specular_factor;
     float shadow;
-    float brightness;
 
     normal = normalize(fragment_normal);
     light = normalize(mat3(view) * -light_direction);
@@ -149,16 +179,12 @@ void main(void) {
     base_color * (ambient + diffuse) +
     specular;
 
-    output_color = vec4(color, 1.0);
-
-    brightness = dot(
+    bloom_color = extract_bloom(
             color,
-            vec3(0.2126, 0.7152, 0.0722)
+            bloom_threshold,
+            bloom_knee
     );
 
-    if (brightness > 1.0) {
-        output_brightness = vec4(color, 1.0);
-    } else {
-        output_brightness = vec4(0.0, 0.0, 0.0, 1.0);
-    }
+    output_color = vec4(color, 1.0);
+    output_brightness = vec4(bloom_color, 1.0);
 }

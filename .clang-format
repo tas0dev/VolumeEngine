@@ -3,7 +3,7 @@
 #
 # Created by tas0dev
 
-Language: C
+Language: Cpp
 TabWidth: 8
 IndentWidth: 8
 ContinuationIndentWidth: 8

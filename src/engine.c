@@ -10,7 +10,6 @@ struct engine {
 };
 
 engine_t *engine_create(const engine_config_t *config) {
-	engine_t *engine;
 	platform_config_t platform_config;
 
 	if (config == NULL || config->application_name == NULL) {
@@ -18,7 +17,7 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
-	engine = calloc(1, sizeof(*engine));
+	engine_t *engine = calloc(1, sizeof(*engine));
 	if (engine == NULL) {
 		log_error("Failed to allocate engine");
 		return NULL;

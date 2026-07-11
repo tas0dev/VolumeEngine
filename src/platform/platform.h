@@ -12,13 +12,9 @@ typedef struct platform_config {
 typedef struct platform platform_t;
 
 platform_t *platform_create(const platform_config_t *config);
-
 void platform_destroy(platform_t *platform);
-
 bool platform_poll_events(platform_t *platform);
-
 double platform_get_time(void);
-
 void platform_sleep(double seconds);
 
 #endif

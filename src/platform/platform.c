@@ -9,7 +9,6 @@ struct platform {
 };
 
 platform_t *platform_create(const platform_config_t *config) {
-	platform_t *platform;
 
 	if (config == NULL || config->title == NULL) {
 		log_error("Invalid platform configuration");
@@ -21,7 +20,7 @@ platform_t *platform_create(const platform_config_t *config) {
 		return NULL;
 	}
 
-	platform = calloc(1, sizeof(*platform));
+	platform_t *platform = calloc(1, sizeof(*platform));
 	if (platform == NULL) {
 		log_error("Failed to allocate platform");
 		SDL_Quit();
@@ -81,11 +80,10 @@ double platform_get_time(void) {
 	return (double)SDL_GetTicksNS() / 1000000000.0;
 }
 
-void platform_sleep(double seconds) {
-	Uint64 nanoseconds;
+void platform_sleep(const double seconds) {
 
 	if (seconds <= 0.0) { return; }
 
-	nanoseconds = (Uint64)(seconds * 1000000000.0);
+	const Uint64 nanoseconds = (Uint64)(seconds * 1000000000.0);
 	SDL_DelayNS(nanoseconds);
 }

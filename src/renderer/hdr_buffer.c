@@ -13,30 +13,48 @@
 
 struct hdr_buffer {
 	GLuint framebuffer;
-	GLuint color_texture;
+	GLuint color_textures[2]; // Normal color: [0],
+				  // High-brightness color: [1]
 	GLuint depth_buffer;
 	int width;
 	int height;
 };
 
-static bool hdr_buffer_allocate(hdr_buffer_t *buffer, int width, int height) {
+static bool
+hdr_buffer_allocate(hdr_buffer_t *buffer, const int width, const int height) {
+	static const GLenum attachments[] = {
+		GL_COLOR_ATTACHMENT0,
+		GL_COLOR_ATTACHMENT1,
+	};
 	GLenum status;
+	int index;
 
-	glBindTexture(GL_TEXTURE_2D, buffer->color_texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA,
-		     GL_FLOAT, NULL);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glBindFramebuffer(GL_FRAMEBUFFER, buffer->framebuffer);
+
+	for (index = 0; index < 2; index++) {
+		glBindTexture(GL_TEXTURE_2D, buffer->color_textures[index]);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0,
+			     GL_RGBA, GL_FLOAT, NULL);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+				GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+				GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+				GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,
+				GL_CLAMP_TO_EDGE);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, attachments[index],
+				       GL_TEXTURE_2D,
+				       buffer->color_textures[index], 0);
+	}
+
+	glDrawBuffers(2, attachments);
 
 	glBindRenderbuffer(GL_RENDERBUFFER, buffer->depth_buffer);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width,
 			      height);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, buffer->framebuffer);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-			       GL_TEXTURE_2D, buffer->color_texture, 0);
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT,
 				  GL_RENDERBUFFER, buffer->depth_buffer);
 
@@ -72,7 +90,7 @@ hdr_buffer_t *hdr_buffer_create(int width, int height) {
 	}
 
 	glGenFramebuffers(1, &buffer->framebuffer);
-	glGenTextures(1, &buffer->color_texture);
+	glGenTextures(2, buffer->color_textures);
 	glGenRenderbuffers(1, &buffer->depth_buffer);
 
 	if (!hdr_buffer_allocate(buffer, width, height)) {
@@ -92,9 +110,7 @@ void hdr_buffer_destroy(hdr_buffer_t *buffer) {
 		glDeleteRenderbuffers(1, &buffer->depth_buffer);
 	}
 
-	if (buffer->color_texture != 0) {
-		glDeleteTextures(1, &buffer->color_texture);
-	}
+	glDeleteTextures(2, buffer->color_textures);
 
 	if (buffer->framebuffer != 0) {
 		glDeleteFramebuffers(1, &buffer->framebuffer);
@@ -126,5 +142,11 @@ void hdr_buffer_unbind(void) { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 unsigned int hdr_buffer_get_texture(const hdr_buffer_t *buffer) {
 	if (buffer == NULL) { return 0; }
 
-	return buffer->color_texture;
+	return buffer->color_textures[0];
+}
+
+unsigned int hdr_buffer_get_brightness_texture(const hdr_buffer_t *buffer) {
+	if (buffer == NULL) { return 0; }
+
+	return buffer->color_textures[1];
 }

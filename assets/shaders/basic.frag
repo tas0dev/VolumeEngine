@@ -14,9 +14,21 @@ uniform float ambient_strength;
 uniform float specular_strength;
 uniform float shininess;
 
-out vec4 output_color;
+layout(location = 0) out vec4 output_color;
+layout(location = 1) out vec4 output_brightness;
 
-float calculate_shadow(vec4 light_position, vec3 normal, vec3 light) {
+vec3 srgb_to_linear(vec3 color) {
+    return pow(
+            max(color, vec3(0.0)),
+            vec3(2.2)
+    );
+}
+
+float calculate_shadow(
+        vec4 light_position,
+        vec3 normal,
+        vec3 light
+) {
     vec3 projected;
     vec2 texel_size;
     float current_depth;
@@ -45,8 +57,8 @@ float calculate_shadow(vec4 light_position, vec3 normal, vec3 light) {
     normal_dot_light = max(dot(normal, light), 0.0);
 
     bias = mix(
-            0.004f,
-            0.0004f,
+            0.004,
+            0.0004,
             normal_dot_light
     );
 
@@ -59,7 +71,11 @@ float calculate_shadow(vec4 light_position, vec3 normal, vec3 light) {
             vec2 offset;
             float closest_depth;
 
-            offset = vec2(float(x), float(y)) * texel_size;
+            offset = vec2(
+                    float(x),
+                    float(y)
+            ) * texel_size;
+
             closest_depth = texture(
                     shadow_map,
                     projected.xy + offset
@@ -76,21 +92,28 @@ float calculate_shadow(vec4 light_position, vec3 normal, vec3 light) {
     return shadow / sample_count;
 }
 
-vec3 srgb_to_linear(vec3 color) {
-    return pow(
-            max(color, vec3(0.0)),
-            vec3(2.2)
-    );
-}
-
 void main(void) {
-    vec3 normal = normalize(fragment_normal);
-    vec3 light = normalize(mat3(view) * -light_direction);
-    vec3 view_direction = normalize(-fragment_position);
-    vec3 halfway_direction = normalize(light + view_direction);
+    vec3 normal;
+    vec3 light;
+    vec3 view_direction;
+    vec3 halfway_direction;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+    vec3 base_color;
+    vec3 color;
+    float diffuse_factor;
+    float specular_factor;
+    float shadow;
+    float brightness;
 
-    float diffuse_factor = max(dot(normal, light), 0.0);
-    float specular_factor = 0.0;
+    normal = normalize(fragment_normal);
+    light = normalize(mat3(view) * -light_direction);
+    view_direction = normalize(-fragment_position);
+    halfway_direction = normalize(light + view_direction);
+
+    diffuse_factor = max(dot(normal, light), 0.0);
+    specular_factor = 0.0;
 
     if (diffuse_factor > 0.0) {
         specular_factor = pow(
@@ -99,27 +122,43 @@ void main(void) {
         );
     }
 
-    float shadow = calculate_shadow(
+    shadow = calculate_shadow(
             fragment_light_position,
             normal,
             light
     );
 
-    vec3 ambient = ambient_strength * light_color;
-    vec3 diffuse =
+    ambient = ambient_strength * light_color;
+
+    diffuse =
     (1.0 - shadow) *
     diffuse_factor *
     light_color;
-    vec3 specular =
+
+    specular =
     (1.0 - shadow) *
     specular_strength *
     specular_factor *
     light_color;
 
-    vec3 base_color = srgb_to_linear(
+    base_color = srgb_to_linear(
             fragment_color * material_color
     );
-    vec3 color = base_color * (ambient + diffuse) + specular;
+
+    color =
+    base_color * (ambient + diffuse) +
+    specular;
 
     output_color = vec4(color, 1.0);
+
+    brightness = dot(
+            color,
+            vec3(0.2126, 0.7152, 0.0722)
+    );
+
+    if (brightness > 1.0) {
+        output_brightness = vec4(color, 1.0);
+    } else {
+        output_brightness = vec4(0.0, 0.0, 0.0, 1.0);
+    }
 }

@@ -18,5 +18,6 @@ bool hdr_buffer_resize(hdr_buffer_t *buffer, int width, int height);
 void hdr_buffer_bind(const hdr_buffer_t *buffer);
 void hdr_buffer_unbind(void);
 unsigned int hdr_buffer_get_texture(const hdr_buffer_t *buffer);
+unsigned int hdr_buffer_get_brightness_texture(const hdr_buffer_t *buffer);
 
 #endif

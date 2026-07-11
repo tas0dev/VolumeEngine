@@ -11,6 +11,7 @@
 #include "core/log.h"
 #include "math/mat4.h"
 #include "platform/platform.h"
+#include "renderer/bloom_buffer.h"
 #include "renderer/hdr_buffer.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
@@ -29,6 +30,10 @@ struct renderer {
 	shader_t *post_shader;
 	GLuint screen_vertex_array;
 	GLuint screen_vertex_buffer;
+	bloom_buffer_t *bloom_buffer;
+	shader_t *blur_shader;
+	int framebuffer_width;
+	int framebuffer_height;
 };
 
 static bool renderer_create_screen_quad(renderer_t *renderer) {
@@ -131,6 +136,19 @@ renderer_t *renderer_create(platform_t *platform) {
 		return NULL;
 	}
 
+	renderer->blur_shader =
+		shader_create(VOLUME_ASSET_DIR "/shaders/blur.vert",
+			      VOLUME_ASSET_DIR "/shaders/blur.frag");
+	if (renderer->blur_shader == NULL) {
+		shader_destroy(renderer->post_shader);
+		shader_destroy(renderer->shadow_shader);
+		shadow_map_destroy(renderer->shadow_map);
+		shader_destroy(renderer->shader);
+		platform_gl_destroy_context(renderer->context);
+		free(renderer);
+		return NULL;
+	}
+
 	{
 		int width;
 		int height;
@@ -139,6 +157,19 @@ renderer_t *renderer_create(platform_t *platform) {
 
 		renderer->hdr_buffer = hdr_buffer_create(width, height);
 		if (renderer->hdr_buffer == NULL) {
+			shader_destroy(renderer->post_shader);
+			shader_destroy(renderer->shadow_shader);
+			shadow_map_destroy(renderer->shadow_map);
+			shader_destroy(renderer->shader);
+			platform_gl_destroy_context(renderer->context);
+			free(renderer);
+			return NULL;
+		}
+
+		renderer->bloom_buffer = bloom_buffer_create(width, height);
+		if (renderer->bloom_buffer == NULL) {
+			hdr_buffer_destroy(renderer->hdr_buffer);
+			shader_destroy(renderer->blur_shader);
 			shader_destroy(renderer->post_shader);
 			shader_destroy(renderer->shadow_shader);
 			shadow_map_destroy(renderer->shadow_map);
@@ -171,18 +202,21 @@ void renderer_destroy(renderer_t *renderer) {
 		glDeleteVertexArrays(1, &renderer->screen_vertex_array);
 	}
 
+	bloom_buffer_destroy(renderer->bloom_buffer);
 	hdr_buffer_destroy(renderer->hdr_buffer);
+	shader_destroy(renderer->blur_shader);
 	shader_destroy(renderer->post_shader);
 	shader_destroy(renderer->shadow_shader);
-	shadow_map_destroy(renderer->shadow_map);
 	shader_destroy(renderer->shader);
+	shadow_map_destroy(renderer->shadow_map);
 	platform_gl_destroy_context(renderer->context);
+
 	free(renderer);
 
 	log_info("Renderer shut down");
 }
 
-void renderer_begin_frame(const renderer_t *renderer) {
+void renderer_begin_frame(renderer_t *renderer) {
 	int width;
 	int height;
 
@@ -194,50 +228,139 @@ void renderer_begin_frame(const renderer_t *renderer) {
 
 	if (!hdr_buffer_resize(renderer->hdr_buffer, width, height)) { return; }
 
+	if (!bloom_buffer_resize(renderer->bloom_buffer, width, height)) {
+		return;
+	}
+
+	renderer->framebuffer_width = width;
+	renderer->framebuffer_height = height;
+
 	hdr_buffer_bind(renderer->hdr_buffer);
 
 	glViewport(0, 0, width, height);
+	glEnable(GL_DEPTH_TEST);
+
 	glClearColor(0.08f, 0.09f, 0.11f, 1.0f);
-	glClear(
-		GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
+	glClear(GL_COLOR_BUFFER_BIT |
+		GL_DEPTH_BUFFER_BIT |
 		GL_STENCIL_BUFFER_BIT);
 }
 
-void renderer_end_frame(const renderer_t *renderer) {
-	int width;
-	int height;
+static unsigned int renderer_blur_bloom(const renderer_t *renderer,
+					const int pass_count) {
+	bool horizontal;
+	bool first_pass;
+	int pass;
+	int target_index;
+	int source_index;
 
-	if (renderer == NULL) { return; }
+	horizontal = true;
+	first_pass = true;
 
-	platform_get_drawable_size(renderer->platform, &width, &height);
+	shader_bind(renderer->blur_shader);
+	shader_set_int(renderer->blur_shader, "source_texture", 0);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(renderer->screen_vertex_array);
+
+	for (pass = 0; pass < pass_count; pass++) {
+		target_index = horizontal ? 1 : 0;
+
+		bloom_buffer_bind(renderer->bloom_buffer, target_index);
+
+		glViewport(0, 0, renderer->framebuffer_width,
+			   renderer->framebuffer_height);
+
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		shader_set_int(renderer->blur_shader, "horizontal",
+			       horizontal ? 1 : 0);
+
+		if (first_pass) {
+			glBindTexture(GL_TEXTURE_2D,
+				      hdr_buffer_get_brightness_texture(
+					      renderer->hdr_buffer));
+		} else {
+			source_index = horizontal ? 0 : 1;
+
+			glBindTexture(
+				GL_TEXTURE_2D,
+				bloom_buffer_get_texture(renderer->bloom_buffer,
+							 source_index));
+		}
+
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+
+		horizontal = !horizontal;
+		first_pass = false;
+	}
+
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	shader_unbind();
 
 	hdr_buffer_unbind();
 
-	glViewport(0, 0, width, height);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	return bloom_buffer_get_texture(renderer->bloom_buffer,
+					horizontal ? 0 : 1);
+}
+
+void renderer_end_frame(const renderer_t *renderer) {
+	unsigned int bloom_texture;
+
+	if (renderer == NULL) {
+		return;
+	}
 
 	glDisable(GL_DEPTH_TEST);
 
+	bloom_texture = renderer_blur_bloom(renderer, 10);
+
+	hdr_buffer_unbind();
+
+	glViewport(0, 0, renderer->framebuffer_width,
+		   renderer->framebuffer_height);
+
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
 	shader_bind(renderer->post_shader);
-	shader_set_int(renderer->post_shader, "hdr_texture", 0);
+
+	shader_set_int(
+		renderer->post_shader,
+		"hdr_texture",
+		0
+	);
+	shader_set_int(
+		renderer->post_shader,
+		"bloom_texture", 1);
 	shader_set_float(renderer->post_shader, "exposure", 1.0f);
+	shader_set_float(renderer->post_shader, "bloom_strength", 0.08f);
+	shader_set_int(renderer->post_shader, "bloom_enabled", 1);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D,
 		      hdr_buffer_get_texture(renderer->hdr_buffer));
-
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(
+		GL_TEXTURE_2D,
+		bloom_texture);
 	glBindVertexArray(renderer->screen_vertex_array);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);
-
+	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 	shader_unbind();
 
 	glEnable(GL_DEPTH_TEST);
 
 	platform_gl_swap_buffers(renderer->platform);
 }
+
 void renderer_get_size(const renderer_t *renderer, int *width, int *height) {
 	if (width != NULL) { *width = 0; }
 
@@ -307,9 +430,7 @@ void renderer_end_shadow_pass(renderer_t *renderer) {
 	int width;
 	int height;
 
-	if (renderer == NULL) {
-		return;
-	}
+	if (renderer == NULL) { return; }
 
 	shader_unbind();
 	shadow_map_end();
@@ -317,8 +438,7 @@ void renderer_end_shadow_pass(renderer_t *renderer) {
 	glCullFace(GL_BACK);
 	glDisable(GL_CULL_FACE);
 
-	platform_get_drawable_size(
-		renderer->platform, &width, &height);
+	platform_get_drawable_size(renderer->platform, &width, &height);
 
 	hdr_buffer_bind(renderer->hdr_buffer);
 	glViewport(0, 0, width, height);

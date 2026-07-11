@@ -16,7 +16,6 @@
 
 renderer_t *renderer_create(platform_t *platform);
 void renderer_destroy(renderer_t *renderer);
-void renderer_begin_frame(const renderer_t *renderer);
 void renderer_end_frame(const renderer_t *renderer);
 void renderer_get_size(const renderer_t *renderer, int *width, int *height);
 void renderer_begin_shadow_pass(renderer_t *renderer,
@@ -32,6 +31,6 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const mat4_t *view,
 			const mat4_t *projection,
 			const mat4_t *light_view_projection);
-void renderer_begin_frame(const renderer_t *renderer);
+void renderer_begin_frame(renderer_t *renderer);
 
 #endif

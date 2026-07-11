@@ -9,8 +9,7 @@ struct engine {
 	double previous_time;
 };
 
-engine_t *
-engine_create(const engine_config_t *config) {
+engine_t *engine_create(const engine_config_t *config) {
 	engine_t *engine;
 	platform_config_t platform_config;
 
@@ -43,8 +42,7 @@ engine_create(const engine_config_t *config) {
 	return engine;
 }
 
-void
-engine_destroy(engine_t *engine) {
+void engine_destroy(engine_t *engine) {
 	if (engine == NULL) { return; }
 
 	platform_destroy(engine->platform);
@@ -53,8 +51,7 @@ engine_destroy(engine_t *engine) {
 	log_info("Volume shut down");
 }
 
-bool
-engine_run(engine_t *engine) {
+bool engine_run(engine_t *engine) {
 	const double target_frame_time = 1.0 / 60.0;
 
 	if (engine == NULL) { return false; }
@@ -80,9 +77,7 @@ engine_run(engine_t *engine) {
 		frame_time = frame_end - current_time;
 
 		if (frame_time < target_frame_time) {
-			platform_sleep(
-				target_frame_time -
-				frame_time);
+			platform_sleep(target_frame_time - frame_time);
 		}
 	}
 

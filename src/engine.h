@@ -17,4 +17,4 @@ void engine_destroy(engine_t *engine);
 
 bool engine_run(engine_t *engine);
 
-#endif //VOLUME_ENGINE_H
+#endif // VOLUME_ENGINE_H

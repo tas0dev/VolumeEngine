@@ -99,26 +99,32 @@ void renderer_end_frame(const renderer_t *renderer) {
 	platform_gl_swap_buffers(renderer->platform);
 }
 
-void renderer_draw_mesh(const renderer_t *renderer,
+void renderer_draw_mesh(renderer_t *renderer,
 			const mesh_t *mesh,
+			const material_t *material,
 			const mat4_t *model,
 			const mat4_t *view,
 			const mat4_t *projection) {
-	if (renderer == NULL || mesh == NULL || model == NULL || view == NULL ||
-	    projection == NULL) {
+	if (renderer == NULL || mesh == NULL || material == NULL ||
+	    model == NULL || view == NULL || projection == NULL) {
 		return;
 	    }
 
 	const vec3_t light_direction = vec3_create(-1.0f, -1.0f, -1.0f);
-	    const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
+	const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
 
-	    shader_bind(renderer->shader);
+	shader_bind(renderer->shader);
 	shader_set_mat4(renderer->shader, "model", model);
 	shader_set_mat4(renderer->shader, "view", view);
 	shader_set_mat4(renderer->shader, "projection", projection);
 	shader_set_vec3(renderer->shader, "light_direction", light_direction);
 	shader_set_vec3(renderer->shader, "light_color", light_color);
-	shader_set_float(renderer->shader, "ambient_strength", 0.2f);
+	shader_set_vec3(renderer->shader, "material_color", material->color);
+	shader_set_float(renderer->shader, "ambient_strength",
+			 material->ambient_strength);
+	shader_set_float(renderer->shader, "specular_strength",
+			 material->specular_strength);
+	shader_set_float(renderer->shader, "shininess", material->shininess);
 	mesh_draw(mesh);
 	shader_unbind();
 }

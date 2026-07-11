@@ -9,13 +9,15 @@
 #include "engine.h"
 #include "math/mat4.h"
 #include "math/vec3.h"
+#include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include <stdlib.h>
 
-typedef struct exampleGame {
+typedef struct example_game {
 	mesh_t *mesh;
+	material_t material;
 	camera_t camera;
 	float rotation;
 } example_game_t;
@@ -110,6 +112,11 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game->mesh = create_test_mesh();
 	if (game->mesh == NULL) { return false; }
 
+	game->material = material_create(vec3_create(1.0f, 1.0f, 1.0f));
+
+	game->material.specular_strength = 1.0f;
+	game->material.shininess = 128.0f;
+
 	game->camera = camera_create(vec3_create(0.0f, 0.0f, 2.5f));
 
 	return true;
@@ -131,7 +138,7 @@ static void render(engine_t *engine, void *user_data) {
 	int height;
 
 	const example_game_t *game = user_data;
-	const renderer_t *renderer = engine_get_renderer(engine);
+	renderer_t *renderer = engine_get_renderer(engine);
 
 	renderer_get_size(renderer, &width, &height);
 	if (width <= 0 || height <= 0) { return; }
@@ -144,7 +151,8 @@ static void render(engine_t *engine, void *user_data) {
 	view = camera_get_view(&game->camera);
 	projection = camera_get_projection(&game->camera, aspect_ratio);
 
-	renderer_draw_mesh(renderer, game->mesh, &model, &view, &projection);
+	renderer_draw_mesh(renderer, game->mesh, &game->material, &model, &view,
+			   &projection);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

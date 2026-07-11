@@ -8,13 +8,13 @@ uniform mat4 view;
 uniform vec3 light_direction;
 uniform vec3 light_color;
 uniform float ambient_strength;
+uniform vec3 material_color;
+uniform float specular_strength;
+uniform float shininess;
 
 out vec4 output_color;
 
 void main(void) {
-    const float specular_strength = 0.5;
-    const float shininess = 32.0;
-
     vec3 normal = normalize(fragment_normal);
     vec3 light = normalize(mat3(view) * -light_direction);
     vec3 view_direction = normalize(-fragment_position);
@@ -37,8 +37,10 @@ void main(void) {
     specular_factor *
     light_color;
 
+    vec3 base_color = fragment_color * material_color;
+
     vec3 color =
-    fragment_color * (ambient + diffuse) +
+    base_color * (ambient + diffuse) +
     specular;
 
     output_color = vec4(color, 1.0);

@@ -1,0 +1,5 @@
+BasedOnStyle: GNU
+
+TabWidth: 8
+IndentWidth: 8
+UseTab: ForIndentation

@@ -138,6 +138,9 @@ void renderer_begin_shadow_pass(renderer_t *renderer,
 				const mat4_t *light_view_projection) {
 	if (renderer == NULL || light_view_projection == NULL) { return; }
 
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+
 	shadow_map_begin(renderer->shadow_map);
 	shader_bind(renderer->shadow_shader);
 	shader_set_mat4(renderer->shadow_shader, "light_view_projection",
@@ -194,6 +197,9 @@ void renderer_end_shadow_pass(renderer_t *renderer) {
 
 	shader_unbind();
 	shadow_map_end();
+
+	glCullFace(GL_BACK);
+	glDisable(GL_CULL_FACE);
 
 	platform_get_drawable_size(renderer->platform, &width, &height);
 

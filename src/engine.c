@@ -17,6 +17,12 @@ struct engine {
 	renderer_t *renderer;
 	bool running;
 	double previous_time;
+	engine_initialize_fn initialize;
+	engine_update_fn update;
+	engine_render_fn render;
+	engine_shutdown_fn shutdown;
+	void *user_data;
+	bool initialized;
 };
 
 engine_t *engine_create(const engine_config_t *config) {
@@ -49,6 +55,22 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
+	engine->initialize = config->initialize;
+	engine->update = config->update;
+	engine->render = config->render;
+	engine->shutdown = config->shutdown;
+	engine->user_data = config->user_data;
+
+	if (engine->initialize != NULL &&
+	    !engine->initialize(engine, engine->user_data)) {
+		renderer_destroy(engine->renderer);
+		platform_destroy(engine->platform);
+		free(engine);
+		return NULL;
+	}
+
+	engine->initialized = true;
+
 	engine->running = true;
 	engine->previous_time = platform_get_time();
 
@@ -59,6 +81,10 @@ engine_t *engine_create(const engine_config_t *config) {
 
 void engine_destroy(engine_t *engine) {
 	if (engine == NULL) { return; }
+
+	if (engine->initialized && engine->shutdown != NULL) {
+		engine->shutdown(engine, engine->user_data);
+	}
 
 	renderer_destroy(engine->renderer);
 	platform_destroy(engine->platform);
@@ -78,15 +104,28 @@ bool engine_run(engine_t *engine) {
 		}
 
 		const double current_time = platform_get_time();
-		const double delta_time = current_time - engine->previous_time;
+		const float delta_time =
+			(float)(current_time - engine->previous_time);
 		engine->previous_time = current_time;
 
-		(void)delta_time;
+		if (engine->update != NULL) {
+			engine->update(engine, delta_time, engine->user_data);
+		}
 
 		renderer_begin_frame(engine->renderer);
-		renderer_draw(engine->renderer);
+
+		if (engine->render != NULL) {
+			engine->render(engine, engine->user_data);
+		}
+
 		renderer_end_frame(engine->renderer);
 	}
 
 	return true;
+}
+
+renderer_t *engine_get_renderer(engine_t *engine) {
+	if (engine == NULL) { return NULL; }
+
+	return engine->renderer;
 }

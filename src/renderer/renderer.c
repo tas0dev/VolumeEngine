@@ -20,13 +20,8 @@
 struct renderer {
 	platform_t *platform;
 	void *context;
-	GLuint shader_program;
 	shader_t *shader;
-	mesh_t *test_mesh;
-	float rotation;
 };
-
-static mesh_t *renderer_create_test_mesh(void);
 
 renderer_t *renderer_create(platform_t *platform) {
 	if (platform == NULL) {
@@ -67,14 +62,6 @@ renderer_t *renderer_create(platform_t *platform) {
 		return NULL;
 	}
 
-	renderer->test_mesh = renderer_create_test_mesh();
-	if (renderer->test_mesh == NULL) {
-		shader_destroy(renderer->shader);
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
-		return NULL;
-	}
-
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
@@ -87,7 +74,6 @@ renderer_t *renderer_create(platform_t *platform) {
 void renderer_destroy(renderer_t *renderer) {
 	if (renderer == NULL) { return; }
 
-	mesh_destroy(renderer->test_mesh);
 	shader_destroy(renderer->shader);
 	platform_gl_destroy_context(renderer->context);
 	free(renderer);
@@ -114,54 +100,20 @@ void renderer_end_frame(const renderer_t *renderer) {
 	platform_gl_swap_buffers(renderer->platform);
 }
 
-void renderer_draw(renderer_t *renderer) {
-	mat4_t model;
-	mat4_t view;
-	mat4_t projection;
-	int width;
-	int height;
-	const float pi = 3.14159265358979323846f;
-
-	if (renderer == NULL) { return; }
-
-	platform_get_drawable_size(renderer->platform, &width, &height);
-
-	if (width <= 0 || height <= 0) { return; }
-
-	const float aspect_ratio = (float)width / (float)height;
-
-	model = mat4_rotation_y(renderer->rotation);
-	view = mat4_translation(vec3_create(0.0f, 0.0f, -2.5f));
-	projection = mat4_perspective(60.0f * pi / 180.0f, aspect_ratio, 0.1f,
-				      100.0f);
+void renderer_draw_mesh(const renderer_t *renderer,
+			const mesh_t *mesh,
+			const mat4_t *model,
+			const mat4_t *view,
+			const mat4_t *projection) {
+	if (renderer == NULL || mesh == NULL || model == NULL || view == NULL ||
+	    projection == NULL) {
+		return;
+	}
 
 	shader_bind(renderer->shader);
-	shader_set_mat4(
-		renderer->shader, "model", &model);
-	shader_set_mat4(renderer->shader, "view", &view);
-	shader_set_mat4(renderer->shader, "projection", &projection);
-
-	mesh_draw(renderer->test_mesh);
+	shader_set_mat4(renderer->shader, "model", model);
+	shader_set_mat4(renderer->shader, "view", view);
+	shader_set_mat4(renderer->shader, "projection", projection);
+	mesh_draw(mesh);
 	shader_unbind();
-
-	renderer->rotation += 0.01f;
-}
-
-static mesh_t *renderer_create_test_mesh(void) {
-	static const mesh_vertex_t vertices[] = {
-		{
-			.position = {0.0f, 0.6f, 0.0f},
-			.color = {1.0f, 0.2f, 0.2f},
-		 },
-		{
-			.position = {-0.6f, -0.6f, 0.0f},
-			.color = {0.2f, 1.0f, 0.2f},
-		 },
-		{
-			.position = {0.6f, -0.6f, 0.0f},
-			.color = {0.2f, 0.4f, 1.0f},
-		 },
-	};
-
-	return mesh_create(vertices, sizeof(vertices) / sizeof(vertices[0]));
 }

@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2026, tas0dev.
+ * This software is provided under the zlib License.
+ *
+ * Created by tas0dev
+ *
+ */
+
 #ifndef VOLUME_RENDERER_RENDERER_H
 #define VOLUME_RENDERER_RENDERER_H
 

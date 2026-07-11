@@ -14,17 +14,22 @@
 struct mesh {
 	GLuint vertex_array;
 	GLuint vertex_buffer;
-	GLsizei vertex_count;
+	GLuint index_buffer;
+	GLsizei index_count;
 };
 
-mesh_t *mesh_create(const mesh_vertex_t *vertices, const size_t vertex_count) {
-	if (vertices == NULL || vertex_count == 0) {
+mesh_t *mesh_create(const mesh_vertex_t *vertices,
+		    const size_t vertex_count,
+		    const unsigned int *indices,
+		    const size_t index_count) {
+	if (vertices == NULL || vertex_count == 0 || indices == NULL ||
+	    index_count == 0) {
 		log_error("Invalid mesh data");
 		return NULL;
 	}
 
-	if (vertex_count > INT32_MAX) {
-		log_error("Mesh contains too many vertices");
+	if (index_count > INT32_MAX) {
+		log_error("Mesh contains too many indices");
 		return NULL;
 	}
 
@@ -34,7 +39,7 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices, const size_t vertex_count) {
 		return NULL;
 	}
 
-	mesh->vertex_count = (GLsizei)vertex_count;
+	mesh->index_count = (GLsizei)index_count;
 
 	glGenVertexArrays(1, &mesh->vertex_array);
 	glBindVertexArray(mesh->vertex_array);
@@ -43,6 +48,12 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices, const size_t vertex_count) {
 	glBindBuffer(GL_ARRAY_BUFFER, mesh->vertex_buffer);
 	glBufferData(GL_ARRAY_BUFFER,
 		     (GLsizeiptr)(vertex_count * sizeof(*vertices)), vertices,
+		     GL_STATIC_DRAW);
+
+	glGenBuffers(1, &mesh->index_buffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh->index_buffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+		     (GLsizeiptr)(index_count * sizeof(*indices)), indices,
 		     GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
@@ -62,6 +73,10 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices, const size_t vertex_count) {
 void mesh_destroy(mesh_t *mesh) {
 	if (mesh == NULL) { return; }
 
+	if (mesh->index_buffer != 0) {
+		glDeleteBuffers(1, &mesh->index_buffer);
+	}
+
 	if (mesh->vertex_buffer != 0) {
 		glDeleteBuffers(1, &mesh->vertex_buffer);
 	}
@@ -77,6 +92,6 @@ void mesh_draw(const mesh_t *mesh) {
 	if (mesh == NULL) { return; }
 
 	glBindVertexArray(mesh->vertex_array);
-	glDrawArrays(GL_TRIANGLES, 0, mesh->vertex_count);
+	glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, NULL);
 	glBindVertexArray(0);
 }

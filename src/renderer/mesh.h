@@ -18,7 +18,10 @@ typedef struct mesh_vertex {
 
 typedef struct mesh mesh_t;
 
-mesh_t *mesh_create(const mesh_vertex_t *vertices, size_t vertex_count);
+mesh_t *mesh_create(const mesh_vertex_t *vertices,
+		    size_t vertex_count,
+		    const unsigned int *indices,
+		    size_t index_count);
 void mesh_destroy(mesh_t *mesh);
 void mesh_draw(const mesh_t *mesh);
 

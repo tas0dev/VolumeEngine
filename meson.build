@@ -10,9 +10,12 @@ project(
         ],
 )
 
+cc = meson.get_compiler('c')
+
 sdl3 = dependency('sdl3')
 opengl = dependency('gl')
 epoxy = dependency('epoxy')
+math = cc.find_library('m', required : true)
 
 sources = files(
         'src/main.c',
@@ -22,6 +25,8 @@ sources = files(
         'src/renderer/renderer.c',
         'src/renderer/mesh.c',
         'src/renderer/shader.c',
+        'src/math/mat4.c',
+        'src/math/vec3.c',
 )
 
 executable(
@@ -31,6 +36,7 @@ executable(
                 sdl3,
                 opengl,
                 epoxy,
+                math,
         ],
         include_directories : include_directories('src'),
         install : false,

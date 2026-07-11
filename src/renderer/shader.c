@@ -65,7 +65,7 @@ static char *shader_read_file(const char *path) {
 }
 
 static GLuint
-shader_compile(GLenum type, const char *source, const char *path) {
+shader_compile(const GLenum type, const char *source, const char *path) {
 	GLint success;
 	GLint log_length;
 
@@ -100,7 +100,8 @@ shader_compile(GLenum type, const char *source, const char *path) {
 	return 0;
 }
 
-static GLuint shader_link(GLuint vertex_shader, GLuint fragment_shader) {
+static GLuint shader_link(const GLuint vertex_shader,
+			  const GLuint fragment_shader) {
 	GLint success;
 	GLint log_length;
 

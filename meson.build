@@ -20,6 +20,7 @@ sources = files(
         'src/platform/platform.c',
         'src/core/log.c',
         'src/renderer/renderer.c',
+        'src/renderer/mesh.c',
 )
 
 executable(

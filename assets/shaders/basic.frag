@@ -76,6 +76,20 @@ float calculate_shadow(vec4 light_position, vec3 normal, vec3 light) {
     return shadow / sample_count;
 }
 
+vec3 srgb_to_linear(vec3 color) {
+    return pow(
+            max(color, vec3(0.0)),
+            vec3(2.2)
+    );
+}
+
+vec3 linear_to_srgb(vec3 color) {
+    return pow(
+            max(color, vec3(0.0)),
+            vec3(1.0 / 2.2)
+    );
+}
+
 void main(void) {
     vec3 normal = normalize(fragment_normal);
     vec3 light = normalize(mat3(view) * -light_direction);
@@ -109,8 +123,10 @@ void main(void) {
     specular_factor *
     light_color;
 
-    vec3 base_color = fragment_color * material_color;
+    vec3 base_color = srgb_to_linear(
+            fragment_color * material_color
+    );
     vec3 color = base_color * (ambient + diffuse) + specular;
 
-    output_color = vec4(color, 1.0);
+    output_color = vec4(linear_to_srgb(color), 1.0);
 }

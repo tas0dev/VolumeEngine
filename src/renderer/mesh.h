@@ -13,6 +13,7 @@
 
 typedef struct mesh_vertex {
 	float position[3];
+	float normal[3];
 	float color[3];
 } mesh_vertex_t;
 

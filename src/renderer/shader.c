@@ -219,3 +219,31 @@ void shader_set_mat4(const shader_t *shader,
 
 	glUniformMatrix4fv(location, 1, GL_FALSE, mat4_data(matrix));
 }
+
+void shader_set_vec3(const shader_t *shader,
+		     const char *name,
+		     const vec3_t value) {
+	if (shader == NULL || name == NULL) { return; }
+
+	const GLint location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+
+	glUniform3f(location, value.x, value.y, value.z);
+}
+
+void shader_set_float(const shader_t *shader,
+		      const char *name,
+		      const float value) {
+	if (shader == NULL || name == NULL) { return; }
+
+	GLint location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+
+	glUniform1f(location, value);
+}

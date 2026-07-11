@@ -107,12 +107,18 @@ void renderer_draw_mesh(const renderer_t *renderer,
 	if (renderer == NULL || mesh == NULL || model == NULL || view == NULL ||
 	    projection == NULL) {
 		return;
-	}
+	    }
 
-	shader_bind(renderer->shader);
+	const vec3_t light_direction = vec3_create(-1.0f, -1.0f, -1.0f);
+	    const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
+
+	    shader_bind(renderer->shader);
 	shader_set_mat4(renderer->shader, "model", model);
 	shader_set_mat4(renderer->shader, "view", view);
 	shader_set_mat4(renderer->shader, "projection", projection);
+	shader_set_vec3(renderer->shader, "light_direction", light_direction);
+	shader_set_vec3(renderer->shader, "light_color", light_color);
+	shader_set_float(renderer->shader, "ambient_strength", 0.2f);
 	mesh_draw(mesh);
 	shader_unbind();
 }

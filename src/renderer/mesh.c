@@ -19,9 +19,11 @@ struct mesh {
 };
 
 mesh_t *mesh_create(const mesh_vertex_t *vertices,
-		    const size_t vertex_count,
+		    size_t vertex_count,
 		    const unsigned int *indices,
-		    const size_t index_count) {
+		    size_t index_count) {
+	mesh_t *mesh;
+
 	if (vertices == NULL || vertex_count == 0 || indices == NULL ||
 	    index_count == 0) {
 		log_error("Invalid mesh data");
@@ -33,7 +35,7 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		return NULL;
 	}
 
-	mesh_t *mesh = calloc(1, sizeof(*mesh));
+	mesh = calloc(1, sizeof(*mesh));
 	if (mesh == NULL) {
 		log_error("Failed to allocate mesh");
 		return NULL;
@@ -61,8 +63,12 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 	glEnableVertexAttribArray(0);
 
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
-			      (const void *)offsetof(mesh_vertex_t, color));
+			      (const void *)offsetof(mesh_vertex_t, normal));
 	glEnableVertexAttribArray(1);
+
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+			      (const void *)offsetof(mesh_vertex_t, color));
+	glEnableVertexAttribArray(2);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

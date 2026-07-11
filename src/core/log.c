@@ -6,6 +6,7 @@
  *
  */
 
+// ReSharper disable CppParameterMayBeConst
 #include "log.h"
 
 #include <stdarg.h>

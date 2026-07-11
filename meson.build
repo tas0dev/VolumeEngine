@@ -21,6 +21,7 @@ sources = files(
         'src/core/log.c',
         'src/renderer/renderer.c',
         'src/renderer/mesh.c',
+        'src/renderer/shader.c',
 )
 
 executable(

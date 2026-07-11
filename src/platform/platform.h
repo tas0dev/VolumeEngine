@@ -22,7 +22,7 @@ typedef struct platform platform_t;
 platform_t *platform_create(const platform_config_t *config);
 void platform_destroy(platform_t *platform);
 bool platform_poll_events(platform_t *platform);
-void *platform_gl_create_context(platform_t *platform);
+void *platform_gl_create_context(const platform_t *platform);
 void platform_gl_destroy_context(void *context);
 bool platform_gl_make_current(const platform_t *platform, void *context);
 void platform_gl_swap_buffers(const platform_t *platform);

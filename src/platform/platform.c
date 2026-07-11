@@ -103,7 +103,7 @@ bool platform_poll_events(platform_t *platform) {
 	return platform->running;
 }
 
-void *platform_gl_create_context(platform_t *platform) {
+void *platform_gl_create_context(const platform_t *platform) {
 	if (platform == NULL || platform->window == NULL) { return NULL; }
 
 	const SDL_GLContext context = SDL_GL_CreateContext(platform->window);
@@ -126,7 +126,7 @@ bool platform_gl_make_current(const platform_t *platform, void *context) {
 		return false;
 	}
 
-	if (!SDL_GL_MakeCurrent(platform->window, (SDL_GLContext)context)) {
+	if (!SDL_GL_MakeCurrent(platform->window, context)) {
 		log_error("Failed to activate OpenGL context: %s",
 			  SDL_GetError());
 		return false;

@@ -17,7 +17,7 @@ struct mesh {
 	GLsizei vertex_count;
 };
 
-mesh_t *mesh_create(const mesh_vertex_t *vertices, size_t vertex_count) {
+mesh_t *mesh_create(const mesh_vertex_t *vertices, const size_t vertex_count) {
 	if (vertices == NULL || vertex_count == 0) {
 		log_error("Invalid mesh data");
 		return NULL;

@@ -28,8 +28,9 @@ platform_t *platform_create(const platform_config_t *config) {
 		return NULL;
 	}
 
-	platform->window = SDL_CreateWindow(
-	    config->title, config->width, config->height, SDL_WINDOW_RESIZABLE);
+	platform->window =
+		SDL_CreateWindow(config->title, config->width, config->height,
+				 SDL_WINDOW_RESIZABLE);
 
 	if (platform->window == NULL) {
 		log_error("Window creation failed: %s", SDL_GetError());

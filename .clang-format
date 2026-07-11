@@ -3,9 +3,11 @@
 #
 # Created by tas0dev
 
+Language: C
 TabWidth: 8
 IndentWidth: 8
-UseTab: ForIndentation
+ContinuationIndentWidth: 8
+UseTab: Always
 
 AlignAfterOpenBracket: true
 AlignArrayOfStructures: Left

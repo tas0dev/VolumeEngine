@@ -23,5 +23,6 @@ void shader_set_mat4(const shader_t *shader,
 		     const mat4_t *matrix);
 void shader_set_vec3(const shader_t *shader, const char *name, vec3_t value);
 void shader_set_float(const shader_t *shader, const char *name, float value);
+void shader_set_int(const shader_t *shader, const char *name, int value);
 
 #endif // VOLUME_SHADER_H

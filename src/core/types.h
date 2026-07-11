@@ -11,5 +11,6 @@
 
 typedef struct engine engine_t;
 typedef struct renderer renderer_t;
+typedef struct platform platform_t;
 
 #endif

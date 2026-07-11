@@ -26,10 +26,17 @@ sources = files(
         'src/renderer/mesh.c',
         'src/renderer/shader.c',
         'src/renderer/material.c',
+        'src/renderer/shadow_map.c',
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',
 )
+
+volume_c_args = [
+    '-DVOLUME_ASSET_DIR="@0@"'.format(
+        meson.project_source_root() / 'assets'
+    ),
+]
 
 executable(
         'volume',
@@ -40,6 +47,7 @@ executable(
                 epoxy,
                 math,
         ],
+        c_args : volume_c_args,
         include_directories : include_directories('src'),
         install : false,
 )

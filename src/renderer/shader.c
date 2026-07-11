@@ -239,11 +239,23 @@ void shader_set_float(const shader_t *shader,
 		      const float value) {
 	if (shader == NULL || name == NULL) { return; }
 
-	GLint location = glGetUniformLocation(shader->program, name);
+	const GLint location = glGetUniformLocation(shader->program, name);
 	if (location < 0) {
 		log_error("Shader uniform not found: %s", name);
 		return;
 	}
 
 	glUniform1f(location, value);
+}
+
+void shader_set_int(const shader_t *shader, const char *name, int value) {
+	if (shader == NULL || name == NULL) { return; }
+
+	const GLint location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+
+	glUniform1i(location, value);
 }

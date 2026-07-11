@@ -135,3 +135,27 @@ mat4_look_at(const vec3_t position, const vec3_t target, const vec3_t up) {
 
 	return result;
 }
+
+mat4_t mat4_orthographic(const float left,
+			 const float right,
+			 const float bottom,
+			 const float top,
+			 const float near_plane,
+			 const float far_plane) {
+	mat4_t result = {0};
+
+	if (left == right || bottom == top || near_plane == far_plane) {
+		return mat4_identity();
+	}
+
+	result.elements[0] = 2.0f / (right - left);
+	result.elements[5] = 2.0f / (top - bottom);
+	result.elements[10] = -2.0f / (far_plane - near_plane);
+	result.elements[12] = -(right + left) / (right - left);
+	result.elements[13] = -(top + bottom) / (top - bottom);
+	result.elements[14] =
+		-(far_plane + near_plane) / (far_plane - near_plane);
+	result.elements[15] = 1.0f;
+
+	return result;
+}

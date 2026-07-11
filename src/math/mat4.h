@@ -27,5 +27,11 @@ mat4_t mat4_perspective(float field_of_view,
 			float far_plane);
 const float *mat4_data(const mat4_t *matrix);
 mat4_t mat4_look_at(vec3_t position, vec3_t target, vec3_t up);
+mat4_t mat4_orthographic(float left,
+			 float right,
+			 float bottom,
+			 float top,
+			 float near_plane,
+			 float far_plane);
 
 #endif

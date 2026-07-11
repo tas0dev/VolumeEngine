@@ -9,6 +9,7 @@
 #ifndef VOLUME_PLATFORM_PLATFORM_H
 #define VOLUME_PLATFORM_PLATFORM_H
 
+#include "core/types.h"
 #include <stdbool.h>
 
 typedef struct platform_config {
@@ -16,8 +17,6 @@ typedef struct platform_config {
 	int width;
 	int height;
 } platform_config_t;
-
-typedef struct platform platform_t;
 
 platform_t *platform_create(const platform_config_t *config);
 void platform_destroy(platform_t *platform);

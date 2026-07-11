@@ -63,21 +63,20 @@ bool engine_run(engine_t *engine) {
 	if (engine == NULL) { return false; }
 
 	while (engine->running) {
-		double current_time;
-		double delta_time;
 
 		if (!platform_poll_events(engine->platform)) {
 			engine->running = false;
 			continue;
 		}
 
-		current_time = platform_get_time();
-		delta_time = current_time - engine->previous_time;
+		const double current_time = platform_get_time();
+		const double delta_time = current_time - engine->previous_time;
 		engine->previous_time = current_time;
 
 		(void)delta_time;
 
 		renderer_begin_frame(engine->renderer);
+		renderer_draw(engine->renderer);
 		renderer_end_frame(engine->renderer);
 	}
 

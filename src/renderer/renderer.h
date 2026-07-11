@@ -23,5 +23,6 @@ void renderer_draw_mesh(const renderer_t *renderer,
 			const mat4_t *model,
 			const mat4_t *view,
 			const mat4_t *projection);
+void renderer_get_size(const renderer_t *renderer, int *width, int *height);
 
 #endif

@@ -9,7 +9,6 @@
 #include "renderer/renderer.h"
 #include "core/log.h"
 #include "math/mat4.h"
-#include "math/vec3.h"
 #include "platform/platform.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
@@ -116,4 +115,14 @@ void renderer_draw_mesh(const renderer_t *renderer,
 	shader_set_mat4(renderer->shader, "projection", projection);
 	mesh_draw(mesh);
 	shader_unbind();
+}
+
+void renderer_get_size(const renderer_t *renderer, int *width, int *height) {
+	if (width != NULL) { *width = 0; }
+
+	if (height != NULL) { *height = 0; }
+
+	if (renderer == NULL) { return; }
+
+	platform_get_drawable_size(renderer->platform, width, height);
 }

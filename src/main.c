@@ -11,10 +11,12 @@
 #include "math/vec3.h"
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
+#include "scene/camera.h"
 #include <stdlib.h>
 
 typedef struct exampleGame {
 	mesh_t *mesh;
+	camera_t camera;
 	float rotation;
 } example_game_t;
 
@@ -86,8 +88,11 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	example_game_t *game = user_data;
 	game->mesh = create_test_mesh();
+	if (game->mesh == NULL) { return false; }
 
-	return game->mesh != NULL;
+	game->camera = camera_create(vec3_create(0.0f, 0.0f, 2.5f));
+
+	return true;
 }
 
 static void update(engine_t *engine, const float delta_time, void *user_data) {
@@ -102,18 +107,22 @@ static void render(engine_t *engine, void *user_data) {
 	mat4_t model;
 	mat4_t view;
 	mat4_t projection;
-	const float pi = 3.14159265358979323846f;
-	const float aspect_ratio = 1280.0f / 720.0f;
+	int width;
+	int height;
 
-	const example_game_t *game = user_data;
-	const renderer_t *renderer = engine_get_renderer(engine);
+	example_game_t *game = user_data;
+	renderer_t *renderer = engine_get_renderer(engine);
+
+	renderer_get_size(renderer, &width, &height);
+	if (width <= 0 || height <= 0) { return; }
+
+	const float aspect_ratio = (float)width / (float)height;
 
 	const mat4_t rotation_x = mat4_rotation_x(game->rotation * 0.7f);
 	const mat4_t rotation_y = mat4_rotation_y(game->rotation);
 	model = mat4_multiply(rotation_y, rotation_x);
-	view = mat4_translation(vec3_create(0.0f, 0.0f, -2.5f));
-	projection = mat4_perspective(60.0f * pi / 180.0f, aspect_ratio, 0.1f,
-				      100.0f);
+	view = camera_get_view(&game->camera);
+	projection = camera_get_projection(&game->camera, aspect_ratio);
 
 	renderer_draw_mesh(renderer, game->mesh, &model, &view, &projection);
 }

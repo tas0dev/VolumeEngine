@@ -109,3 +109,29 @@ const float *mat4_data(const mat4_t *matrix) {
 
 	return matrix->elements;
 }
+
+mat4_t
+mat4_look_at(const vec3_t position, const vec3_t target, const vec3_t up) {
+	const vec3_t forward = vec3_normalize(vec3_subtract(target, position));
+	const vec3_t right = vec3_normalize(vec3_cross(forward, up));
+	const vec3_t camera_up = vec3_cross(right, forward);
+	mat4_t result = mat4_identity();
+
+	result.elements[0] = right.x;
+	result.elements[1] = camera_up.x;
+	result.elements[2] = -forward.x;
+
+	result.elements[4] = right.y;
+	result.elements[5] = camera_up.y;
+	result.elements[6] = -forward.y;
+
+	result.elements[8] = right.z;
+	result.elements[9] = camera_up.z;
+	result.elements[10] = -forward.z;
+
+	result.elements[12] = -vec3_dot(right, position);
+	result.elements[13] = -vec3_dot(camera_up, position);
+	result.elements[14] = vec3_dot(forward, position);
+
+	return result;
+}

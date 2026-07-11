@@ -52,21 +52,58 @@ int main(void) {
 
 static mesh_t *create_test_mesh(void) {
 	static const mesh_vertex_t vertices[] = {
-		{
-			.position = {0.0f, 0.6f, 0.0f},
-			.color = {1.0f, 0.2f, 0.2f},
-		 },
-		{
-			.position = {-0.6f, -0.6f, 0.0f},
-			.color = {0.2f, 1.0f, 0.2f},
-		 },
-		{
-			.position = {0.6f, -0.6f, 0.0f},
-			.color = {0.2f, 0.4f, 1.0f},
-		 },
+		/* Front */
+		{{-0.5f, -0.5f, 0.5f},  {1.0f, 0.0f, 0.0f}},
+		{{0.5f, -0.5f, 0.5f},   {1.0f, 0.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.5f},    {1.0f, 0.0f, 0.0f}},
+		{{-0.5f, -0.5f, 0.5f},  {1.0f, 0.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.5f},    {1.0f, 0.0f, 0.0f}},
+		{{-0.5f, 0.5f, 0.5f},   {1.0f, 0.0f, 0.0f}},
+
+		/* Back */
+		{{0.5f, -0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+		{{0.5f, -0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+		{{-0.5f, 0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f, -0.5f},   {0.0f, 1.0f, 0.0f}},
+
+		/* Left */
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, -0.5f, 0.5f},  {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.5f},   {0.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f, -0.5f},  {0.0f, 0.0f, 1.0f}},
+
+		/* Right */
+		{{0.5f, -0.5f, 0.5f},   {1.0f, 1.0f, 0.0f}},
+		{{0.5f, -0.5f, -0.5f},  {1.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f, -0.5f},   {1.0f, 1.0f, 0.0f}},
+		{{0.5f, -0.5f, 0.5f},   {1.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f, -0.5f},   {1.0f, 1.0f, 0.0f}},
+		{{0.5f, 0.5f, 0.5f},    {1.0f, 1.0f, 0.0f}},
+
+		/* Top */
+		{{-0.5f, 0.5f, 0.5f},   {1.0f, 0.0f, 1.0f}},
+		{{0.5f, 0.5f, 0.5f},    {1.0f, 0.0f, 1.0f}},
+		{{0.5f, 0.5f, -0.5f},   {1.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f, 0.5f},   {1.0f, 0.0f, 1.0f}},
+		{{0.5f, 0.5f, -0.5f},   {1.0f, 0.0f, 1.0f}},
+		{{-0.5f, 0.5f, -0.5f},  {1.0f, 0.0f, 1.0f}},
+
+		/* Bottom */
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
+		{{0.5f, -0.5f, -0.5f},  {0.0f, 1.0f, 1.0f}},
+		{{0.5f, -0.5f, 0.5f},   {0.0f, 1.0f, 1.0f}},
+		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
+		{{0.5f, -0.5f, 0.5f},   {0.0f, 1.0f, 1.0f}},
+		{{-0.5f, -0.5f, 0.5f},  {0.0f, 1.0f, 1.0f}},
 	};
 
-	return mesh_create(vertices, sizeof(vertices) / sizeof(vertices[0]));
+	return mesh_create(vertices,
+		sizeof(vertices) / sizeof(vertices[0])
+	);
 }
 
 static bool initialize(engine_t *engine, void *user_data) {
@@ -93,10 +130,12 @@ static void render(engine_t *engine, void *user_data) {
 	const float pi = 3.14159265358979323846f;
 	const float aspect_ratio = 1280.0f / 720.0f;
 
-	example_game_t *game = user_data;
+	const example_game_t *game = user_data;
 	const renderer_t *renderer = engine_get_renderer(engine);
 
-	model = mat4_rotation_y(game->rotation);
+	const mat4_t rotation_x = mat4_rotation_x(game->rotation * 0.7f);
+	const mat4_t rotation_y = mat4_rotation_y(game->rotation);
+	model = mat4_multiply(rotation_y, rotation_x);
 	view = mat4_translation(vec3_create(0.0f, 0.0f, -2.5f));
 	projection = mat4_perspective(60.0f * pi / 180.0f, aspect_ratio, 0.1f,
 				      100.0f);

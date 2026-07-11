@@ -12,6 +12,7 @@ project(
 
 sdl3 = dependency('sdl3')
 opengl = dependency('gl')
+epoxy = dependency('epoxy')
 
 sources = files(
         'src/main.c',
@@ -27,6 +28,7 @@ executable(
         dependencies : [
                 sdl3,
                 opengl,
+                epoxy,
         ],
         include_directories : include_directories('src'),
         install : false,

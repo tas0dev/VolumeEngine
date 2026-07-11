@@ -7,10 +7,9 @@
  */
 
 #include "scene/camera.h"
+#include "math/math.h"
 
 #include <stddef.h>
-
-static const float pi = 3.14159265358979323846f;
 
 camera_t camera_create(const vec3_t position) {
 	camera_t camera;
@@ -36,7 +35,7 @@ mat4_t camera_get_view(const camera_t *camera) {
 mat4_t camera_get_projection(const camera_t *camera, const float aspect_ratio) {
 	if (camera == NULL || aspect_ratio <= 0.0f) { return mat4_identity(); }
 
-	return mat4_perspective(camera->field_of_view * pi / 180.0f,
+	return mat4_perspective(camera->field_of_view * PI / 180.0f,
 				aspect_ratio, camera->near_plane,
 				camera->far_plane);
 }

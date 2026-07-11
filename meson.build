@@ -27,6 +27,7 @@ sources = files(
         'src/renderer/shader.c',
         'src/renderer/material.c',
         'src/renderer/shadow_map.c',
+        'src/renderer/hdr_buffer.c',
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',

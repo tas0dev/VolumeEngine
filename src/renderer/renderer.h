@@ -32,5 +32,6 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const mat4_t *view,
 			const mat4_t *projection,
 			const mat4_t *light_view_projection);
+void renderer_begin_frame(const renderer_t *renderer);
 
 #endif

@@ -8,11 +8,17 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-out vec3 vertex_normal;
-out vec3 vertex_color;
+out vec3 fragment_position;
+out vec3 fragment_normal;
+out vec3 fragment_color;
 
 void main(void) {
-    gl_Position = projection * view * model * vec4(position, 1.0);
-    vertex_normal = normalize(mat3(model) * normal);
-    vertex_color = color;
+    vec4 world_position = model * vec4(position, 1.0);
+    vec4 view_position = view * world_position;
+
+    fragment_position = view_position.xyz;
+    fragment_normal = normalize(mat3(view * model) * normal);
+    fragment_color = color;
+
+    gl_Position = projection * view_position;
 }

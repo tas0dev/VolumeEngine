@@ -121,13 +121,13 @@ static entity_t *create_entity(const entity_id_t id,
 	prop = prop_static_create(id, properties->mesh, properties->material);
 	if (prop == NULL) { return NULL; }
 
-	if (!entity_set_targetname(&prop->entity, properties->targetname)) {
-		prop_static_destroy(prop);
+	if (!entity_set_targetname((entity_t *)prop, properties->targetname)) {
+		entity_destroy((entity_t *)prop);
 		return NULL;
 	}
 
 	prop->entity.transform = properties->transform;
 	prop->casts_shadow = properties->casts_shadow;
 
-	return &prop->entity;
+	return (entity_t *)prop;
 }

@@ -45,19 +45,22 @@ static entity_t *create_test_entity(const entity_id_t id,
 	entity = calloc(1, sizeof(*entity));
 	if (entity == NULL) { return NULL; }
 
-	entity_initialize(&entity->entity, id, &test_entity_class);
+	entity_initialize((entity_t *)entity, id, &test_entity_class);
 
-	if (!entity_set_targetname(&entity->entity, properties->targetname)) {
-		free(entity);
+	if (!entity_set_targetname((entity_t *)entity,
+				   properties->targetname)) {
+		entity_destroy((entity_t *)entity);
 		return NULL;
-	}
+	    }
 
 	entity->properties = *properties;
 
-	return &entity->entity;
+	return (entity_t *)entity;
 }
 
-static void destroy_test_entity(entity_t *entity) { free(entity); }
+static void destroy_test_entity(entity_t *entity) {
+	free((test_entity_t *)entity);
+}
 
 static bool test_spawn_entities(void) {
 	static const char source[] = "world\n"

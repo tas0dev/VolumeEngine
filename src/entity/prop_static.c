@@ -119,11 +119,10 @@ static entity_t *create_entity(const entity_id_t id,
 	if (properties == NULL) { return NULL; }
 
 	prop = prop_static_create(id, properties->mesh, properties->material);
-
 	if (prop == NULL) { return NULL; }
 
 	prop->entity.transform = properties->transform;
 	prop->casts_shadow = properties->casts_shadow;
 
-	return &prop->entity;
+	return (entity_t *)prop;
 }

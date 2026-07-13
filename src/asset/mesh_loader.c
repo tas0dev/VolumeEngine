@@ -176,8 +176,8 @@ static bool copy_mesh_data(const struct aiScene *scene,
 				(float)normal->z;
 
 			color = mesh->mColors[0] == NULL
-				? NULL
-				: &mesh->mColors[0][vertex_index];
+					? NULL
+					: &mesh->mColors[0][vertex_index];
 
 			if (color == NULL) {
 				vertices[destination_vertex].color[0] = 1.0f;
@@ -217,11 +217,10 @@ static bool copy_mesh_data(const struct aiScene *scene,
 		     face_index++) {
 			face = &mesh->mFaces[face_index];
 
-			for (face_vertex_index = 0;
-			     face_vertex_index < 3;
+			for (face_vertex_index = 0; face_vertex_index < 3;
 			     face_vertex_index++) {
-				if (face->mIndices[face_vertex_index
-				    ] >= mesh->mNumVertices) {
+				if (face->mIndices[face_vertex_index] >=
+				    mesh->mNumVertices) {
 					set_error(error, error_size,
 						  "mesh %zu contains "
 						  "an invalid index",
@@ -231,9 +230,7 @@ static bool copy_mesh_data(const struct aiScene *scene,
 
 				destination_index =
 					vertex_offset +
-					face->mIndices[
-						face_vertex_index
-					];
+					face->mIndices[face_vertex_index];
 
 				indices[index_offset++] =
 					(unsigned int)destination_index;

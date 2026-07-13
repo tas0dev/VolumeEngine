@@ -8,35 +8,13 @@
 
 #include "map/spawn.h"
 #include "entity/properties.h"
-#include "math/math.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
 static void set_error(char *error, size_t error_size, const char *format, ...);
-static bool read_vec3_property(const map_entity_t *entity,
-			       const char *key,
-			       vec3_t *value,
-			       char *error,
-			       size_t error_size);
-static bool read_bool_property(const map_entity_t *entity,
-			       const char *key,
-			       bool *value,
-			       char *error,
-			       size_t error_size);
-static void convert_angles(vec3_t *angles);
-static bool build_properties(const map_entity_t *entity,
-			     const char *classname,
-			     asset_manager_t *assets,
-			     entity_properties_t *properties,
-			     char *error,
-			     const size_t error_size);
 static void rollback_entities(world_t *world, size_t initial_count);
-static bool read_float_property(const map_entity_t *entity,
-				const char *key,
-				float *value,
-				char *error,
-				size_t error_size);
+static const char *get_map_property(const void *context, const char *key);
 
 static void
 set_error(char *error, const size_t error_size, const char *format, ...) {
@@ -47,170 +25,6 @@ set_error(char *error, const size_t error_size, const char *format, ...) {
 	va_start(arguments, format);
 	vsnprintf(error, error_size, format, arguments);
 	va_end(arguments);
-}
-
-static bool read_vec3_property(const map_entity_t *entity,
-			       const char *key,
-			       vec3_t *value,
-			       char *error,
-			       const size_t error_size) {
-	const char *text;
-
-	text = map_entity_get_property(entity, key);
-	if (text == NULL) { return true; }
-
-	if (!map_entity_get_vec3(entity, key, value)) {
-		set_error(error, error_size,
-			  "invalid vec3 property \"%s\": \"%s\"", key, text);
-		return false;
-	}
-
-	return true;
-}
-
-static bool read_bool_property(const map_entity_t *entity,
-			       const char *key,
-			       bool *value,
-			       char *error,
-			       const size_t error_size) {
-	const char *text;
-
-	text = map_entity_get_property(entity, key);
-	if (text == NULL) { return true; }
-
-	if (!map_entity_get_bool(entity, key, value)) {
-		set_error(error, error_size,
-			  "invalid boolean property \"%s\": \"%s\"", key, text);
-		return false;
-	}
-
-	return true;
-}
-
-static void convert_angles(vec3_t *angles) {
-	const float degrees_to_radians = PI / 180.0f;
-
-	angles->x *= degrees_to_radians;
-	angles->y *= degrees_to_radians;
-	angles->z *= degrees_to_radians;
-}
-
-static bool build_properties(const map_entity_t *entity,
-			     const char *classname,
-			     asset_manager_t *assets,
-			     entity_properties_t *properties,
-			     char *error,
-			     const size_t error_size) {
-	const char *model_path;
-	const char *material_path;
-
-	*properties = entity_properties_create();
-
-	properties->targetname = map_entity_get_property(entity, "targetname");
-
-	if (!read_vec3_property(entity, "origin",
-				&properties->transform.position, error,
-				error_size)) {
-		return false;
-	}
-
-	if (!read_vec3_property(entity, "angles",
-				&properties->transform.rotation, error,
-				error_size)) {
-		return false;
-	}
-
-	convert_angles(&properties->transform.rotation);
-
-	if (!read_vec3_property(entity, "scale", &properties->transform.scale,
-				error, error_size)) {
-		return false;
-	}
-
-	if (!read_bool_property(entity, "casts_shadow",
-				&properties->casts_shadow, error, error_size)) {
-		return false;
-	}
-
-	if (strcmp(classname, "light_environment") == 0) {
-		if (!read_vec3_property(entity, "color",
-					&properties->light_color, error,
-					error_size)) {
-			return false;
-		}
-
-		if (!read_float_property(entity, "intensity",
-					 &properties->light_intensity, error,
-					 error_size)) {
-			return false;
-		}
-
-		if (properties->light_color.x < 0.0f ||
-		    properties->light_color.y < 0.0f ||
-		    properties->light_color.z < 0.0f) {
-			set_error(error, error_size,
-				  "light color cannot be negative");
-			return false;
-		}
-
-		if (properties->light_intensity < 0.0f) {
-			set_error(error, error_size,
-				  "light intensity cannot be negative");
-			return false;
-		}
-	}
-
-	model_path = map_entity_get_property(entity, "model");
-
-	if (model_path != NULL) {
-		if (assets == NULL) {
-			set_error(error, error_size,
-				  "model \"%s\" requires an asset manager",
-				  model_path);
-			return false;
-		}
-
-		properties->mesh = asset_manager_load_mesh(assets, model_path,
-							   error, error_size);
-		if (properties->mesh == NULL) { return false; }
-	}
-
-	material_path = map_entity_get_property(entity, "material");
-
-	if (material_path != NULL) {
-		if (assets == NULL) {
-			set_error(error, error_size,
-				  "material \"%s\" requires an asset manager",
-				  material_path);
-			return false;
-		}
-
-		properties->material = asset_manager_load_material(
-			assets, material_path, error, error_size);
-
-		if (properties->material == NULL) { return false; }
-	}
-
-	return true;
-}
-
-static bool read_float_property(const map_entity_t *entity,
-				const char *key,
-				float *value,
-				char *error,
-				const size_t error_size) {
-	const char *text;
-
-	text = map_entity_get_property(entity, key);
-	if (text == NULL) { return true; }
-
-	if (!map_entity_get_float(entity, key, value)) {
-		set_error(error, error_size,
-			  "invalid float property \"%s\": \"%s\"", key, text);
-		return false;
-	}
-
-	return true;
 }
 
 static void rollback_entities(world_t *world, const size_t initial_count) {
@@ -230,6 +44,10 @@ static void rollback_entities(world_t *world, const size_t initial_count) {
 	}
 }
 
+static const char *get_map_property(const void *context, const char *key) {
+	return map_entity_get_property(context, key);
+}
+
 bool map_spawn_entities(const map_t *map,
 			world_t *world,
 			asset_manager_t *assets,
@@ -237,7 +55,9 @@ bool map_spawn_entities(const map_t *map,
 			const size_t error_size) {
 	const map_entity_t *map_entity;
 	const char *classname;
+	entity_property_source_t source;
 	entity_properties_t properties;
+	entity_spawn_context_t context;
 	size_t initial_count;
 	size_t index;
 	size_t count;
@@ -269,17 +89,30 @@ bool map_spawn_entities(const map_t *map,
 			return false;
 		}
 
-		if (!build_properties(map_entity, classname, assets,
-				      &properties, error, error_size)) {
+		source.context = map_entity;
+		source.get = get_map_property;
+
+		if (!entity_properties_load(&properties, &source, error,
+					    error_size)) {
 			rollback_entities(world, initial_count);
 			return false;
 		}
 
-		if (world_spawn_entity(world, classname, &properties) == NULL) {
-			set_error(error, error_size,
-				  "failed to spawn entity %zu "
-				  "with classname \"%s\"",
-				  index, classname);
+		context.properties = &properties;
+		context.source = &source;
+		context.assets = assets;
+		context.error = error;
+		context.error_size = error_size;
+
+		if (world_spawn_entity(world, classname, &context) == NULL) {
+			if (error == NULL || error_size == 0 ||
+			    error[0] == '\0') {
+				set_error(error, error_size,
+					  "failed to spawn entity %zu "
+					  "with classname \"%s\"",
+					  index, classname);
+			}
+
 			rollback_entities(world, initial_count);
 			return false;
 		}

@@ -20,7 +20,7 @@ world_t *world_create(void);
 void world_destroy(world_t *world);
 entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,
-			     const entity_properties_t *properties);
+			     const entity_spawn_context_t *context);
 bool world_add_entity(world_t *world, entity_t *entity);
 bool world_remove_entity(world_t *world, entity_id_t id);
 entity_t *world_find_entity(world_t *world, entity_id_t id);

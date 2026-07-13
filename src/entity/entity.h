@@ -14,17 +14,27 @@
 #include "renderer/view.h"
 #include "scene/transform.h"
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef uint32_t entity_id_t;
 
 typedef struct entity entity_t;
 typedef struct entity_class entity_class_t;
+struct asset_manager;
+
+typedef struct entity_spawn_context {
+	const entity_properties_t *properties;
+	const entity_property_source_t *source;
+	struct asset_manager *assets;
+	char *error;
+	size_t error_size;
+} entity_spawn_context_t;
 
 struct entity_class {
 	const char *classname;
 	entity_t *(*create)(entity_id_t id,
-			    const entity_properties_t *properties);
+			    const entity_spawn_context_t *context);
 	void (*update)(entity_t *entity, float delta_time);
 	void (*draw_shadow)(entity_t *entity, renderer_t *renderer);
 	void (*draw)(entity_t *entity,
@@ -46,7 +56,7 @@ void entity_initialize(entity_t *entity,
 		       const entity_class_t *class);
 entity_t *entity_create(const char *classname,
 			entity_id_t id,
-			const entity_properties_t *properties);
+			const entity_spawn_context_t *context);
 const char *entity_get_classname(const entity_t *entity);
 void entity_update(entity_t *entity, float delta_time);
 void entity_draw_shadow(entity_t *entity, renderer_t *renderer);

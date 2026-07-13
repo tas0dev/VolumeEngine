@@ -81,18 +81,19 @@ void world_destroy(world_t *world) {
 
 entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,
-			     const entity_properties_t *properties) {
+			     const entity_spawn_context_t *context) {
 	entity_t *entity;
 	entity_id_t id;
 
-	if (world == NULL || classname == NULL || properties == NULL) {
+	if (world == NULL || classname == NULL || context == NULL ||
+	    context->properties == NULL) {
 		return NULL;
 	}
 
 	id = world_allocate_entity_id(world);
 	if (id == 0) { return NULL; }
 
-	entity = entity_create(classname, id, properties);
+	entity = entity_create(classname, id, context);
 	if (entity == NULL) { return NULL; }
 
 	if (!world_add_entity(world, entity)) {

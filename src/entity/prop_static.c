@@ -7,16 +7,43 @@
  */
 
 #include "entity/prop_static.h"
+#include "asset/manager.h"
 #include "renderer/renderer.h"
 #include "scene/transform.h"
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 
+static void
+set_error(const entity_spawn_context_t *context, const char *format, ...);
 static void draw_shadow_entity(entity_t *entity, renderer_t *renderer);
 static void
 draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view);
 static void destroy_entity(entity_t *entity);
 static entity_t *create_entity(entity_id_t id,
-			       const entity_properties_t *properties);
+			       const entity_spawn_context_t *context);
+
+static void
+set_error(const entity_spawn_context_t *context, const char *format, ...) {
+	va_list arguments;
+
+	if (context->error == NULL || context->error_size == 0) { return; }
+
+	va_start(arguments, format);
+	vsnprintf(context->error, context->error_size, format, arguments);
+	va_end(arguments);
+}
+
+prop_static_properties_t prop_static_properties_create(void) {
+	prop_static_properties_t properties;
+
+	properties.entity = entity_properties_create();
+	properties.mesh = NULL;
+	properties.material = NULL;
+	properties.casts_shadow = true;
+
+	return properties;
+}
 
 static const entity_class_t prop_static_class = {
 	.classname = "prop_static",
@@ -28,20 +55,29 @@ static const entity_class_t prop_static_class = {
 };
 
 prop_static_t *prop_static_create(const entity_id_t id,
-				  const mesh_t *mesh,
-				  const material_t *material) {
+				  const prop_static_properties_t *properties) {
 	prop_static_t *prop;
 
-	if (mesh == NULL || material == NULL) { return NULL; }
+	if (properties == NULL || properties->mesh == NULL ||
+	    properties->material == NULL) {
+		return NULL;
+	}
 
 	prop = calloc(1, sizeof(*prop));
 	if (prop == NULL) { return NULL; }
 
-	entity_initialize(&prop->entity, id, &prop_static_class);
+	entity_initialize((entity_t *)prop, id, &prop_static_class);
 
-	prop->mesh = mesh;
-	prop->material = material;
-	prop->casts_shadow = true;
+	if (!entity_set_targetname((entity_t *)prop,
+				   properties->entity.targetname)) {
+		free(prop);
+		return NULL;
+	}
+
+	prop->entity.transform = properties->entity.transform;
+	prop->mesh = properties->mesh;
+	prop->material = properties->material;
+	prop->casts_shadow = properties->casts_shadow;
 
 	return prop;
 }
@@ -49,19 +85,19 @@ prop_static_t *prop_static_create(const entity_id_t id,
 void prop_static_destroy(prop_static_t *prop) {
 	if (prop == NULL) { return; }
 
-	entity_destroy(&prop->entity);
+	entity_destroy((entity_t *)prop);
 }
 
 entity_t *prop_static_get_entity(prop_static_t *prop) {
 	if (prop == NULL) { return NULL; }
 
-	return &prop->entity;
+	return (entity_t *)prop;
 }
 
 const entity_t *prop_static_get_const_entity(const prop_static_t *prop) {
 	if (prop == NULL) { return NULL; }
 
-	return &prop->entity;
+	return (const entity_t *)prop;
 }
 
 prop_static_t *prop_static_from_entity(entity_t *entity) {
@@ -104,28 +140,71 @@ draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view) {
 	renderer_draw_mesh(renderer, prop->mesh, prop->material, &model, view);
 }
 
-static void destroy_entity(entity_t *entity) { free(entity); }
+static void destroy_entity(entity_t *entity) { free((prop_static_t *)entity); }
 
 bool prop_static_register(void) {
 	return entity_register_class(&prop_static_class);
 }
 
 static entity_t *create_entity(const entity_id_t id,
-			       const entity_properties_t *properties) {
+			       const entity_spawn_context_t *context) {
+	prop_static_properties_t properties;
 	prop_static_t *prop;
+	const char *model_path;
+	const char *material_path;
+	const char *casts_shadow;
 
-	if (properties == NULL) { return NULL; }
-
-	prop = prop_static_create(id, properties->mesh, properties->material);
-	if (prop == NULL) { return NULL; }
-
-	if (!entity_set_targetname((entity_t *)prop, properties->targetname)) {
-		entity_destroy((entity_t *)prop);
+	if (context == NULL || context->properties == NULL ||
+	    context->source == NULL) {
 		return NULL;
 	}
 
-	prop->entity.transform = properties->transform;
-	prop->casts_shadow = properties->casts_shadow;
+	properties = prop_static_properties_create();
+	properties.entity = *context->properties;
+
+	model_path = entity_property_get(context->source, "model");
+	if (model_path == NULL || model_path[0] == '\0') {
+		set_error(context, "prop_static requires a model");
+		return NULL;
+	}
+
+	material_path = entity_property_get(context->source, "material");
+	if (material_path == NULL || material_path[0] == '\0') {
+		set_error(context, "prop_static requires a material");
+		return NULL;
+	}
+
+	if (context->assets == NULL) {
+		set_error(context,
+			  "prop_static assets require an asset manager");
+		return NULL;
+	}
+
+	properties.mesh =
+		asset_manager_load_mesh(context->assets, model_path,
+					context->error, context->error_size);
+	if (properties.mesh == NULL) { return NULL; }
+
+	properties.material = asset_manager_load_material(
+		context->assets, material_path, context->error,
+		context->error_size);
+	if (properties.material == NULL) { return NULL; }
+
+	casts_shadow = entity_property_get(context->source, "casts_shadow");
+	if (casts_shadow != NULL &&
+	    !entity_property_parse_bool(casts_shadow,
+					&properties.casts_shadow)) {
+		set_error(context,
+			  "invalid boolean property \"casts_shadow\": \"%s\"",
+			  casts_shadow);
+		return NULL;
+	}
+
+	prop = prop_static_create(id, &properties);
+	if (prop == NULL) {
+		set_error(context, "failed to create prop_static");
+		return NULL;
+	}
 
 	return (entity_t *)prop;
 }

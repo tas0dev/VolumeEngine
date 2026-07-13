@@ -37,15 +37,18 @@ void entity_initialize(entity_t *entity,
 
 entity_t *entity_create(const char *classname,
 			const entity_id_t id,
-			const entity_properties_t *properties) {
+			const entity_spawn_context_t *context) {
 	const entity_class_t *class;
 
-	if (classname == NULL || id == 0 || properties == NULL) { return NULL; }
+	if (classname == NULL || id == 0 || context == NULL ||
+	    context->properties == NULL) {
+		return NULL;
+	}
 
 	class = registry_find(classname);
 	if (class == NULL) { return NULL; }
 
-	return class->create(id, properties);
+	return class->create(id, context);
 }
 
 const char *entity_get_classname(const entity_t *entity) {

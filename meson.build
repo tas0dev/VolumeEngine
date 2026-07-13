@@ -22,6 +22,7 @@ sources = files(
         'src/volume.c',
         'src/platform/platform.c',
         'src/core/log.c',
+        'src/entity/entity.c',
         'src/renderer/renderer.c',
         'src/renderer/mesh.c',
         'src/renderer/shader.c',

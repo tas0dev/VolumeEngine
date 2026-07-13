@@ -157,3 +157,11 @@ static const entity_class_t *registry_find(const char *classname) {
 
 	return NULL;
 }
+
+void entity_registry_shutdown(void) {
+	free(registry.classes);
+
+	registry.classes = NULL;
+	registry.count = 0;
+	registry.capacity = 0;
+}

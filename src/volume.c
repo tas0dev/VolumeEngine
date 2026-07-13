@@ -8,6 +8,8 @@
 
 #include "volume.h"
 #include "core/log.h"
+#include "entity/builtin.h"
+#include "entity/entity.h"
 #include "input/input.h"
 #include "platform/platform.h"
 #include "renderer/renderer.h"
@@ -33,9 +35,15 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
+	if (!entity_register_builtin_classes()) {
+		log_error("Failed to register built-in entity classes");
+		return NULL;
+	}
+
 	engine = calloc(1, sizeof(*engine));
 	if (engine == NULL) {
 		log_error("Failed to allocate engine");
+		entity_registry_shutdown();
 		return NULL;
 	}
 
@@ -46,6 +54,7 @@ engine_t *engine_create(const engine_config_t *config) {
 
 	engine->platform = platform_create(&platform_config);
 	if (engine->platform == NULL) {
+		entity_registry_shutdown();
 		free(engine);
 		return NULL;
 	}
@@ -53,6 +62,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	engine->input = input_create();
 	if (engine->input == NULL) {
 		platform_destroy(engine->platform);
+		entity_registry_shutdown();
 		free(engine);
 		return NULL;
 	}
@@ -61,6 +71,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	if (engine->renderer == NULL) {
 		input_destroy(engine->input);
 		platform_destroy(engine->platform);
+		entity_registry_shutdown();
 		free(engine);
 		return NULL;
 	}
@@ -72,6 +83,7 @@ engine_t *engine_create(const engine_config_t *config) {
 		renderer_destroy(engine->renderer);
 		input_destroy(engine->input);
 		platform_destroy(engine->platform);
+		entity_registry_shutdown();
 		free(engine);
 		return NULL;
 	}
@@ -96,6 +108,7 @@ void engine_destroy(engine_t *engine) {
 	renderer_destroy(engine->renderer);
 	input_destroy(engine->input);
 	platform_destroy(engine->platform);
+	entity_registry_shutdown();
 	free(engine);
 
 	log_info("Volume shut down");

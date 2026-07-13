@@ -6,7 +6,6 @@
  *
  */
 
-#include "entity/prop_static.h"
 #include "entity/world.h"
 #include "game/game.h"
 #include "input/input.h"
@@ -146,8 +145,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 	(void)engine;
 
 	game_state = user_data;
-
-	if (!prop_static_register()) { return false; }
 
 	game_state->mesh = create_test_mesh();
 	if (game_state->mesh == NULL) { return false; }

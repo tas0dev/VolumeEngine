@@ -23,6 +23,7 @@ sources = files(
         'src/platform/platform.c',
         'src/core/log.c',
         'src/entity/entity.c',
+        'src/entity/builtin.c',
         'src/entity/prop_static.c',
         'src/entity/world.c',
         'src/entity/properties.c',

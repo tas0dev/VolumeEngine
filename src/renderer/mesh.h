@@ -16,6 +16,8 @@ typedef struct mesh_vertex {
 	float normal[3];
 	float color[3];
 	float texture_coordinate[2];
+	float tangent[3];
+	float bitangent[3];
 } mesh_vertex_t;
 
 typedef struct mesh mesh_t;

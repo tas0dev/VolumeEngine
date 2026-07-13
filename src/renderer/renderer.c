@@ -420,7 +420,17 @@ void renderer_draw_mesh(renderer_t *renderer,
 		texture_bind(material->albedo_texture, 1);
 	}
 
+	shader_set_int(renderer->shader, "normal_texture", 2);
+	shader_set_int(renderer->shader, "has_normal_texture",
+		       material->normal_texture != NULL);
+
+	if (material->normal_texture != NULL) {
+		texture_bind(material->normal_texture, 2);
+	}
+
 	mesh_draw(mesh);
+
+	if (material->normal_texture != NULL) { texture_unbind(2); }
 
 	if (material->albedo_texture != NULL) { texture_unbind(1); }
 

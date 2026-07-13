@@ -75,6 +75,14 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		(const void *)offsetof(mesh_vertex_t, texture_coordinate));
 	glEnableVertexAttribArray(3);
 
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+			      (const void *)offsetof(mesh_vertex_t, tangent));
+	glEnableVertexAttribArray(4);
+
+	glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+			      (const void *)offsetof(mesh_vertex_t, bitangent));
+	glEnableVertexAttribArray(5);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 

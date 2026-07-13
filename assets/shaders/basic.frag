@@ -2,6 +2,8 @@
 
 in vec3 fragment_position;
 in vec3 fragment_normal;
+in vec3 fragment_tangent;
+in vec3 fragment_bitangent;
 in vec3 fragment_color;
 in vec2 fragment_texture_coordinate;
 in vec4 fragment_light_position;
@@ -9,7 +11,9 @@ in vec4 fragment_light_position;
 uniform mat4 view;
 uniform sampler2D shadow_map;
 uniform sampler2D albedo_texture;
+uniform sampler2D normal_texture;
 uniform int has_albedo_texture;
+uniform int has_normal_texture;
 uniform vec3 light_direction;
 uniform vec3 light_color;
 uniform vec3 material_color;
@@ -27,6 +31,53 @@ vec3 srgb_to_linear(vec3 color) {
             max(color, vec3(0.0)),
             vec3(2.2)
     );
+}
+
+vec3 calculate_surface_normal(void) {
+    vec3 surface_normal;
+    vec3 surface_tangent;
+    vec3 surface_bitangent;
+    vec3 texture_normal;
+    mat3 tangent_basis;
+
+    surface_normal = normalize(fragment_normal);
+
+    if (has_normal_texture == 0) {
+        return surface_normal;
+    }
+
+    surface_tangent =
+    fragment_tangent -
+    surface_normal *
+    dot(surface_normal, fragment_tangent);
+
+    if (dot(surface_tangent, surface_tangent) < 0.00000001) {
+        return surface_normal;
+    }
+
+    surface_tangent = normalize(surface_tangent);
+    surface_bitangent =
+    normalize(cross(surface_normal, surface_tangent));
+
+    if (dot(surface_bitangent, fragment_bitangent) < 0.0) {
+        surface_bitangent = -surface_bitangent;
+    }
+
+    texture_normal =
+    texture(
+            normal_texture,
+            fragment_texture_coordinate
+    ).rgb *
+    2.0 -
+    1.0;
+
+    tangent_basis = mat3(
+            surface_tangent,
+            surface_bitangent,
+            surface_normal
+    );
+
+    return normalize(tangent_basis * texture_normal);
 }
 
 float calculate_shadow(
@@ -125,6 +176,7 @@ vec3 extract_bloom(
             brightness - threshold,
             soft
     );
+
     contribution /=
     max(brightness, 0.00001);
 
@@ -132,6 +184,7 @@ vec3 extract_bloom(
 }
 
 void main(void) {
+    vec3 geometric_normal;
     vec3 normal;
     vec3 light;
     vec3 view_direction;
@@ -147,16 +200,21 @@ void main(void) {
     float specular_factor;
     float shadow;
 
-    normal = normalize(fragment_normal);
+    geometric_normal = normalize(fragment_normal);
+    normal = calculate_surface_normal();
+
     light =
     normalize(mat3(view) * -light_direction);
+
     view_direction =
     normalize(-fragment_position);
+
     halfway_direction =
     normalize(light + view_direction);
 
     diffuse_factor =
     max(dot(normal, light), 0.0);
+
     specular_factor = 0.0;
 
     if (diffuse_factor > 0.0) {
@@ -174,7 +232,7 @@ void main(void) {
 
     shadow = calculate_shadow(
             fragment_light_position,
-            normal,
+            geometric_normal,
             light
     );
 

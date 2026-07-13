@@ -7,10 +7,12 @@
  */
 
 #include "asset/mesh_loader.h"
+#include "math/vec3.h"
 #include <assimp/cimport.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -29,6 +31,10 @@ static bool copy_mesh_data(const struct aiScene *scene,
 			   unsigned int *indices,
 			   char *error,
 			   size_t error_size);
+static void write_tangent_basis(const struct aiMesh *mesh,
+				size_t vertex_index,
+				const struct aiVector3D *normal,
+				mesh_vertex_t *vertex);
 
 static void
 set_error(char *error, const size_t error_size, const char *format, ...) {
@@ -211,6 +217,9 @@ static bool copy_mesh_data(const struct aiScene *scene,
 					.texture_coordinate[1] =
 					(float)texture_coordinate->y;
 			}
+
+			write_tangent_basis(mesh, vertex_index, normal,
+					    &vertices[destination_vertex]);
 		}
 
 		for (face_index = 0; face_index < mesh->mNumFaces;
@@ -243,6 +252,76 @@ static bool copy_mesh_data(const struct aiScene *scene,
 	return true;
 }
 
+static void write_tangent_basis(const struct aiMesh *mesh,
+				const size_t vertex_index,
+				const struct aiVector3D *normal,
+				mesh_vertex_t *vertex) {
+	const struct aiVector3D *source_tangent;
+	const struct aiVector3D *source_bitangent;
+	vec3_t normal_vector;
+	vec3_t tangent;
+	vec3_t bitangent;
+	vec3_t reference;
+	float tangent_length;
+	float bitangent_length;
+
+	source_tangent =
+		mesh->mTangents == NULL ? NULL : &mesh->mTangents[vertex_index];
+	source_bitangent = mesh->mBitangents == NULL
+				   ? NULL
+				   : &mesh->mBitangents[vertex_index];
+
+	if (source_tangent != NULL && source_bitangent != NULL) {
+		tangent = vec3_create((float)source_tangent->x,
+				      (float)source_tangent->y,
+				      (float)source_tangent->z);
+		bitangent = vec3_create((float)source_bitangent->x,
+					(float)source_bitangent->y,
+					(float)source_bitangent->z);
+
+		tangent_length = vec3_length(tangent);
+		bitangent_length = vec3_length(bitangent);
+
+		if (tangent_length > 0.000001f &&
+		    bitangent_length > 0.000001f) {
+			vertex->tangent[0] = tangent.x;
+			vertex->tangent[1] = tangent.y;
+			vertex->tangent[2] = tangent.z;
+
+			vertex->bitangent[0] = bitangent.x;
+			vertex->bitangent[1] = bitangent.y;
+			vertex->bitangent[2] = bitangent.z;
+			return;
+		}
+	}
+
+	normal_vector = vec3_create((float)normal->x, (float)normal->y,
+				    (float)normal->z);
+
+	if (vec3_length(normal_vector) <= 0.000001f) {
+		normal_vector = vec3_create(0.0f, 1.0f, 0.0f);
+	} else {
+		normal_vector = vec3_normalize(normal_vector);
+	}
+
+	if (fabsf(normal_vector.y) < 0.999f) {
+		reference = vec3_create(0.0f, 1.0f, 0.0f);
+	} else {
+		reference = vec3_create(1.0f, 0.0f, 0.0f);
+	}
+
+	tangent = vec3_normalize(vec3_cross(reference, normal_vector));
+	bitangent = vec3_normalize(vec3_cross(normal_vector, tangent));
+
+	vertex->tangent[0] = tangent.x;
+	vertex->tangent[1] = tangent.y;
+	vertex->tangent[2] = tangent.z;
+
+	vertex->bitangent[0] = bitangent.x;
+	vertex->bitangent[1] = bitangent.y;
+	vertex->bitangent[2] = bitangent.z;
+}
+
 mesh_t *mesh_load(const char *path, char *error, const size_t error_size) {
 	const struct aiScene *scene;
 	mesh_vertex_t *vertices;
@@ -252,7 +331,8 @@ mesh_t *mesh_load(const char *path, char *error, const size_t error_size) {
 	size_t index_count;
 	const unsigned int flags =
 		aiProcess_Triangulate | aiProcess_JoinIdenticalVertices |
-		aiProcess_GenSmoothNormals | aiProcess_PreTransformVertices |
+		aiProcess_GenSmoothNormals | aiProcess_CalcTangentSpace |
+		aiProcess_PreTransformVertices |
 		aiProcess_ImproveCacheLocality | aiProcess_SortByPType |
 		aiProcess_ValidateDataStructure;
 

@@ -63,7 +63,7 @@ static bool bloom_buffer_allocate(bloom_buffer_t *buffer,
 	return true;
 }
 
-bloom_buffer_t *bloom_buffer_create(int width, int height) {
+bloom_buffer_t *bloom_buffer_create(const int width, const int height) {
 	bloom_buffer_t *buffer;
 
 	if (width <= 0 || height <= 0) {

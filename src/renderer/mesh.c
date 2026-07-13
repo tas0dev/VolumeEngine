@@ -19,9 +19,9 @@ struct mesh {
 };
 
 mesh_t *mesh_create(const mesh_vertex_t *vertices,
-		    size_t vertex_count,
+		    const size_t vertex_count,
 		    const unsigned int *indices,
-		    size_t index_count) {
+		    const size_t index_count) {
 	mesh_t *mesh;
 
 	if (vertices == NULL || vertex_count == 0 || indices == NULL ||

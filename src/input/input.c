@@ -44,19 +44,19 @@ void input_begin_frame(input_t *input) {
 	input->mouse_delta_y = 0.0f;
 }
 
-bool input_key_down(const input_t *input, input_key_t key) {
+bool input_key_down(const input_t *input, input_key_t const key) {
 	if (input == NULL || key >= INPUT_KEY_COUNT) { return false; }
 
 	return input->keys[key];
 }
 
-bool input_key_pressed(const input_t *input, input_key_t key) {
+bool input_key_pressed(const input_t *input, const input_key_t key) {
 	if (input == NULL || key >= INPUT_KEY_COUNT) { return false; }
 
 	return input->keys[key] && !input->previous_keys[key];
 }
 
-bool input_key_released(const input_t *input, input_key_t key) {
+bool input_key_released(const input_t *input, const input_key_t key) {
 	if (input == NULL || key >= INPUT_KEY_COUNT) { return false; }
 
 	return !input->keys[key] && input->previous_keys[key];

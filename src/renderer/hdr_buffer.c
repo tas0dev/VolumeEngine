@@ -75,7 +75,7 @@ hdr_buffer_allocate(hdr_buffer_t *buffer, const int width, const int height) {
 	return true;
 }
 
-hdr_buffer_t *hdr_buffer_create(int width, int height) {
+hdr_buffer_t *hdr_buffer_create(const int width, const int height) {
 	hdr_buffer_t *buffer;
 
 	if (width <= 0 || height <= 0) {
@@ -119,7 +119,9 @@ void hdr_buffer_destroy(hdr_buffer_t *buffer) {
 	free(buffer);
 }
 
-bool hdr_buffer_resize(hdr_buffer_t *buffer, int width, int height) {
+bool hdr_buffer_resize(hdr_buffer_t *buffer,
+		       const int width,
+		       const int height) {
 	if (buffer == NULL || width <= 0 || height <= 0) { return false; }
 
 	if (buffer->width == width && buffer->height == height) { return true; }

@@ -18,7 +18,7 @@ struct shadow_map {
 	int height;
 };
 
-shadow_map_t *shadow_map_create(int width, int height) {
+shadow_map_t *shadow_map_create(const int width, const int height) {
 	shadow_map_t *shadow_map;
 	GLenum framebuffer_status;
 

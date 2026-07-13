@@ -20,7 +20,7 @@ struct world {
 static bool world_reserve(world_t *world, size_t capacity);
 static entity_id_t world_allocate_entity_id(world_t *world);
 
-static bool world_reserve(world_t *world, size_t capacity) {
+static bool world_reserve(world_t *world, const size_t capacity) {
 	entity_t **entities;
 
 	if (capacity <= world->capacity) { return true; }
@@ -125,7 +125,7 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 	return true;
 }
 
-bool world_remove_entity(world_t *world, entity_id_t id) {
+bool world_remove_entity(world_t *world, const entity_id_t id) {
 	size_t index;
 
 	if (world == NULL || id == 0) {
@@ -154,7 +154,7 @@ bool world_remove_entity(world_t *world, entity_id_t id) {
 	return false;
 }
 
-entity_t *world_find_entity(world_t *world, entity_id_t id) {
+entity_t *world_find_entity(world_t *world, const entity_id_t id) {
 	size_t index;
 
 	if (world == NULL || id == 0) {
@@ -200,7 +200,7 @@ size_t world_get_entity_count(const world_t *world) {
 	return world->count;
 }
 
-entity_t *world_get_entity(world_t *world, size_t index) {
+entity_t *world_get_entity(world_t *world, const size_t index) {
 	if (world == NULL || index >= world->count) {
 		return NULL;
 	}

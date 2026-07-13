@@ -214,7 +214,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	return true;
 }
 
-static void update(engine_t *engine, float delta_time, void *user_data) {
+static void update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	input_t *input;
 	vec3_t movement;

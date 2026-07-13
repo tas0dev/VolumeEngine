@@ -186,6 +186,7 @@ bool platform_poll_events(platform_t *platform, input_t *input) {
 void *platform_gl_create_context(const platform_t *platform) {
 	if (platform == NULL || platform->window == NULL) { return NULL; }
 
+	// ReSharper disable once CppLocalVariableMayBeConst
 	SDL_GLContext context = SDL_GL_CreateContext(platform->window);
 	if (context == NULL) {
 		log_error("OpenGL context creation failed: %s", SDL_GetError());

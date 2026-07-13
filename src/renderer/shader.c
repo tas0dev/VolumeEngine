@@ -248,7 +248,7 @@ void shader_set_float(const shader_t *shader,
 	glUniform1f(location, value);
 }
 
-void shader_set_int(const shader_t *shader, const char *name, int value) {
+void shader_set_int(const shader_t *shader, const char *name, const int value) {
 	if (shader == NULL || name == NULL) { return; }
 
 	const GLint location = glGetUniformLocation(shader->program, name);

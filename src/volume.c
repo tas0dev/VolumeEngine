@@ -8,6 +8,7 @@
 
 #include "volume.h"
 #include "core/log.h"
+#include "input/input.h"
 #include "platform/platform.h"
 #include "renderer/renderer.h"
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 struct volumeEngine {
 	platform_t *platform;
 	renderer_t *renderer;
+	input_t *input;
 	const game_t *game;
 	bool running;
 	bool initialized;
@@ -47,8 +49,16 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
+	engine->input = input_create();
+	if (engine->input == NULL) {
+		platform_destroy(engine->platform);
+		free(engine);
+		return NULL;
+	}
+
 	engine->renderer = renderer_create(engine->platform);
 	if (engine->renderer == NULL) {
+		input_destroy(engine->input);
 		platform_destroy(engine->platform);
 		free(engine);
 		return NULL;
@@ -59,6 +69,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	if (engine->game->initialize != NULL &&
 	    !engine->game->initialize(engine, engine->game->user_data)) {
 		renderer_destroy(engine->renderer);
+		input_destroy(engine->input);
 		platform_destroy(engine->platform);
 		free(engine);
 		return NULL;
@@ -82,6 +93,7 @@ void engine_destroy(engine_t *engine) {
 	}
 
 	renderer_destroy(engine->renderer);
+	input_destroy(engine->input);
 	platform_destroy(engine->platform);
 	free(engine);
 
@@ -95,7 +107,9 @@ bool engine_run(engine_t *engine) {
 	if (engine == NULL) { return false; }
 
 	while (engine->running) {
-		if (!platform_poll_events(engine->platform)) {
+		input_begin_frame(engine->input);
+
+		if (!platform_poll_events(engine->platform, engine->input)) {
 			engine->running = false;
 			continue;
 		}
@@ -122,8 +136,13 @@ bool engine_run(engine_t *engine) {
 }
 
 renderer_t *engine_get_renderer(engine_t *engine) {
-	if (engine == NULL) {
-		return NULL; }
+	if (engine == NULL) { return NULL; }
 
 	return engine->renderer;
+}
+
+input_t *engine_get_input(engine_t *engine) {
+	if (engine == NULL) { return NULL; }
+
+	return engine->input;
 }

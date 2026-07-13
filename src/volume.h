@@ -24,5 +24,6 @@ engine_t *engine_create(const engine_config_t *config);
 void engine_destroy(engine_t *engine);
 bool engine_run(engine_t *engine);
 renderer_t *engine_get_renderer(engine_t *engine);
+input_t *engine_get_input(engine_t *engine);
 
 #endif

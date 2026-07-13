@@ -1,3 +1,6 @@
+cc = meson.get_compiler('c')
+math = cc.find_library('m', required : true)
+
 keyvalues_test = executable(
     'keyvalues-test',
     [
@@ -39,11 +42,13 @@ asset_manager_test = executable(
         '../src/map/keyvalues.c',
         '../src/renderer/material.c',
         '../src/renderer/texture.c',
+        '../src/math/vec3.c',
     ],
     dependencies : [
         assimp,
         epoxy,
         opengl,
+        math,
     ],
     include_directories : volume_include,
     install : false,
@@ -94,6 +99,10 @@ material_loader_test = executable(
         '../src/asset/material_loader.c',
         '../src/map/keyvalues.c',
         '../src/renderer/material.c',
+        '../src/math/vec3.c',
+    ],
+    dependencies : [
+        math,
     ],
     c_args : [
         '-DTEST_MATERIAL_FILE="@0@"'.format(

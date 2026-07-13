@@ -177,11 +177,15 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		}
 
 		if (strcmp(key, "color") == 0) {
-			if (has_color ||
-			    !parse_vec3_value(value, &result.material.color)) {
+			if (has_color) {
 				set_error(error, error_size,
-					  "invalid or duplicate "
-					  "material color: \"%s\"",
+					  "duplicate material color");
+				goto fail;
+			}
+
+			if (!parse_vec3_value(value, &result.material.color)) {
+				set_error(error, error_size,
+					  "invalid material color: \"%s\"",
 					  value);
 				goto fail;
 			}

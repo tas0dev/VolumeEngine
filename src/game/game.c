@@ -7,13 +7,17 @@
  */
 
 #include "game/game.h"
+#include "input/input.h"
 #include "math/mat4.h"
+#include "math/math.h"
 #include "math/vec3.h"
 #include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "volume.h"
+
+#include <math.h>
 
 typedef struct game_state {
 	mesh_t *mesh;
@@ -22,6 +26,8 @@ typedef struct game_state {
 	material_t floor_material;
 	camera_t camera;
 	float rotation;
+	float yaw;
+	float pitch;
 } game_state_t;
 
 static mesh_t *create_test_mesh(void);
@@ -131,18 +137,90 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state->floor_material.specular_strength = 0.1f;
 	game_state->floor_material.shininess = 8.0f;
+
 	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
+
+	game_state->yaw = -PI * 0.5f;
+	game_state->pitch = 0.0f;
 
 	return true;
 }
 
 static void update(engine_t *engine, float delta_time, void *user_data) {
 	game_state_t *game_state;
-
-	(void)engine;
+	input_t *input;
+	vec3_t movement;
+	vec3_t forward;
+	vec3_t right;
+	float mouse_x;
+	float mouse_y;
+	float mouse_sensitivity;
+	float pitch_limit;
 
 	game_state = user_data;
+	input = engine_get_input(engine);
+
+	if (input == NULL) { return; }
+
 	game_state->rotation += delta_time;
+
+	mouse_x = 0.0f;
+	mouse_y = 0.0f;
+	input_get_mouse_delta(input, &mouse_x, &mouse_y);
+
+	mouse_sensitivity = 0.0025f;
+
+	game_state->yaw += mouse_x * mouse_sensitivity;
+	game_state->pitch -= mouse_y * mouse_sensitivity;
+
+	pitch_limit = PI * 0.495f;
+
+	if (game_state->pitch > pitch_limit) {
+		game_state->pitch = pitch_limit;
+	}
+
+	if (game_state->pitch < -pitch_limit) {
+		game_state->pitch = -pitch_limit;
+	}
+
+	game_state->camera.forward = vec3_normalize(
+		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
+			    sinf(game_state->pitch),
+			    cosf(game_state->pitch) * sinf(game_state->yaw)));
+
+	forward = game_state->camera.forward;
+	forward.y = 0.0f;
+	forward = vec3_normalize(forward);
+
+	right = vec3_normalize(vec3_cross(forward, game_state->camera.up));
+
+	movement = vec3_create(0.0f, 0.0f, 0.0f);
+
+	if (input_key_down(input, INPUT_KEY_W)) {
+		movement = vec3_add(movement, forward);
+	}
+
+	if (input_key_down(input, INPUT_KEY_S)) {
+		movement = vec3_subtract(movement, forward);
+	}
+
+	if (input_key_down(input, INPUT_KEY_D)) {
+		movement = vec3_add(movement, right);
+	}
+
+	if (input_key_down(input, INPUT_KEY_A)) {
+		movement = vec3_subtract(movement, right);
+	}
+
+	if (vec3_length(movement) > 0.0f) {
+		float move_speed;
+		move_speed = 4.0f;
+		movement = vec3_normalize(movement);
+		movement = vec3_scale(movement, move_speed * delta_time);
+
+		game_state->camera.position =
+			vec3_add(game_state->camera.position, movement);
+	}
 }
 
 static void render(engine_t *engine, void *user_data) {

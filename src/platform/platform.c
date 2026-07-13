@@ -65,6 +65,14 @@ platform_t *platform_create(const platform_config_t *config) {
 		return NULL;
 	}
 
+	if (!SDL_SetWindowRelativeMouseMode(platform->window, true)) {
+		log_error("Failed to capture mouse: %s", SDL_GetError());
+		SDL_DestroyWindow(platform->window);
+		free(platform);
+		SDL_Quit();
+		return NULL;
+	}
+
 	platform->running = true;
 
 	log_info("Created window: %dx%d", config->width, config->height);

@@ -15,6 +15,7 @@ cc = meson.get_compiler('c')
 sdl3 = dependency('sdl3')
 opengl = dependency('gl')
 epoxy = dependency('epoxy')
+assimp = dependency('assimp')
 math = cc.find_library('m', required : true)
 
 sources = files(
@@ -58,6 +59,7 @@ executable(
                 sdl3,
                 opengl,
                 epoxy,
+                assimp,
                 math,
         ],
         c_args : volume_c_args,

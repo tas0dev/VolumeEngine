@@ -206,8 +206,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	if (!world_add_entity(game_state->world, game_state->mesh_entity) ||
-	    !world_add_entity(game_state->world, game_state->floor_entity)) {
+	if (!world_add_entity(game_state->world, game_state->mesh_entity)) {
 		entity_destroy(game_state->floor_entity);
 		entity_destroy(game_state->mesh_entity);
 		world_destroy(game_state->world);
@@ -221,8 +220,20 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	game_state->camera =
-		camera_create(vec3_create(0.0f, 1.5f, 4.0f));
+	if (!world_add_entity(game_state->world, game_state->floor_entity)) {
+		entity_destroy(game_state->floor_entity);
+		world_destroy(game_state->world);
+		mesh_destroy(game_state->floor_mesh);
+		mesh_destroy(game_state->mesh);
+		game_state->floor_entity = NULL;
+		game_state->mesh_entity = NULL;
+		game_state->world = NULL;
+		game_state->floor_mesh = NULL;
+		game_state->mesh = NULL;
+		return false;
+	}
+
+	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
 
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
@@ -276,7 +287,8 @@ static void update(engine_t *engine, float delta_time, void *user_data) {
 		game_state->pitch = -pitch_limit;
 	}
 
-	game_state->camera.forward = vec3_normalize(vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
+	game_state->camera.forward = vec3_normalize(
+		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
 			    sinf(game_state->pitch),
 			    cosf(game_state->pitch) * sinf(game_state->yaw)));
 
@@ -359,17 +371,13 @@ static void render(engine_t *engine, void *user_data) {
 }
 
 static void shutdown(engine_t *engine, void *user_data) {
-	game_state_t *game_state;
-
 	(void)engine;
+
+	game_state_t *game_state;
 
 	game_state = user_data;
 
 	world_destroy(game_state->world);
-
-	entity_destroy(game_state->floor_entity);
-	entity_destroy(game_state->mesh_entity);
-
 	mesh_destroy(game_state->floor_mesh);
 	mesh_destroy(game_state->mesh);
 

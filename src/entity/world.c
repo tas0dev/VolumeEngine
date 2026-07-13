@@ -16,12 +16,13 @@ struct world {
 	size_t capacity;
 };
 
-static bool world_reserve(world_t *world, const size_t capacity) {
+static bool world_reserve(world_t *world, size_t capacity) {
 	entity_t **entities;
 
 	if (capacity <= world->capacity) { return true; }
 
-	entities = realloc(world->entities, capacity * sizeof(*entities));
+	entities =
+		realloc(world->entities, capacity * sizeof(*world->entities));
 	if (entities == NULL) { return false; }
 
 	world->entities = entities;
@@ -33,7 +34,13 @@ static bool world_reserve(world_t *world, const size_t capacity) {
 world_t *world_create(void) { return calloc(1, sizeof(world_t)); }
 
 void world_destroy(world_t *world) {
+	size_t index;
+
 	if (world == NULL) { return; }
+
+	for (index = 0; index < world->count; index++) {
+		entity_destroy(world->entities[index]);
+	}
 
 	free(world->entities);
 	free(world);
@@ -61,29 +68,37 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 bool world_remove_entity(world_t *world, entity_id_t id) {
 	size_t index;
 
-	if (world == NULL) { return false; }
+	if (world == NULL) {
+		return false; }
 
 	for (index = 0; index < world->count; index++) {
 		if (world->entities[index]->id != id) { continue; }
 
+		entity_destroy(world->entities[index]);
+
 		if (index + 1 < world->count) {
-			memmove(&world->entities[index],
+			memmove(
+				&world->entities[index],
 				&world->entities[index + 1],
 				(world->count - index - 1) *
-					sizeof(*world->entities));
+					sizeof(*world->entities)
+			);
 		}
 
 		world->count--;
+		world->entities[world->count] = NULL;
+
 		return true;
 	}
 
 	return false;
 }
 
-entity_t *world_find_entity(world_t *world, const entity_id_t id) {
+entity_t *world_find_entity(world_t *world, entity_id_t id) {
 	size_t index;
 
-	if (world == NULL) { return NULL; }
+	if (world == NULL) { return NULL;
+	}
 
 	for (index = 0; index < world->count; index++) {
 		if (world->entities[index]->id == id) {
@@ -95,15 +110,17 @@ entity_t *world_find_entity(world_t *world, const entity_id_t id) {
 }
 
 entity_t *world_find_by_classname(world_t *world, const char *classname) {
+	const char *entity_classname;
 	size_t index;
 
 	if (world == NULL || classname == NULL) { return NULL; }
 
 	for (index = 0; index < world->count; index++) {
-		const char *entity_classname =
+		entity_classname =
 			entity_get_classname(world->entities[index]);
 
-		if (entity_classname == NULL) { continue; }
+		if (entity_classname == NULL) {
+			continue; }
 
 		if (strcmp(entity_classname, classname) == 0) {
 			return world->entities[index];
@@ -114,13 +131,16 @@ entity_t *world_find_by_classname(world_t *world, const char *classname) {
 }
 
 size_t world_get_entity_count(const world_t *world) {
-	if (world == NULL) { return 0; }
+	if (world == NULL) {
+		return 0;
+	}
 
 	return world->count;
 }
 
 entity_t *world_get_entity(world_t *world, size_t index) {
-	if (world == NULL || index >= world->count) { return NULL; }
+	if (world == NULL || index >= world->count) {
+		return NULL; }
 
 	return world->entities[index];
 }
@@ -128,7 +148,9 @@ entity_t *world_get_entity(world_t *world, size_t index) {
 void world_update(world_t *world, const float delta_time) {
 	size_t index;
 
-	if (world == NULL) { return; }
+	if (world == NULL) {
+		return;
+	}
 
 	for (index = 0; index < world->count; index++) {
 		entity_update(world->entities[index], delta_time);
@@ -138,7 +160,8 @@ void world_update(world_t *world, const float delta_time) {
 void world_draw_shadows(world_t *world, renderer_t *renderer) {
 	size_t index;
 
-	if (world == NULL || renderer == NULL) { return; }
+	if (world == NULL || renderer == NULL) {
+		return; }
 
 	for (index = 0; index < world->count; index++) {
 		entity_draw_shadow(world->entities[index], renderer);

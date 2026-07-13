@@ -323,6 +323,18 @@ material_t *asset_manager_load_material(asset_manager_t *manager,
 		}
 	}
 
+	if (definition.normal_texture_path != NULL) {
+		material->normal_texture = asset_manager_load_texture(
+			manager, definition.normal_texture_path, error,
+			error_size);
+
+		if (material->normal_texture == NULL) {
+			free(material);
+			material_definition_destroy(&definition);
+			return NULL;
+		}
+	}
+
 	material_definition_destroy(&definition);
 
 	if (!asset_table_register(&manager->materials, path, material, true)) {

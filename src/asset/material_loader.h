@@ -16,6 +16,7 @@
 typedef struct material_definition {
 	material_t material;
 	char *albedo_texture_path;
+	char *normal_texture_path;
 } material_definition_t;
 
 bool material_definition_parse(const char *source,

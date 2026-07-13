@@ -126,6 +126,7 @@ static bool parse_material_document(const keyvalues_document_t *document,
 	bool has_specular_strength;
 	bool has_shininess;
 	bool has_albedo_texture;
+	bool has_normal_texture;
 
 	result = (material_definition_t){0};
 	result.material = material_create(vec3_create(1.0f, 1.0f, 1.0f));
@@ -156,6 +157,7 @@ static bool parse_material_document(const keyvalues_document_t *document,
 	has_specular_strength = false;
 	has_shininess = false;
 	has_albedo_texture = false;
+	has_normal_texture = false;
 
 	for (index = 0; index < keyvalues_node_get_child_count(material_node);
 	     index++) {
@@ -267,6 +269,26 @@ static bool parse_material_document(const keyvalues_document_t *document,
 			continue;
 		}
 
+		if (strcmp(key, "normal_texture") == 0) {
+			if (has_normal_texture || value[0] == '\0') {
+				set_error(error, error_size,
+					  "invalid or duplicate "
+					  "normal_texture");
+				goto fail;
+			}
+
+			result.normal_texture_path = duplicate_string(value);
+			if (result.normal_texture_path == NULL) {
+				set_error(error, error_size,
+					  "failed to allocate "
+					  "normal texture path");
+				goto fail;
+			}
+
+			has_normal_texture = true;
+			continue;
+		}
+
 		set_error(error, error_size, "unknown material property \"%s\"",
 			  key);
 		goto fail;
@@ -277,6 +299,7 @@ static bool parse_material_document(const keyvalues_document_t *document,
 	return true;
 
 fail:
+	free(result.normal_texture_path);
 	free(result.albedo_texture_path);
 	return false;
 }
@@ -340,7 +363,9 @@ void material_definition_destroy(material_definition_t *definition) {
 	if (definition == NULL) { return; }
 
 	free(definition->albedo_texture_path);
+	free(definition->normal_texture_path);
 	definition->albedo_texture_path = NULL;
+	definition->normal_texture_path = NULL;
 }
 
 bool material_parse(const char *source,

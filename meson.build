@@ -33,6 +33,7 @@ sources = files(
         'src/math/vec3.c',
         'src/scene/camera.c',
         'src/game/game.c',
+        'src/input/input.c',
 )
 
 volume_c_args = [

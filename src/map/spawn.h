@@ -17,11 +17,11 @@
 
 bool map_spawn_entities(const map_t *map,
 			world_t *world,
-			const asset_manager_t *assets,
+			asset_manager_t *assets,
 			char *error,
 			size_t error_size);
 bool world_load_map(world_t *world,
-		    const asset_manager_t *assets,
+		    asset_manager_t *assets,
 		    const char *path,
 		    char *error,
 		    size_t error_size);

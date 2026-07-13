@@ -25,7 +25,7 @@ static bool read_bool_property(const map_entity_t *entity,
 			       size_t error_size);
 static void convert_angles(vec3_t *angles);
 static bool build_properties(const map_entity_t *entity,
-			     const asset_manager_t *assets,
+			     asset_manager_t *assets,
 			     entity_properties_t *properties,
 			     char *error,
 			     size_t error_size);
@@ -89,7 +89,7 @@ static void convert_angles(vec3_t *angles) {
 }
 
 static bool build_properties(const map_entity_t *entity,
-			     const asset_manager_t *assets,
+			     asset_manager_t *assets,
 			     entity_properties_t *properties,
 			     char *error,
 			     const size_t error_size) {
@@ -133,15 +133,13 @@ static bool build_properties(const map_entity_t *entity,
 			return false;
 		}
 
-		properties->mesh = asset_manager_get_mesh(assets, model_path);
-		if (properties->mesh == NULL) {
-			set_error(error, error_size,
-				  "mesh asset not found: \"%s\"", model_path);
-			return false;
-		}
+		properties->mesh = asset_manager_load_mesh(assets, model_path,
+							   error, error_size);
+		if (properties->mesh == NULL) { return false; }
 	}
 
 	material_path = map_entity_get_property(entity, "material");
+
 	if (material_path != NULL) {
 		if (assets == NULL) {
 			set_error(error, error_size,
@@ -152,6 +150,7 @@ static bool build_properties(const map_entity_t *entity,
 
 		properties->material =
 			asset_manager_get_material(assets, material_path);
+
 		if (properties->material == NULL) {
 			set_error(error, error_size,
 				  "material asset not found: \"%s\"",
@@ -182,7 +181,7 @@ static void rollback_entities(world_t *world, const size_t initial_count) {
 
 bool map_spawn_entities(const map_t *map,
 			world_t *world,
-			const asset_manager_t *assets,
+			asset_manager_t *assets,
 			char *error,
 			const size_t error_size) {
 	const map_entity_t *map_entity;
@@ -227,8 +226,8 @@ bool map_spawn_entities(const map_t *map,
 
 		if (world_spawn_entity(world, classname, &properties) == NULL) {
 			set_error(error, error_size,
-				  "failed to spawn entity %zu with classname "
-				  "\"%s\"",
+				  "failed to spawn entity %zu "
+				  "with classname \"%s\"",
 				  index, classname);
 			rollback_entities(world, initial_count);
 			return false;
@@ -239,7 +238,7 @@ bool map_spawn_entities(const map_t *map,
 }
 
 bool world_load_map(world_t *world,
-		    const asset_manager_t *assets,
+		    asset_manager_t *assets,
 		    const char *path,
 		    char *error,
 		    const size_t error_size) {

@@ -7,7 +7,6 @@
  */
 
 #include "asset/manager.h"
-#include "asset/mesh_loader.h"
 #include "core/log.h"
 #include "entity/world.h"
 #include "game/game.h"
@@ -17,7 +16,6 @@
 #include "math/math.h"
 #include "math/vec3.h"
 #include "renderer/material.h"
-#include "renderer/mesh.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"
@@ -30,8 +28,6 @@
 typedef struct game_state {
 	asset_manager_t *assets;
 	world_t *world;
-	mesh_t *mesh;
-	mesh_t *floor_mesh;
 	material_t material;
 	material_t floor_material;
 	entity_t *mesh_entity;
@@ -84,49 +80,27 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state = user_data;
 
-	game_state->mesh = mesh_load(VOLUME_ASSET_DIR "/models/test_cube.obj",
-				     error, sizeof(error));
-	if (game_state->mesh == NULL) {
-		log_error("Failed to load test cube: %s", error);
-		return false;
-	}
-
-	game_state->floor_mesh =
-		mesh_load(VOLUME_ASSET_DIR "/models/test_floor.obj", error,
-			  sizeof(error));
-	if (game_state->floor_mesh == NULL) {
-		log_error("Failed to load test floor: %s", error);
-		destroy_game_resources(game_state);
-		return false;
-	}
-
 	game_state->material = material_create(vec3_create(1.0f, 1.0f, 1.0f));
+
 	game_state->floor_material =
-		material_create(
-			vec3_create(0.55f, 0.55f, 0.55f));
+		material_create(vec3_create(0.55f, 0.55f, 0.55f));
 
 	game_state->floor_material.specular_strength = 0.1f;
 	game_state->floor_material.shininess = 8.0f;
 
-	game_state->assets = asset_manager_create();
+	game_state->assets = asset_manager_create_at(VOLUME_ASSET_DIR);
 	if (game_state->assets == NULL) {
-		destroy_game_resources(game_state);
+		log_error("Failed to create asset manager");
 		return false;
 	}
 
-	if (!asset_manager_register_mesh(game_state->assets,
-					 "models/test_cube.obj",
-					 game_state->mesh) ||
-	    !asset_manager_register_mesh(game_state->assets,
-					 "models/test_floor.obj",
-					 game_state->floor_mesh) ||
-	    !asset_manager_register_material(game_state->assets,
+	if (!asset_manager_register_material(game_state->assets,
 					     "materials/test_cube",
 					     &game_state->material) ||
 	    !asset_manager_register_material(game_state->assets,
 					     "materials/floor",
 					     &game_state->floor_material)) {
-		log_error("Failed to register test assets");
+		log_error("Failed to register materials");
 		destroy_game_resources(game_state);
 		return false;
 	}
@@ -137,9 +111,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	if (!world_load_map(
-		    game_state->world,
-		    game_state->assets,
+	if (!world_load_map(game_state->world, game_state->assets,
 			    VOLUME_ASSET_DIR "/maps/test.volmap", error,
 			    sizeof(error))) {
 		log_error("Failed to load test map: %s", error);
@@ -148,20 +120,15 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 
 	game_state->mesh_entity =
-		world_find_by_targetname(
-			game_state->world,
-			"rotating_box"
-		);
+		world_find_by_targetname(game_state->world, "rotating_box");
+
 	if (game_state->mesh_entity == NULL) {
-		log_error("Map entity \"rotating_box\" was not found"
-		);
+		log_error("Map entity \"rotating_box\" was not found");
 		destroy_game_resources(game_state);
 		return false;
 	}
 
-	game_state->camera = camera_create(
-			vec3_create(0.0f, 1.5f, 4.0f)
-		);
+	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
 
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
@@ -309,12 +276,8 @@ static void destroy_game_resources(game_state_t *game_state) {
 
 	world_destroy(game_state->world);
 	asset_manager_destroy(game_state->assets);
-	mesh_destroy(game_state->floor_mesh);
-	mesh_destroy(game_state->mesh);
 
 	game_state->mesh_entity = NULL;
 	game_state->world = NULL;
 	game_state->assets = NULL;
-	game_state->floor_mesh = NULL;
-	game_state->mesh = NULL;
 }

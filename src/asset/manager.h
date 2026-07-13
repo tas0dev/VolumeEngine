@@ -27,5 +27,10 @@ mesh_t *asset_manager_get_mesh(const asset_manager_t *manager,
 			       const char *path);
 material_t *asset_manager_get_material(const asset_manager_t *manager,
 				       const char *path);
+asset_manager_t *asset_manager_create_at(const char *root_path);
+mesh_t *asset_manager_load_mesh(asset_manager_t *manager,
+				const char *path,
+				char *error,
+				size_t error_size);
 
 #endif

@@ -241,8 +241,7 @@ void renderer_begin_frame(renderer_t *renderer) {
 	glEnable(GL_DEPTH_TEST);
 
 	glClearColor(0.08f, 0.09f, 0.11f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT |
-		GL_DEPTH_BUFFER_BIT |
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT |
 		GL_STENCIL_BUFFER_BIT);
 }
 
@@ -309,9 +308,7 @@ static unsigned int renderer_blur_bloom(const renderer_t *renderer,
 void renderer_end_frame(const renderer_t *renderer) {
 	unsigned int bloom_texture;
 
-	if (renderer == NULL) {
-		return;
-	}
+	if (renderer == NULL) { return; }
 
 	glDisable(GL_DEPTH_TEST);
 
@@ -327,14 +324,8 @@ void renderer_end_frame(const renderer_t *renderer) {
 
 	shader_bind(renderer->post_shader);
 
-	shader_set_int(
-		renderer->post_shader,
-		"hdr_texture",
-		0
-	);
-	shader_set_int(
-		renderer->post_shader,
-		"bloom_texture", 1);
+	shader_set_int(renderer->post_shader, "hdr_texture", 0);
+	shader_set_int(renderer->post_shader, "bloom_texture", 1);
 	shader_set_float(renderer->post_shader, "exposure", 1.0f);
 	shader_set_float(renderer->post_shader, "bloom_strength", 0.08f);
 	shader_set_int(renderer->post_shader, "bloom_enabled", 1);
@@ -343,9 +334,7 @@ void renderer_end_frame(const renderer_t *renderer) {
 	glBindTexture(GL_TEXTURE_2D,
 		      hdr_buffer_get_texture(renderer->hdr_buffer));
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(
-		GL_TEXTURE_2D,
-		bloom_texture);
+	glBindTexture(GL_TEXTURE_2D, bloom_texture);
 	glBindVertexArray(renderer->screen_vertex_array);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	glBindVertexArray(0);

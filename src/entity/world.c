@@ -100,9 +100,12 @@ entity_t *world_find_by_classname(world_t *world, const char *classname) {
 	if (world == NULL || classname == NULL) { return NULL; }
 
 	for (index = 0; index < world->count; index++) {
-		if (world->entities[index]->classname == NULL) { continue; }
+		const char *entity_classname =
+			entity_get_classname(world->entities[index]);
 
-		if (strcmp(world->entities[index]->classname, classname) == 0) {
+		if (entity_classname == NULL) { continue; }
+
+		if (strcmp(entity_classname, classname) == 0) {
 			return world->entities[index];
 		}
 	}

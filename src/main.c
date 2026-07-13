@@ -331,24 +331,21 @@ static void render(engine_t *engine, void *user_data) {
 	renderer = engine_get_renderer(engine);
 
 	renderer_get_size(renderer, &width, &height);
-	if (width <= 0 || height <= 0) {
-		return; }
+	if (width <= 0 || height <= 0) { return; }
 
 	aspect_ratio = (float)width / (float)height;
 
 	view = camera_get_view(&game_state->camera);
 	projection = camera_get_projection(&game_state->camera, aspect_ratio);
 
-	light_view = mat4_look_at(
-		vec3_create(3.0f, 4.0f, 3.0f),
+	light_view = mat4_look_at(vec3_create(3.0f, 4.0f, 3.0f),
 				  vec3_create(0.0f, 0.0f, 0.0f),
 				  vec3_create(0.0f, 1.0f, 0.0f));
 
 	light_projection =
 		mat4_orthographic(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
 
-	light_view_projection =
-		mat4_multiply(light_projection, light_view);
+	light_view_projection = mat4_multiply(light_projection, light_view);
 
 	entity_count = world_get_entity_count(game_state->world);
 
@@ -357,12 +354,11 @@ static void render(engine_t *engine, void *user_data) {
 	for (index = 0; index < entity_count; index++) {
 		entity = world_get_entity(game_state->world, index);
 
-		if (!entity_is_active(entity) || entity->classname == NULL ||
-		    strcmp(entity->classname, "prop_static") != 0) {
-			continue;
+		if (!entity_is_active(entity)) { continue;
 		}
 
-		prop = (prop_static_t *)entity;
+		prop = prop_static_from_entity(entity);
+		if (prop == NULL) { continue; }
 		if (!prop->casts_shadow) { continue; }
 
 		model = transform_get_matrix(&entity->transform);
@@ -374,12 +370,12 @@ static void render(engine_t *engine, void *user_data) {
 	for (index = 0; index < entity_count; index++) {
 		entity = world_get_entity(game_state->world, index);
 
-		if (!entity_is_active(entity) || entity->classname == NULL ||
-		    strcmp(entity->classname, "prop_static") != 0) {
-			continue;
+		if (!entity_is_active(entity)) { continue;
 		}
 
-		prop = (prop_static_t *)entity;
+		prop = prop_static_from_entity(entity);
+		if (prop == NULL) { continue; }
+
 		model = transform_get_matrix(&entity->transform);
 
 		renderer_draw_mesh(renderer, prop->mesh, prop->material, &model,

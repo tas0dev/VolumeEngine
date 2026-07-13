@@ -15,14 +15,26 @@
 
 typedef uint32_t entity_id_t;
 
-typedef struct entity {
-	entity_id_t id;
+typedef struct entity entity_t;
+typedef struct entity_class entity_class_t;
+
+struct entity_class {
 	const char *classname;
+	void (*update)(entity_t *entity, float delta_time);
+	void (*destroy)(entity_t *entity);
+};
+
+struct entity {
+	entity_id_t id;
+	const entity_class_t *class;
 	transform_t transform;
 	bool active;
-} entity_t;
+};
 
-entity_t entity_create(entity_id_t id, const char *classname);
+entity_t entity_create(entity_id_t id, const entity_class_t *class);
+const char *entity_get_classname(const entity_t *entity);
+void entity_update(entity_t *entity, float delta_time);
+void entity_destroy(entity_t *entity);
 void entity_set_active(entity_t *entity, bool active);
 bool entity_is_active(const entity_t *entity);
 

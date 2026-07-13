@@ -32,6 +32,7 @@ sources = files(
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',
+        'src/scene/transform.c',
         'src/input/input.c',
 )
 

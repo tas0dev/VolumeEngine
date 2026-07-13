@@ -159,3 +159,13 @@ mat4_t mat4_orthographic(const float left,
 
 	return result;
 }
+
+mat4_t mat4_scale(const vec3_t scale) {
+	mat4_t result = mat4_identity();
+
+	result.elements[0] = scale.x;
+	result.elements[5] = scale.y;
+	result.elements[10] = scale.z;
+
+	return result;
+}

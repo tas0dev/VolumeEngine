@@ -15,7 +15,9 @@
 #include "renderer/mesh.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
+#include "scene/transform.h"
 #include "volume.h"
+
 #include <math.h>
 #include <stdlib.h>
 
@@ -25,7 +27,8 @@ typedef struct game_state {
 	material_t material;
 	material_t floor_material;
 	camera_t camera;
-	float rotation;
+	transform_t mesh_transform;
+	transform_t floor_transform;
 	float yaw;
 	float pitch;
 } game_state_t;
@@ -158,6 +161,10 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
 
+	game_state->mesh_transform = transform_create();
+	game_state->floor_transform = transform_create();
+	game_state->floor_transform.position = vec3_create(0.0f, -1.0f, 0.0f);
+
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
 
@@ -244,14 +251,13 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 			vec3_add(game_state->camera.position, movement);
 	}
 
-	game_state->rotation += delta_time;
+	game_state->mesh_transform.rotation.x += delta_time * 0.7f;
+	game_state->mesh_transform.rotation.y += delta_time;
 }
 
 static void render(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	renderer_t *renderer;
-	mat4_t rotation_x;
-	mat4_t rotation_y;
 	mat4_t model;
 	mat4_t floor_model;
 	mat4_t view;
@@ -271,11 +277,8 @@ static void render(engine_t *engine, void *user_data) {
 
 	aspect_ratio = (float)width / (float)height;
 
-	rotation_x = mat4_rotation_x(game_state->rotation * 0.7f);
-	rotation_y = mat4_rotation_y(game_state->rotation);
-	model = mat4_multiply(rotation_y, rotation_x);
-
-	floor_model = mat4_translation(vec3_create(0.0f, -1.0f, 0.0f));
+	model = transform_get_matrix(&game_state->mesh_transform);
+	floor_model = transform_get_matrix(&game_state->floor_transform);
 
 	view = camera_get_view(&game_state->camera);
 	projection = camera_get_projection(&game_state->camera, aspect_ratio);
@@ -298,7 +301,8 @@ static void render(engine_t *engine, void *user_data) {
 	renderer_draw_mesh(renderer, game_state->mesh, &game_state->material,
 			   &model, &view, &projection, &light_view_projection);
 
-	renderer_draw_mesh(renderer, game_state->floor_mesh,
+	renderer_draw_mesh(
+		renderer, game_state->floor_mesh,
 			   &game_state->floor_material, &floor_model, &view,
 			   &projection, &light_view_projection);
 }

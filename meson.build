@@ -41,6 +41,7 @@ sources = files(
         'src/input/input.c',
         'src/map/keyvalues.c',
         'src/map/map.c',
+        'src/asset/manager.c',
 )
 
 volume_c_args = [

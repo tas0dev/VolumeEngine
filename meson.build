@@ -39,6 +39,7 @@ sources = files(
         'src/scene/camera.c',
         'src/scene/transform.c',
         'src/input/input.c',
+        'src/map/keyvalues.c',
 )
 
 volume_c_args = [

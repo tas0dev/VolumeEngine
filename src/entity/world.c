@@ -14,7 +14,11 @@ struct world {
 	entity_t **entities;
 	size_t count;
 	size_t capacity;
+	entity_id_t next_entity_id;
 };
+
+static bool world_reserve(world_t *world, size_t capacity);
+static entity_id_t world_allocate_entity_id(world_t *world);
 
 static bool world_reserve(world_t *world, size_t capacity) {
 	entity_t **entities;
@@ -31,12 +35,42 @@ static bool world_reserve(world_t *world, size_t capacity) {
 	return true;
 }
 
-world_t *world_create(void) { return calloc(1, sizeof(world_t)); }
+static entity_id_t world_allocate_entity_id(world_t *world) {
+	entity_id_t first_id;
+	entity_id_t id;
+
+	if (world->next_entity_id == 0) { world->next_entity_id = 1; }
+
+	first_id = world->next_entity_id;
+
+	do {
+		id = world->next_entity_id;
+		world->next_entity_id++;
+
+		if (world->next_entity_id == 0) { world->next_entity_id = 1; }
+
+		if (world_find_entity(world, id) == NULL) { return id; }
+	} while (world->next_entity_id != first_id);
+
+	return 0;
+}
+
+world_t *world_create(void) {
+	world_t *world;
+
+	world = calloc(1, sizeof(*world));
+	if (world == NULL) { return NULL; }
+
+	world->next_entity_id = 1;
+
+	return world;
+}
 
 void world_destroy(world_t *world) {
 	size_t index;
 
-	if (world == NULL) { return; }
+	if (world == NULL) {
+		return; }
 
 	for (index = 0; index < world->count; index++) {
 		entity_destroy(world->entities[index]);
@@ -46,10 +80,36 @@ void world_destroy(world_t *world) {
 	free(world);
 }
 
+entity_t *world_spawn_entity(world_t *world,
+			     const char *classname,
+			     const entity_properties_t *properties) {
+	entity_t *entity;
+	entity_id_t id;
+
+	if (world == NULL || classname == NULL || properties == NULL) {
+		return NULL;
+	}
+
+	id = world_allocate_entity_id(world);
+	if (id == 0) { return NULL; }
+
+	entity = entity_create(classname, id, properties);
+	if (entity == NULL) { return NULL; }
+
+	if (!world_add_entity(world, entity)) {
+		entity_destroy(entity);
+		return NULL;
+	}
+
+	return entity;
+}
+
 bool world_add_entity(world_t *world, entity_t *entity) {
 	size_t capacity;
 
-	if (world == NULL || entity == NULL) { return false; }
+	if (world == NULL || entity == NULL || entity->id == 0) {
+		return false;
+	}
 
 	if (world_find_entity(world, entity->id) != NULL) { return false; }
 
@@ -68,7 +128,7 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 bool world_remove_entity(world_t *world, entity_id_t id) {
 	size_t index;
 
-	if (world == NULL) {
+	if (world == NULL || id == 0) {
 		return false; }
 
 	for (index = 0; index < world->count; index++) {
@@ -97,8 +157,8 @@ bool world_remove_entity(world_t *world, entity_id_t id) {
 entity_t *world_find_entity(world_t *world, entity_id_t id) {
 	size_t index;
 
-	if (world == NULL) { return NULL;
-	}
+	if (world == NULL || id == 0) {
+		return NULL; }
 
 	for (index = 0; index < world->count; index++) {
 		if (world->entities[index]->id == id) {
@@ -113,14 +173,16 @@ entity_t *world_find_by_classname(world_t *world, const char *classname) {
 	const char *entity_classname;
 	size_t index;
 
-	if (world == NULL || classname == NULL) { return NULL; }
+	if (world == NULL || classname == NULL) {
+		return NULL; }
 
 	for (index = 0; index < world->count; index++) {
 		entity_classname =
 			entity_get_classname(world->entities[index]);
 
 		if (entity_classname == NULL) {
-			continue; }
+			continue;
+		}
 
 		if (strcmp(entity_classname, classname) == 0) {
 			return world->entities[index];
@@ -140,7 +202,8 @@ size_t world_get_entity_count(const world_t *world) {
 
 entity_t *world_get_entity(world_t *world, size_t index) {
 	if (world == NULL || index >= world->count) {
-		return NULL; }
+		return NULL;
+	}
 
 	return world->entities[index];
 }
@@ -161,7 +224,8 @@ void world_draw_shadows(world_t *world, renderer_t *renderer) {
 	size_t index;
 
 	if (world == NULL || renderer == NULL) {
-		return; }
+		return;
+	}
 
 	for (index = 0; index < world->count; index++) {
 		entity_draw_shadow(world->entities[index], renderer);

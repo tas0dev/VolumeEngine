@@ -177,7 +177,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 	properties.mesh = game_state->mesh;
 	properties.material = &game_state->material;
 
-	game_state->mesh_entity = entity_create("prop_static", 1, &properties);
+	game_state->mesh_entity = world_spawn_entity(
+		game_state->world, "prop_static", &properties);
 	if (game_state->mesh_entity == NULL) {
 		world_destroy(game_state->world);
 		mesh_destroy(game_state->floor_mesh);
@@ -193,39 +194,12 @@ static bool initialize(engine_t *engine, void *user_data) {
 	properties.material = &game_state->floor_material;
 	properties.transform.position = vec3_create(0.0f, -1.0f, 0.0f);
 
-	game_state->floor_entity = entity_create("prop_static", 2, &properties);
+	game_state->floor_entity = world_spawn_entity(
+		game_state->world, "prop_static", &properties);
 	if (game_state->floor_entity == NULL) {
-		entity_destroy(game_state->mesh_entity);
 		world_destroy(game_state->world);
 		mesh_destroy(game_state->floor_mesh);
 		mesh_destroy(game_state->mesh);
-		game_state->mesh_entity = NULL;
-		game_state->world = NULL;
-		game_state->floor_mesh = NULL;
-		game_state->mesh = NULL;
-		return false;
-	}
-
-	if (!world_add_entity(game_state->world, game_state->mesh_entity)) {
-		entity_destroy(game_state->floor_entity);
-		entity_destroy(game_state->mesh_entity);
-		world_destroy(game_state->world);
-		mesh_destroy(game_state->floor_mesh);
-		mesh_destroy(game_state->mesh);
-		game_state->floor_entity = NULL;
-		game_state->mesh_entity = NULL;
-		game_state->world = NULL;
-		game_state->floor_mesh = NULL;
-		game_state->mesh = NULL;
-		return false;
-	}
-
-	if (!world_add_entity(game_state->world, game_state->floor_entity)) {
-		entity_destroy(game_state->floor_entity);
-		world_destroy(game_state->world);
-		mesh_destroy(game_state->floor_mesh);
-		mesh_destroy(game_state->mesh);
-		game_state->floor_entity = NULL;
 		game_state->mesh_entity = NULL;
 		game_state->world = NULL;
 		game_state->floor_mesh = NULL;

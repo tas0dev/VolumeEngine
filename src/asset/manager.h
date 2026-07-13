@@ -11,6 +11,7 @@
 
 #include "renderer/material.h"
 #include "renderer/mesh.h"
+#include "renderer/texture.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -37,5 +38,11 @@ material_t *asset_manager_load_material(asset_manager_t *manager,
 					const char *path,
 					char *error,
 					size_t error_size);
+texture_t *asset_manager_get_texture(const asset_manager_t *manager,
+				     const char *path);
+texture_t *asset_manager_load_texture(asset_manager_t *manager,
+				      const char *path,
+				      char *error,
+				      size_t error_size);
 
 #endif

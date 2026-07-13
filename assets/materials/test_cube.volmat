@@ -1,6 +1,7 @@
 material
 {
 	"color" "1 1 1"
+	"albedo_texture" "textures/checker.ppm"
 	"ambient_strength" "0.2"
 	"specular_strength" "0.5"
 	"shininess" "32"

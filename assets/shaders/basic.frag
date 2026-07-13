@@ -3,10 +3,13 @@
 in vec3 fragment_position;
 in vec3 fragment_normal;
 in vec3 fragment_color;
+in vec2 fragment_texture_coordinate;
 in vec4 fragment_light_position;
 
 uniform mat4 view;
 uniform sampler2D shadow_map;
+uniform sampler2D albedo_texture;
+uniform int has_albedo_texture;
 uniform vec3 light_direction;
 uniform vec3 light_color;
 uniform vec3 material_color;
@@ -43,7 +46,8 @@ float calculate_shadow(
         return 0.0;
     }
 
-    projected = light_position.xyz / light_position.w;
+    projected =
+    light_position.xyz / light_position.w;
     projected = projected * 0.5 + 0.5;
 
     if (projected.x < 0.0 ||
@@ -56,7 +60,8 @@ float calculate_shadow(
     }
 
     current_depth = projected.z;
-    normal_dot_light = max(dot(normal, light), 0.0);
+    normal_dot_light =
+    max(dot(normal, light), 0.0);
 
     bias = mix(
             0.004,
@@ -64,7 +69,8 @@ float calculate_shadow(
             normal_dot_light
     );
 
-    texel_size = 1.0 / vec2(textureSize(shadow_map, 0));
+    texel_size =
+    1.0 / vec2(textureSize(shadow_map, 0));
     shadow = 0.0;
     sample_count = 0.0;
 
@@ -83,7 +89,8 @@ float calculate_shadow(
                     projected.xy + offset
             ).r;
 
-            if (current_depth - bias > closest_depth) {
+            if (current_depth - bias >
+                closest_depth) {
                 shadow += 1.0;
             }
 
@@ -110,14 +117,16 @@ vec3 extract_bloom(
 
     soft = brightness - threshold + knee;
     soft = clamp(soft, 0.0, 2.0 * knee);
-    soft = soft * soft / max(4.0 * knee, 0.00001);
+    soft =
+    soft * soft /
+    max(4.0 * knee, 0.00001);
 
     contribution = max(
             brightness - threshold,
             soft
     );
-
-    contribution /= max(brightness, 0.00001);
+    contribution /=
+    max(brightness, 0.00001);
 
     return color * contribution;
 }
@@ -130,6 +139,7 @@ void main(void) {
     vec3 ambient;
     vec3 diffuse;
     vec3 specular;
+    vec3 albedo_color;
     vec3 base_color;
     vec3 color;
     vec3 bloom_color;
@@ -138,16 +148,26 @@ void main(void) {
     float shadow;
 
     normal = normalize(fragment_normal);
-    light = normalize(mat3(view) * -light_direction);
-    view_direction = normalize(-fragment_position);
-    halfway_direction = normalize(light + view_direction);
+    light =
+    normalize(mat3(view) * -light_direction);
+    view_direction =
+    normalize(-fragment_position);
+    halfway_direction =
+    normalize(light + view_direction);
 
-    diffuse_factor = max(dot(normal, light), 0.0);
+    diffuse_factor =
+    max(dot(normal, light), 0.0);
     specular_factor = 0.0;
 
     if (diffuse_factor > 0.0) {
         specular_factor = pow(
-                max(dot(normal, halfway_direction), 0.0),
+                max(
+                        dot(
+                                normal,
+                                halfway_direction
+                        ),
+                        0.0
+                ),
                 shininess
         );
     }
@@ -158,7 +178,8 @@ void main(void) {
             light
     );
 
-    ambient = ambient_strength * light_color;
+    ambient =
+    ambient_strength * light_color;
 
     diffuse =
     (1.0 - shadow) *
@@ -171,8 +192,18 @@ void main(void) {
     specular_factor *
     light_color;
 
+    albedo_color =
+    has_albedo_texture != 0
+    ? texture(
+            albedo_texture,
+            fragment_texture_coordinate
+    ).rgb
+    : vec3(1.0);
+
     base_color = srgb_to_linear(
-            fragment_color * material_color
+            fragment_color *
+            material_color *
+            albedo_color
     );
 
     color =
@@ -186,5 +217,6 @@ void main(void) {
     );
 
     output_color = vec4(color, 1.0);
-    output_brightness = vec4(bloom_color, 1.0);
+    output_brightness =
+    vec4(bloom_color, 1.0);
 }

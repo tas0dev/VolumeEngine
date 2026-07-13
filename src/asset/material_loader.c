@@ -22,7 +22,7 @@ static bool parse_float_component(const char **text, float *value);
 static bool parse_float_value(const char *text, float *value);
 static bool parse_vec3_value(const char *text, vec3_t *value);
 static bool parse_material_document(const keyvalues_document_t *document,
-				    material_t *material,
+				    material_definition_t *definition,
 				    char *error,
 				    size_t error_size);
 
@@ -94,8 +94,24 @@ static bool parse_vec3_value(const char *text, vec3_t *value) {
 	return true;
 }
 
+static char *duplicate_string(const char *string) {
+	char *copy;
+	size_t length;
+
+	if (string == NULL) { return NULL; }
+
+	length = strlen(string);
+
+	copy = malloc(length + 1);
+	if (copy == NULL) { return NULL; }
+
+	memcpy(copy, string, length + 1);
+
+	return copy;
+}
+
 static bool parse_material_document(const keyvalues_document_t *document,
-				    material_t *material,
+				    material_definition_t *definition,
 				    char *error,
 				    const size_t error_size) {
 	const keyvalues_node_t *root;
@@ -103,12 +119,16 @@ static bool parse_material_document(const keyvalues_document_t *document,
 	const keyvalues_node_t *property;
 	const char *key;
 	const char *value;
-	material_t result;
+	material_definition_t result;
 	size_t index;
 	bool has_color;
 	bool has_ambient_strength;
 	bool has_specular_strength;
 	bool has_shininess;
+	bool has_albedo_texture;
+
+	result = (material_definition_t){0};
+	result.material = material_create(vec3_create(1.0f, 1.0f, 1.0f));
 
 	root = keyvalues_get_root(document);
 	if (root == NULL) {
@@ -118,8 +138,8 @@ static bool parse_material_document(const keyvalues_document_t *document,
 
 	if (keyvalues_node_get_child_count(root) != 1) {
 		set_error(error, error_size,
-			  "material file must contain exactly one material "
-			  "block");
+			  "material file must contain exactly "
+			  "one material block");
 		return false;
 	}
 
@@ -131,30 +151,20 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		return false;
 	}
 
-	result = material_create((vec3_t){
-		.x = 1.0f,
-		.y = 1.0f,
-		.z = 1.0f,
-	});
-
 	has_color = false;
 	has_ambient_strength = false;
 	has_specular_strength = false;
 	has_shininess = false;
+	has_albedo_texture = false;
 
 	for (index = 0; index < keyvalues_node_get_child_count(material_node);
 	     index++) {
 		property = keyvalues_node_get_child(material_node, index);
-		if (property == NULL) {
+
+		if (property == NULL || keyvalues_node_is_block(property)) {
 			set_error(error, error_size,
 				  "invalid material property");
-			return false;
-		}
-
-		if (keyvalues_node_is_block(property)) {
-			set_error(error, error_size,
-				  "nested material blocks are not supported");
-			return false;
+			goto fail;
 		}
 
 		key = keyvalues_node_get_key(property);
@@ -163,29 +173,25 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		if (key == NULL || value == NULL) {
 			set_error(error, error_size,
 				  "invalid material property");
-			return false;
+			goto fail;
 		}
 
 		if (strcmp(key, "color") == 0) {
-			if (has_color) {
+			if (has_color ||
+			    !parse_vec3_value(value, &result.material.color)) {
 				set_error(error, error_size,
-					  "duplicate material property "
-					  "\"color\"");
-				return false;
-			}
-
-			if (!parse_vec3_value(value, &result.color)) {
-				set_error(error, error_size,
-					  "invalid material color: \"%s\"",
+					  "invalid or duplicate "
+					  "material color: \"%s\"",
 					  value);
-				return false;
+				goto fail;
 			}
 
-			if (result.color.x < 0.0f || result.color.y < 0.0f ||
-			    result.color.z < 0.0f) {
+			if (result.material.color.x < 0.0f ||
+			    result.material.color.y < 0.0f ||
+			    result.material.color.z < 0.0f) {
 				set_error(error, error_size,
 					  "material color cannot be negative");
-				return false;
+				goto fail;
 			}
 
 			has_color = true;
@@ -193,20 +199,14 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		}
 
 		if (strcmp(key, "ambient_strength") == 0) {
-			if (has_ambient_strength) {
-				set_error(error, error_size,
-					  "duplicate material property "
-					  "\"ambient_strength\"");
-				return false;
-			}
-
-			if (!parse_float_value(value,
-					       &result.ambient_strength) ||
-			    result.ambient_strength < 0.0f) {
+			if (has_ambient_strength ||
+			    !parse_float_value(
+				    value, &result.material.ambient_strength) ||
+			    result.material.ambient_strength < 0.0f) {
 				set_error(error, error_size,
 					  "invalid ambient_strength: \"%s\"",
 					  value);
-				return false;
+				goto fail;
 			}
 
 			has_ambient_strength = true;
@@ -214,20 +214,15 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		}
 
 		if (strcmp(key, "specular_strength") == 0) {
-			if (has_specular_strength) {
-				set_error(error, error_size,
-					  "duplicate material property "
-					  "\"specular_strength\"");
-				return false;
-			}
-
-			if (!parse_float_value(value,
-					       &result.specular_strength) ||
-			    result.specular_strength < 0.0f) {
+			if (has_specular_strength ||
+			    !parse_float_value(
+				    value,
+				    &result.material.specular_strength) ||
+			    result.material.specular_strength < 0.0f) {
 				set_error(error, error_size,
 					  "invalid specular_strength: \"%s\"",
 					  value);
-				return false;
+				goto fail;
 			}
 
 			has_specular_strength = true;
@@ -235,79 +230,156 @@ static bool parse_material_document(const keyvalues_document_t *document,
 		}
 
 		if (strcmp(key, "shininess") == 0) {
-			if (has_shininess) {
-				set_error(error, error_size,
-					  "duplicate material property "
-					  "\"shininess\"");
-				return false;
-			}
-
-			if (!parse_float_value(value, &result.shininess) ||
-			    result.shininess <= 0.0f) {
+			if (has_shininess ||
+			    !parse_float_value(value,
+					       &result.material.shininess) ||
+			    result.material.shininess <= 0.0f) {
 				set_error(error, error_size,
 					  "invalid shininess: \"%s\"", value);
-				return false;
+				goto fail;
 			}
 
 			has_shininess = true;
 			continue;
 		}
 
+		if (strcmp(key, "albedo_texture") == 0) {
+			if (has_albedo_texture || value[0] == '\0') {
+				set_error(error, error_size,
+					  "invalid or duplicate "
+					  "albedo_texture");
+				goto fail;
+			}
+
+			result.albedo_texture_path = duplicate_string(value);
+			if (result.albedo_texture_path == NULL) {
+				set_error(error, error_size,
+					  "failed to allocate "
+					  "albedo texture path");
+				goto fail;
+			}
+
+			has_albedo_texture = true;
+			continue;
+		}
+
 		set_error(error, error_size, "unknown material property \"%s\"",
 			  key);
+		goto fail;
+	}
+
+	*definition = result;
+
+	return true;
+
+fail:
+	free(result.albedo_texture_path);
+	return false;
+}
+
+bool material_definition_parse(const char *source,
+			       material_definition_t *definition,
+			       char *error,
+			       const size_t error_size) {
+	keyvalues_document_t *document;
+	bool result;
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+
+	if (source == NULL || definition == NULL) {
+		set_error(error, error_size,
+			  "invalid material source or output");
 		return false;
 	}
 
-	*material = result;
+	*definition = (material_definition_t){0};
 
-	return true;
+	document = keyvalues_parse(source, error, error_size);
+	if (document == NULL) { return false; }
+
+	result = parse_material_document(document, definition, error,
+					 error_size);
+
+	keyvalues_destroy(document);
+
+	return result;
+}
+
+bool material_definition_load(const char *path,
+			      material_definition_t *definition,
+			      char *error,
+			      const size_t error_size) {
+	keyvalues_document_t *document;
+	bool result;
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+
+	if (path == NULL || path[0] == '\0' || definition == NULL) {
+		set_error(error, error_size, "invalid material path or output");
+		return false;
+	}
+
+	*definition = (material_definition_t){0};
+
+	document = keyvalues_load(path, error, error_size);
+	if (document == NULL) { return false; }
+
+	result = parse_material_document(document, definition, error,
+					 error_size);
+
+	keyvalues_destroy(document);
+
+	return result;
+}
+
+void material_definition_destroy(material_definition_t *definition) {
+	if (definition == NULL) { return; }
+
+	free(definition->albedo_texture_path);
+	definition->albedo_texture_path = NULL;
 }
 
 bool material_parse(const char *source,
 		    material_t *material,
 		    char *error,
 		    const size_t error_size) {
-	keyvalues_document_t *document;
-	bool result;
+	material_definition_t definition;
 
-	if (error != NULL && error_size > 0) { error[0] = '\0'; }
-
-	if (source == NULL || material == NULL) {
-		set_error(error, error_size,
-			  "invalid material source or output");
+	if (material == NULL) {
+		set_error(error, error_size, "invalid material output");
 		return false;
 	}
 
-	document = keyvalues_parse(source, error, error_size);
-	if (document == NULL) { return false; }
+	if (!material_definition_parse(source, &definition, error,
+				       error_size)) {
+		return false;
+	}
 
-	result = parse_material_document(document, material, error, error_size);
+	*material = definition.material;
 
-	keyvalues_destroy(document);
+	material_definition_destroy(&definition);
 
-	return result;
+	return true;
 }
 
 bool material_load(const char *path,
 		   material_t *material,
 		   char *error,
 		   const size_t error_size) {
-	keyvalues_document_t *document;
-	bool result;
+	material_definition_t definition;
 
-	if (error != NULL && error_size > 0) { error[0] = '\0'; }
-
-	if (path == NULL || path[0] == '\0' || material == NULL) {
-		set_error(error, error_size, "invalid material path or output");
+	if (material == NULL) {
+		set_error(error, error_size, "invalid material output");
 		return false;
 	}
 
-	document = keyvalues_load(path, error, error_size);
-	if (document == NULL) { return false; }
+	if (!material_definition_load(path, &definition, error, error_size)) {
+		return false;
+	}
 
-	result = parse_material_document(document, material, error, error_size);
+	*material = definition.material;
 
-	keyvalues_destroy(document);
+	material_definition_destroy(&definition);
 
-	return result;
+	return true;
 }

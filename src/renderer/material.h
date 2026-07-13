@@ -11,9 +11,11 @@
 
 #include "math/vec3.h"
 #include "renderer/material.h"
+#include "renderer/texture.h"
 
 typedef struct material {
 	vec3_t color;
+	const texture_t *albedo_texture;
 	float ambient_strength;
 	float specular_strength;
 	float shininess;

@@ -35,6 +35,7 @@ sources = files(
         'src/renderer/shadow_map.c',
         'src/renderer/hdr_buffer.c',
         'src/renderer/bloom_buffer.c',
+        'src/renderer/texture.c',
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',
@@ -54,6 +55,11 @@ volume_c_args = [
     ),
 ]
 
+volume_include = include_directories(
+    'src',
+    'libs',
+)
+
 executable(
         'volume',
         sources,
@@ -65,7 +71,7 @@ executable(
                 math,
         ],
         c_args : volume_c_args,
-        include_directories : include_directories('src'),
+        include_directories : volume_include,
         install : false,
 )
 

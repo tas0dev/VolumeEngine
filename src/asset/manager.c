@@ -9,6 +9,7 @@
 #include "asset/manager.h"
 #include "asset/material_loader.h"
 #include "asset/mesh_loader.h"
+#include "renderer/texture.h"
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -30,6 +31,7 @@ typedef struct asset_table {
 struct asset_manager {
 	asset_table_t meshes;
 	asset_table_t materials;
+	asset_table_t textures;
 	char *root_path;
 };
 
@@ -46,6 +48,7 @@ static bool asset_table_register(asset_table_t *table,
 				 bool owned);
 static void *asset_table_find(const asset_table_t *table, const char *path);
 static void destroy_material_asset(void *asset);
+static void destroy_texture_asset(void *asset);
 
 static char *duplicate_string(const char *string) {
 	char *copy;
@@ -170,6 +173,7 @@ void asset_manager_destroy(asset_manager_t *manager) {
 	if (manager == NULL) { return; }
 
 	asset_table_destroy(&manager->materials, destroy_material_asset);
+	asset_table_destroy(&manager->textures, destroy_texture_asset);
 	asset_table_destroy(&manager->meshes, destroy_mesh_asset);
 
 	free(manager->root_path);
@@ -253,6 +257,7 @@ material_t *asset_manager_load_material(asset_manager_t *manager,
 					const char *path,
 					char *error,
 					const size_t error_size) {
+	material_definition_t definition;
 	material_t *material;
 	char *full_path;
 	char loader_error[512];
@@ -283,18 +288,8 @@ material_t *asset_manager_load_material(asset_manager_t *manager,
 		return NULL;
 	}
 
-	material = malloc(sizeof(*material));
-	if (material == NULL) {
-		free(full_path);
-
-		set_error(error, error_size,
-			  "failed to allocate material: \"%s\"", path);
-		return NULL;
-	}
-
-	if (!material_load(full_path, material, loader_error,
-			   sizeof(loader_error))) {
-		free(material);
+	if (!material_definition_load(full_path, &definition, loader_error,
+				      sizeof(loader_error))) {
 		free(full_path);
 
 		set_error(error, error_size,
@@ -304,6 +299,31 @@ material_t *asset_manager_load_material(asset_manager_t *manager,
 	}
 
 	free(full_path);
+
+	material = malloc(sizeof(*material));
+	if (material == NULL) {
+		material_definition_destroy(&definition);
+
+		set_error(error, error_size,
+			  "failed to allocate material: \"%s\"", path);
+		return NULL;
+	}
+
+	*material = definition.material;
+
+	if (definition.albedo_texture_path != NULL) {
+		material->albedo_texture = asset_manager_load_texture(
+			manager, definition.albedo_texture_path, error,
+			error_size);
+
+		if (material->albedo_texture == NULL) {
+			free(material);
+			material_definition_destroy(&definition);
+			return NULL;
+		}
+	}
+
+	material_definition_destroy(&definition);
 
 	if (!asset_table_register(&manager->materials, path, material, true)) {
 		free(material);
@@ -328,6 +348,69 @@ material_t *asset_manager_get_material(const asset_manager_t *manager,
 	if (manager == NULL) { return NULL; }
 
 	return asset_table_find(&manager->materials, path);
+}
+
+texture_t *asset_manager_get_texture(const asset_manager_t *manager,
+				     const char *path) {
+	if (manager == NULL) { return NULL; }
+
+	return asset_table_find(&manager->textures, path);
+}
+
+texture_t *asset_manager_load_texture(asset_manager_t *manager,
+				      const char *path,
+				      char *error,
+				      const size_t error_size) {
+	texture_t *texture;
+	char *full_path;
+	char loader_error[512];
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+
+	if (manager == NULL || path == NULL || path[0] == '\0') {
+		set_error(error, error_size,
+			  "invalid asset manager or texture path");
+		return NULL;
+	}
+
+	texture = asset_manager_get_texture(manager, path);
+	if (texture != NULL) { return texture; }
+
+	if (manager->root_path == NULL) {
+		set_error(error, error_size,
+			  "texture asset not found: \"%s\" "
+			  "(asset root is not configured)",
+			  path);
+		return NULL;
+	}
+
+	full_path = build_asset_path(manager->root_path, path);
+	if (full_path == NULL) {
+		set_error(error, error_size,
+			  "failed to build texture path: \"%s\"", path);
+		return NULL;
+	}
+
+	texture = texture_load(full_path, loader_error, sizeof(loader_error));
+
+	free(full_path);
+
+	if (texture == NULL) {
+		set_error(error, error_size,
+			  "failed to load texture \"%s\": %s", path,
+			  loader_error);
+		return NULL;
+	}
+
+	if (!asset_table_register(&manager->textures, path, texture, true)) {
+		texture_destroy(texture);
+
+		set_error(error, error_size,
+			  "failed to cache texture asset: \"%s\"", path);
+		return NULL;
+	}
+
+	return texture;
 }
 
 static void
@@ -380,3 +463,5 @@ static char *build_asset_path(const char *root_path, const char *path) {
 static void destroy_mesh_asset(void *asset) { mesh_destroy(asset); }
 
 static void destroy_material_asset(void *asset) { free(asset); }
+
+static void destroy_texture_asset(void *asset) { texture_destroy(asset); }

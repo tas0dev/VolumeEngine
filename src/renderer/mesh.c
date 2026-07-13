@@ -66,9 +66,18 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 			      (const void *)offsetof(mesh_vertex_t, normal));
 	glEnableVertexAttribArray(1);
 
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+	glVertexAttribPointer(
+		2,
+		3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 			      (const void *)offsetof(mesh_vertex_t, color));
 	glEnableVertexAttribArray(2);
+
+	glVertexAttribPointer(
+		3,
+		2,
+		GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+		(const void *)offsetof(mesh_vertex_t, texture_coordinate));
+	glEnableVertexAttribArray(3);
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);

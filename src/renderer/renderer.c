@@ -15,6 +15,7 @@
 #include "renderer/hdr_buffer.h"
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
+#include "renderer/texture.h"
 #include "shadow_map.h"
 #include <SDL3/SDL.h>
 #include <epoxy/gl.h>
@@ -380,24 +381,27 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const mat4_t *view,
 			const mat4_t *projection,
 			const mat4_t *light_view_projection) {
+	const vec3_t light_direction = vec3_create(-1.0f, -1.0f, -1.0f);
+	const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
+
 	if (renderer == NULL || mesh == NULL || material == NULL ||
 	    model == NULL || view == NULL || projection == NULL ||
 	    light_view_projection == NULL) {
 		return;
 	}
 
-	const vec3_t light_direction = vec3_create(-1.0f, -1.0f, -1.0f);
-	const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
-
 	shader_bind(renderer->shader);
+
 	shader_set_mat4(renderer->shader, "model", model);
 	shader_set_mat4(renderer->shader, "view", view);
 	shader_set_mat4(renderer->shader, "projection", projection);
 	shader_set_mat4(renderer->shader, "light_view_projection",
 			light_view_projection);
+
 	shader_set_vec3(renderer->shader, "light_direction", light_direction);
 	shader_set_vec3(renderer->shader, "light_color", light_color);
 	shader_set_vec3(renderer->shader, "material_color", material->color);
+
 	shader_set_float(renderer->shader, "ambient_strength",
 			 material->ambient_strength);
 	shader_set_float(renderer->shader, "specular_strength",
@@ -409,9 +413,21 @@ void renderer_draw_mesh(renderer_t *renderer,
 		      shadow_map_get_texture(renderer->shadow_map));
 	shader_set_int(renderer->shader, "shadow_map", 0);
 
+	shader_set_int(renderer->shader, "albedo_texture", 1);
+	shader_set_int(renderer->shader, "has_albedo_texture",
+		       material->albedo_texture != NULL);
+
+	if (material->albedo_texture != NULL) {
+		texture_bind(material->albedo_texture, 1);
+	}
+
 	mesh_draw(mesh);
 
+	if (material->albedo_texture != NULL) { texture_unbind(1); }
+
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
 	shader_unbind();
 }
 

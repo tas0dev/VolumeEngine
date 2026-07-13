@@ -38,13 +38,14 @@ asset_manager_test = executable(
         '../src/asset/material_loader.c',
         '../src/map/keyvalues.c',
         '../src/renderer/material.c',
+        '../src/renderer/texture.c',
     ],
     dependencies : [
         assimp,
         epoxy,
         opengl,
     ],
-    include_directories : include_directories('../src'),
+    include_directories : volume_include,
     install : false,
 )
 
@@ -68,8 +69,9 @@ map_spawn_test = executable(
         '../src/renderer/material.c',
         '../src/renderer/mesh.c',
         '../src/scene/transform.c',
+        '../src/renderer/texture.c',
     ],
-    include_directories : include_directories('../src'),
+    include_directories : volume_include,
     dependencies : [
         math,
         assimp,

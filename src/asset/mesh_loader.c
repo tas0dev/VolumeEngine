@@ -135,6 +135,7 @@ static bool copy_mesh_data(const struct aiScene *scene,
 	const struct aiFace *face;
 	const struct aiVector3D *position;
 	const struct aiVector3D *normal;
+	const struct aiVector3D *texture_coordinate;
 	const struct aiColor4D *color;
 	size_t mesh_index;
 	size_t vertex_index;
@@ -175,8 +176,8 @@ static bool copy_mesh_data(const struct aiScene *scene,
 				(float)normal->z;
 
 			color = mesh->mColors[0] == NULL
-					? NULL
-					: &mesh->mColors[0][vertex_index];
+				? NULL
+				: &mesh->mColors[0][vertex_index];
 
 			if (color == NULL) {
 				vertices[destination_vertex].color[0] = 1.0f;
@@ -190,26 +191,49 @@ static bool copy_mesh_data(const struct aiScene *scene,
 				vertices[destination_vertex].color[2] =
 					(float)color->b;
 			}
+
+			texture_coordinate =
+				mesh->mTextureCoords[0] == NULL
+					? NULL
+					: &mesh->mTextureCoords[0]
+							       [vertex_index];
+
+			if (texture_coordinate == NULL) {
+				vertices[destination_vertex]
+					.texture_coordinate[0] = 0.0f;
+				vertices[destination_vertex]
+					.texture_coordinate[1] = 0.0f;
+			} else {
+				vertices[destination_vertex]
+					.texture_coordinate[0] =
+					(float)texture_coordinate->x;
+				vertices[destination_vertex]
+					.texture_coordinate[1] =
+					(float)texture_coordinate->y;
+			}
 		}
 
 		for (face_index = 0; face_index < mesh->mNumFaces;
 		     face_index++) {
 			face = &mesh->mFaces[face_index];
 
-			for (face_vertex_index = 0; face_vertex_index < 3;
+			for (face_vertex_index = 0;
+			     face_vertex_index < 3;
 			     face_vertex_index++) {
-				if (face->mIndices[face_vertex_index] >=
-				    mesh->mNumVertices) {
+				if (face->mIndices[face_vertex_index
+				    ] >= mesh->mNumVertices) {
 					set_error(error, error_size,
-						  "mesh %zu contains an "
-						  "invalid index",
+						  "mesh %zu contains "
+						  "an invalid index",
 						  mesh_index);
 					return false;
 				}
 
 				destination_index =
 					vertex_offset +
-					face->mIndices[face_vertex_index];
+					face->mIndices[
+						face_vertex_index
+					];
 
 				indices[index_offset++] =
 					(unsigned int)destination_index;

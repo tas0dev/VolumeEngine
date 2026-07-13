@@ -44,6 +44,7 @@ sources = files(
         'src/map/map.c',
         'src/map/spawn.c',
         'src/asset/manager.c',
+        'src/asset/mesh_loader.c',
 )
 
 volume_c_args = [

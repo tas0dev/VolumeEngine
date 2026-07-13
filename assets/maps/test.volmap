@@ -7,7 +7,7 @@ entity
 {
 	"classname" "prop_static"
 	"targetname" "rotating_box"
-	"model" "models/test_cube"
+	"model" "models/test_cube.obj"
 	"material" "materials/test_cube"
 	"origin" "0 0 0"
 	"angles" "0 0 0"
@@ -19,7 +19,7 @@ entity
 {
 	"classname" "prop_static"
 	"targetname" "floor"
-	"model" "models/test_floor"
+	"model" "models/test_floor.obj"
 	"material" "materials/floor"
 	"origin" "0 -1 0"
 	"angles" "0 0 0"

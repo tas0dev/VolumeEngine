@@ -1,0 +1,14 @@
+world
+{
+	"classname" "worldspawn"
+}
+
+entity
+{
+	"classname" "prop_static"
+	"model" "models/crate.obj"
+	"origin" "0 1 0"
+	"angles" "0 45 0"
+	"scale" "1 1 1"
+	"casts_shadow" "1"
+}

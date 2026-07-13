@@ -61,3 +61,5 @@ executable(
         include_directories : include_directories('src'),
         install : false,
 )
+
+subdir('tests')

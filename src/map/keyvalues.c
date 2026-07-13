@@ -501,7 +501,7 @@ keyvalues_load(const char *path, char *error, const size_t error_size) {
 	}
 
 	file_size = ftell(file);
-	if (file_size < 0 || (uintmax_t)file_size > (uintmax_t)(SIZE_MAX - 1)) {
+	if (file_size < 0 || (uintmax_t)file_size > SIZE_MAX - 1) {
 		set_error(error, error_size, "invalid file size for %s", path);
 		fclose(file);
 		return NULL;

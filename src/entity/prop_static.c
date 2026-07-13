@@ -7,13 +7,20 @@
  */
 
 #include "entity/prop_static.h"
+#include "renderer/renderer.h"
+#include "scene/transform.h"
 #include <stdlib.h>
 
+static void draw_shadow_entity(entity_t *entity, renderer_t *renderer);
+static void
+draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view);
 static void destroy_entity(entity_t *entity);
 
 static const entity_class_t prop_static_class = {
 	.classname = "prop_static",
 	.update = NULL,
+	.draw_shadow = draw_shadow_entity,
+	.draw = draw_entity,
 	.destroy = destroy_entity,
 };
 
@@ -67,6 +74,32 @@ const prop_static_t *prop_static_from_const_entity(const entity_t *entity) {
 	}
 
 	return (const prop_static_t *)entity;
+}
+
+static void draw_shadow_entity(entity_t *entity, renderer_t *renderer) {
+	prop_static_t *prop;
+	mat4_t model;
+
+	prop = prop_static_from_entity(entity);
+	if (prop == NULL || !prop->casts_shadow) { return; }
+
+	model = transform_get_matrix(&entity->transform);
+	renderer_draw_shadow_mesh(renderer, prop->mesh, &model);
+}
+
+static void
+draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view) {
+	prop_static_t *prop;
+	mat4_t model;
+
+	prop = prop_static_from_entity(entity);
+	if (prop == NULL) { return; }
+
+	model = transform_get_matrix(&entity->transform);
+
+	renderer_draw_mesh(renderer, prop->mesh, prop->material, &model,
+			   &view->view, &view->projection,
+			   &view->light_view_projection);
 }
 
 static void destroy_entity(entity_t *entity) { free(entity); }

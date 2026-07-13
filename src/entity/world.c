@@ -124,3 +124,35 @@ entity_t *world_get_entity(world_t *world, size_t index) {
 
 	return world->entities[index];
 }
+
+void world_update(world_t *world, const float delta_time) {
+	size_t index;
+
+	if (world == NULL) { return; }
+
+	for (index = 0; index < world->count; index++) {
+		entity_update(world->entities[index], delta_time);
+	}
+}
+
+void world_draw_shadows(world_t *world, renderer_t *renderer) {
+	size_t index;
+
+	if (world == NULL || renderer == NULL) { return; }
+
+	for (index = 0; index < world->count; index++) {
+		entity_draw_shadow(world->entities[index], renderer);
+	}
+}
+
+void world_draw(world_t *world,
+		renderer_t *renderer,
+		const render_view_t *view) {
+	size_t index;
+
+	if (world == NULL || renderer == NULL || view == NULL) { return; }
+
+	for (index = 0; index < world->count; index++) {
+		entity_draw(world->entities[index], renderer, view);
+	}
+}

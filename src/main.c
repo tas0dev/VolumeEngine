@@ -226,7 +226,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	return true;
 }
 
-static void update(engine_t *engine, const float delta_time, void *user_data) {
+static void update(engine_t *engine, float delta_time, void *user_data) {
 	game_state_t *game_state;
 	input_t *input;
 	vec3_t movement;
@@ -252,6 +252,9 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		engine_set_mouse_captured(engine, true);
 	}
 
+	mouse_x = 0.0f;
+	mouse_y = 0.0f;
+
 	if (engine_is_mouse_captured(engine)) {
 		input_get_mouse_delta(input, &mouse_x, &mouse_y);
 
@@ -269,10 +272,10 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		game_state->pitch = -pitch_limit;
 	}
 
-	game_state->camera.forward = vec3_normalize(
-		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
-			    sinf(game_state->pitch),
-			    cosf(game_state->pitch) * sinf(game_state->yaw)));
+	game_state->camera.forward = vec3_normalize(vec3_create(
+		(float)(cos(game_state->pitch) * cos(game_state->yaw)),
+		(float)sin(game_state->pitch),
+		(float)(cos(game_state->pitch) * sin(game_state->yaw))));
 
 	forward = game_state->camera.forward;
 	forward.y = 0.0f;
@@ -308,21 +311,16 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 	game_state->mesh_prop->entity.transform.rotation.x += delta_time * 0.7f;
 	game_state->mesh_prop->entity.transform.rotation.y += delta_time;
+
+	world_update(game_state->world, delta_time);
 }
 
 static void render(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	renderer_t *renderer;
-	entity_t *entity;
-	prop_static_t *prop;
-	mat4_t model;
-	mat4_t view;
-	mat4_t projection;
+	render_view_t render_view;
 	mat4_t light_view;
 	mat4_t light_projection;
-	mat4_t light_view_projection;
-	size_t index;
-	size_t entity_count;
 	int width;
 	int height;
 	float aspect_ratio;
@@ -335,8 +333,9 @@ static void render(engine_t *engine, void *user_data) {
 
 	aspect_ratio = (float)width / (float)height;
 
-	view = camera_get_view(&game_state->camera);
-	projection = camera_get_projection(&game_state->camera, aspect_ratio);
+	render_view.view = camera_get_view(&game_state->camera);
+	render_view.projection =
+		camera_get_projection(&game_state->camera, aspect_ratio);
 
 	light_view = mat4_look_at(vec3_create(3.0f, 4.0f, 3.0f),
 				  vec3_create(0.0f, 0.0f, 0.0f),
@@ -345,42 +344,15 @@ static void render(engine_t *engine, void *user_data) {
 	light_projection =
 		mat4_orthographic(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
 
-	light_view_projection = mat4_multiply(light_projection, light_view);
+	render_view.light_view_projection =
+		mat4_multiply(light_projection, light_view);
 
-	entity_count = world_get_entity_count(game_state->world);
+	renderer_begin_shadow_pass(renderer,
+				   &render_view.light_view_projection);
 
-	renderer_begin_shadow_pass(renderer, &light_view_projection);
-
-	for (index = 0; index < entity_count; index++) {
-		entity = world_get_entity(game_state->world, index);
-
-		if (!entity_is_active(entity)) { continue;
-		}
-
-		prop = prop_static_from_entity(entity);
-		if (prop == NULL) { continue; }
-		if (!prop->casts_shadow) { continue; }
-
-		model = transform_get_matrix(&entity->transform);
-		renderer_draw_shadow_mesh(renderer, prop->mesh, &model);
-	}
-
+	world_draw_shadows(game_state->world, renderer);
 	renderer_end_shadow_pass(renderer);
-
-	for (index = 0; index < entity_count; index++) {
-		entity = world_get_entity(game_state->world, index);
-
-		if (!entity_is_active(entity)) { continue;
-		}
-
-		prop = prop_static_from_entity(entity);
-		if (prop == NULL) { continue; }
-
-		model = transform_get_matrix(&entity->transform);
-
-		renderer_draw_mesh(renderer, prop->mesh, prop->material, &model,
-				   &view, &projection, &light_view_projection);
-	}
+	world_draw(game_state->world, renderer, &render_view);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

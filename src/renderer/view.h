@@ -1,0 +1,20 @@
+/*
+ * Copyright (c) 2026, tas0dev.
+ * This software is provided under the zlib License.
+ *
+ * Created by tas0dev
+ *
+ */
+
+#ifndef VOLUME_RENDERER_VIEW_H
+#define VOLUME_RENDERER_VIEW_H
+
+#include "math/mat4.h"
+
+typedef struct render_view {
+	mat4_t view;
+	mat4_t projection;
+	mat4_t light_view_projection;
+} render_view_t;
+
+#endif

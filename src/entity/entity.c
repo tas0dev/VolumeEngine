@@ -30,16 +30,37 @@ void entity_update(entity_t *entity, const float delta_time) {
 	if (entity == NULL || !entity->active || entity->class == NULL ||
 	    entity->class->update == NULL) {
 		return;
-	}
+	    }
 
 	entity->class->update(entity, delta_time);
+}
+
+void entity_draw_shadow(entity_t *entity, renderer_t *renderer) {
+	if (entity == NULL || renderer == NULL || !entity->active ||
+	    entity->class == NULL || entity->class->draw_shadow == NULL) {
+		return;
+	}
+
+	entity->class->draw_shadow(entity, renderer);
+}
+
+void entity_draw(entity_t *entity,
+		 renderer_t *renderer,
+		 const render_view_t *view) {
+	if (entity == NULL || renderer == NULL || view == NULL ||
+	    !entity->active || entity->class == NULL ||
+	    entity->class->draw == NULL) {
+		return;
+	}
+
+	entity->class->draw(entity, renderer, view);
 }
 
 void entity_destroy(entity_t *entity) {
 	if (entity == NULL || entity->class == NULL ||
 	    entity->class->destroy == NULL) {
 		return;
-	}
+	    }
 
 	entity->class->destroy(entity);
 }

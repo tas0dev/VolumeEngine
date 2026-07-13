@@ -30,8 +30,8 @@ typedef struct game_state {
 	mesh_t *floor_mesh;
 	material_t material;
 	material_t floor_material;
-	prop_static_t *mesh_prop;
-	prop_static_t *floor_prop;
+	entity_t *mesh_entity;
+	entity_t *floor_entity;
 	camera_t camera;
 	float yaw;
 	float pitch;
@@ -141,6 +141,7 @@ static mesh_t *create_floor_mesh(void) {
 
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
+	entity_properties_t properties;
 
 	(void)engine;
 
@@ -172,9 +173,12 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	game_state->mesh_prop =
-		prop_static_create(1, game_state->mesh, &game_state->material);
-	if (game_state->mesh_prop == NULL) {
+	properties = entity_properties_create();
+	properties.mesh = game_state->mesh;
+	properties.material = &game_state->material;
+
+	game_state->mesh_entity = entity_create("prop_static", 1, &properties);
+	if (game_state->mesh_entity == NULL) {
 		world_destroy(game_state->world);
 		mesh_destroy(game_state->floor_mesh);
 		mesh_destroy(game_state->mesh);
@@ -184,41 +188,41 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	game_state->floor_prop = prop_static_create(
-		2, game_state->floor_mesh, &game_state->floor_material);
-	if (game_state->floor_prop == NULL) {
-		prop_static_destroy(game_state->mesh_prop);
+	properties = entity_properties_create();
+	properties.mesh = game_state->floor_mesh;
+	properties.material = &game_state->floor_material;
+	properties.transform.position = vec3_create(0.0f, -1.0f, 0.0f);
+
+	game_state->floor_entity = entity_create("prop_static", 2, &properties);
+	if (game_state->floor_entity == NULL) {
+		entity_destroy(game_state->mesh_entity);
 		world_destroy(game_state->world);
 		mesh_destroy(game_state->floor_mesh);
 		mesh_destroy(game_state->mesh);
-		game_state->mesh_prop = NULL;
+		game_state->mesh_entity = NULL;
 		game_state->world = NULL;
 		game_state->floor_mesh = NULL;
 		game_state->mesh = NULL;
 		return false;
 	}
 
-	game_state->floor_prop->entity.transform.position =
-		vec3_create(0.0f, -1.0f, 0.0f);
-
-	if (!world_add_entity(game_state->world,
-			      prop_static_get_entity(game_state->mesh_prop)) ||
-	    !world_add_entity(game_state->world,
-			      prop_static_get_entity(game_state->floor_prop))) {
-		prop_static_destroy(game_state->floor_prop);
-		prop_static_destroy(game_state->mesh_prop);
+	if (!world_add_entity(game_state->world, game_state->mesh_entity) ||
+	    !world_add_entity(game_state->world, game_state->floor_entity)) {
+		entity_destroy(game_state->floor_entity);
+		entity_destroy(game_state->mesh_entity);
 		world_destroy(game_state->world);
 		mesh_destroy(game_state->floor_mesh);
 		mesh_destroy(game_state->mesh);
-		game_state->floor_prop = NULL;
-		game_state->mesh_prop = NULL;
+		game_state->floor_entity = NULL;
+		game_state->mesh_entity = NULL;
 		game_state->world = NULL;
 		game_state->floor_mesh = NULL;
 		game_state->mesh = NULL;
 		return false;
 	}
 
-	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
+	game_state->camera =
+		camera_create(vec3_create(0.0f, 1.5f, 4.0f));
 
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
@@ -308,8 +312,8 @@ static void update(engine_t *engine, float delta_time, void *user_data) {
 			vec3_add(game_state->camera.position, movement);
 	}
 
-	game_state->mesh_prop->entity.transform.rotation.x += delta_time * 0.7f;
-	game_state->mesh_prop->entity.transform.rotation.y += delta_time;
+	game_state->mesh_entity->transform.rotation.x += delta_time * 0.7f;
+	game_state->mesh_entity->transform.rotation.y += delta_time;
 
 	world_update(game_state->world, delta_time);
 }
@@ -355,19 +359,22 @@ static void render(engine_t *engine, void *user_data) {
 }
 
 static void shutdown(engine_t *engine, void *user_data) {
+	game_state_t *game_state;
+
 	(void)engine;
 
-	game_state_t *game_state;
 	game_state = user_data;
 
-	prop_static_destroy(game_state->floor_prop);
-	prop_static_destroy(game_state->mesh_prop);
 	world_destroy(game_state->world);
+
+	entity_destroy(game_state->floor_entity);
+	entity_destroy(game_state->mesh_entity);
+
 	mesh_destroy(game_state->floor_mesh);
 	mesh_destroy(game_state->mesh);
 
-	game_state->floor_prop = NULL;
-	game_state->mesh_prop = NULL;
+	game_state->floor_entity = NULL;
+	game_state->mesh_entity = NULL;
 	game_state->world = NULL;
 	game_state->floor_mesh = NULL;
 	game_state->mesh = NULL;

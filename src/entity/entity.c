@@ -7,17 +7,41 @@
  */
 
 #include "entity/entity.h"
-#include <stddef.h>
 
-entity_t entity_create(const entity_id_t id, const entity_class_t *class) {
-	entity_t entity;
+#include "prop_static.h"
 
-	entity.id = id;
-	entity.class = class;
-	entity.transform = transform_create();
-	entity.active = true;
+#include <string.h>
 
-	return entity;
+void entity_initialize(entity_t *entity,
+		       const entity_id_t id,
+		       const entity_class_t *class) {
+	if (entity == NULL) { return; }
+
+	entity->id = id;
+	entity->class = class;
+	entity->transform = transform_create();
+	entity->active = true;
+}
+
+entity_t *entity_create(const char *classname,
+			const entity_id_t id,
+			const entity_properties_t *properties) {
+	prop_static_t *prop;
+
+	if (classname == NULL || properties == NULL) { return NULL; }
+
+	if (strcmp(classname, "prop_static") == 0) {
+		prop = prop_static_create(id, properties->mesh,
+					  properties->material);
+		if (prop == NULL) { return NULL; }
+
+		prop->entity.transform = properties->transform;
+		prop->casts_shadow = properties->casts_shadow;
+
+		return prop_static_get_entity(prop);
+	}
+
+	return NULL;
 }
 
 const char *entity_get_classname(const entity_t *entity) {
@@ -30,7 +54,7 @@ void entity_update(entity_t *entity, const float delta_time) {
 	if (entity == NULL || !entity->active || entity->class == NULL ||
 	    entity->class->update == NULL) {
 		return;
-	    }
+	}
 
 	entity->class->update(entity, delta_time);
 }
@@ -60,7 +84,7 @@ void entity_destroy(entity_t *entity) {
 	if (entity == NULL || entity->class == NULL ||
 	    entity->class->destroy == NULL) {
 		return;
-	    }
+	}
 
 	entity->class->destroy(entity);
 }

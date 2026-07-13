@@ -34,7 +34,8 @@ prop_static_t *prop_static_create(const entity_id_t id,
 	prop = calloc(1, sizeof(*prop));
 	if (prop == NULL) { return NULL; }
 
-	prop->entity = entity_create(id, &prop_static_class);
+	entity_initialize(&prop->entity, id, &prop_static_class);
+
 	prop->mesh = mesh;
 	prop->material = material;
 	prop->casts_shadow = true;

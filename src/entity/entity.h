@@ -10,6 +10,7 @@
 #define VOLUME_ENTITY_ENTITY_H
 
 #include "core/types.h"
+#include "entity/properties.h"
 #include "renderer/view.h"
 #include "scene/transform.h"
 #include <stdbool.h>
@@ -37,7 +38,12 @@ struct entity {
 	bool active;
 };
 
-entity_t entity_create(entity_id_t id, const entity_class_t *class);
+void entity_initialize(entity_t *entity,
+		       entity_id_t id,
+		       const entity_class_t *class);
+entity_t *entity_create(const char *classname,
+			entity_id_t id,
+			const entity_properties_t *properties);
 const char *entity_get_classname(const entity_t *entity);
 void entity_update(entity_t *entity, float delta_time);
 void entity_draw_shadow(entity_t *entity, renderer_t *renderer);

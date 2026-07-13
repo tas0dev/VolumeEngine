@@ -1,0 +1,28 @@
+world
+{
+	"classname" "worldspawn"
+}
+
+entity
+{
+	"classname" "prop_static"
+	"targetname" "rotating_box"
+	"model" "models/test_cube"
+	"material" "materials/test_cube"
+	"origin" "0 0 0"
+	"angles" "0 0 0"
+	"scale" "1 1 1"
+	"casts_shadow" "1"
+}
+
+entity
+{
+	"classname" "prop_static"
+	"targetname" "floor"
+	"model" "models/test_floor"
+	"material" "materials/floor"
+	"origin" "0 -1 0"
+	"angles" "0 0 0"
+	"scale" "1 1 1"
+	"casts_shadow" "0"
+}

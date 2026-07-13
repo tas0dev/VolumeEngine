@@ -6,9 +6,12 @@
  *
  */
 
+#include "asset/manager.h"
+#include "core/log.h"
 #include "entity/world.h"
 #include "game/game.h"
 #include "input/input.h"
+#include "map/spawn.h"
 #include "math/mat4.h"
 #include "math/math.h"
 #include "math/vec3.h"
@@ -24,13 +27,13 @@
 #include <string.h>
 
 typedef struct game_state {
+	asset_manager_t *assets;
 	world_t *world;
 	mesh_t *mesh;
 	mesh_t *floor_mesh;
 	material_t material;
 	material_t floor_material;
 	entity_t *mesh_entity;
-	entity_t *floor_entity;
 	camera_t camera;
 	float yaw;
 	float pitch;
@@ -42,6 +45,7 @@ static bool initialize(engine_t *engine, void *user_data);
 static void update(engine_t *engine, float delta_time, void *user_data);
 static void render(engine_t *engine, void *user_data);
 static void shutdown(engine_t *engine, void *user_data);
+static void destroy_game_resources(game_state_t *game_state);
 
 static game_state_t state;
 
@@ -140,7 +144,7 @@ static mesh_t *create_floor_mesh(void) {
 
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
-	entity_properties_t properties;
+	char error[512];
 
 	(void)engine;
 
@@ -151,8 +155,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state->floor_mesh = create_floor_mesh();
 	if (game_state->floor_mesh == NULL) {
-		mesh_destroy(game_state->mesh);
-		game_state->mesh = NULL;
+		destroy_game_resources(game_state);
 		return false;
 	}
 
@@ -163,46 +166,47 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->floor_material.specular_strength = 0.1f;
 	game_state->floor_material.shininess = 8.0f;
 
+	game_state->assets = asset_manager_create();
+	if (game_state->assets == NULL) {
+		destroy_game_resources(game_state);
+		return false;
+	}
+
+	if (!asset_manager_register_mesh(game_state->assets, "models/test_cube",
+					 game_state->mesh) ||
+	    !asset_manager_register_mesh(game_state->assets,
+					 "models/test_floor",
+					 game_state->floor_mesh) ||
+	    !asset_manager_register_material(game_state->assets,
+					     "materials/test_cube",
+					     &game_state->material) ||
+	    !asset_manager_register_material(game_state->assets,
+					     "materials/floor",
+					     &game_state->floor_material)) {
+		log_error("Failed to register test assets");
+		destroy_game_resources(game_state);
+		return false;
+	}
+
 	game_state->world = world_create();
 	if (game_state->world == NULL) {
-		mesh_destroy(game_state->floor_mesh);
-		mesh_destroy(game_state->mesh);
-		game_state->floor_mesh = NULL;
-		game_state->mesh = NULL;
+		destroy_game_resources(game_state);
 		return false;
 	}
 
-	properties = entity_properties_create();
-	properties.mesh = game_state->mesh;
-	properties.material = &game_state->material;
+	if (!world_load_map(game_state->world, game_state->assets,
+			    VOLUME_ASSET_DIR "/maps/test.volmap", error,
+			    sizeof(error))) {
+		log_error("Failed to load test map: %s", error);
+		destroy_game_resources(game_state);
+		return false;
+	}
 
-	game_state->mesh_entity = world_spawn_entity(
-		game_state->world, "prop_static", &properties);
+	game_state->mesh_entity =
+		world_find_by_targetname(game_state->world, "rotating_box");
 	if (game_state->mesh_entity == NULL) {
-		world_destroy(game_state->world);
-		mesh_destroy(game_state->floor_mesh);
-		mesh_destroy(game_state->mesh);
-		game_state->world = NULL;
-		game_state->floor_mesh = NULL;
-		game_state->mesh = NULL;
-		return false;
-	}
-
-	properties = entity_properties_create();
-	properties.mesh = game_state->floor_mesh;
-	properties.material = &game_state->floor_material;
-	properties.transform.position = vec3_create(0.0f, -1.0f, 0.0f);
-
-	game_state->floor_entity = world_spawn_entity(
-		game_state->world, "prop_static", &properties);
-	if (game_state->floor_entity == NULL) {
-		world_destroy(game_state->world);
-		mesh_destroy(game_state->floor_mesh);
-		mesh_destroy(game_state->mesh);
-		game_state->mesh_entity = NULL;
-		game_state->world = NULL;
-		game_state->floor_mesh = NULL;
-		game_state->mesh = NULL;
+		log_error("Map entity \"rotating_box\" was not found");
+		destroy_game_resources(game_state);
 		return false;
 	}
 
@@ -346,17 +350,20 @@ static void render(engine_t *engine, void *user_data) {
 static void shutdown(engine_t *engine, void *user_data) {
 	(void)engine;
 
-	game_state_t *game_state;
+	destroy_game_resources(user_data);
+}
 
-	game_state = user_data;
+static void destroy_game_resources(game_state_t *game_state) {
+	if (game_state == NULL) { return; }
 
 	world_destroy(game_state->world);
+	asset_manager_destroy(game_state->assets);
 	mesh_destroy(game_state->floor_mesh);
 	mesh_destroy(game_state->mesh);
 
-	game_state->floor_entity = NULL;
 	game_state->mesh_entity = NULL;
 	game_state->world = NULL;
+	game_state->assets = NULL;
 	game_state->floor_mesh = NULL;
 	game_state->mesh = NULL;
 }

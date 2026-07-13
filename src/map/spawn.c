@@ -237,3 +237,28 @@ bool map_spawn_entities(const map_t *map,
 
 	return true;
 }
+
+bool world_load_map(world_t *world,
+		    const asset_manager_t *assets,
+		    const char *path,
+		    char *error,
+		    const size_t error_size) {
+	map_t *map;
+	bool result;
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+
+	if (world == NULL || path == NULL) {
+		set_error(error, error_size, "invalid world or map path");
+		return false;
+	}
+
+	map = map_load(path, error, error_size);
+	if (map == NULL) { return false; }
+
+	result = map_spawn_entities(map, world, assets, error, error_size);
+
+	map_destroy(map);
+
+	return result;
+}

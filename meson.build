@@ -41,6 +41,7 @@ sources = files(
         'src/input/input.c',
         'src/map/keyvalues.c',
         'src/map/map.c',
+        'src/map/spawn.c',
         'src/asset/manager.c',
 )
 

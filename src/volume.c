@@ -12,7 +12,7 @@
 #include "renderer/renderer.h"
 #include <stdlib.h>
 
-struct volume {
+struct volumeEngine {
 	platform_t *platform;
 	renderer_t *renderer;
 	const game_t *game;

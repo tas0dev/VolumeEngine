@@ -8,7 +8,7 @@
 
 #include "platform.h"
 #include "core/log.h"
-#include "platform/platform.h"
+#include "input/input.h"
 #include <SDL3/SDL.h>
 #include <stdlib.h>
 
@@ -81,19 +81,90 @@ void platform_destroy(platform_t *platform) {
 	SDL_Quit();
 }
 
-bool platform_poll_events(platform_t *platform) {
+static input_key_t translate_key(const SDL_Keycode key) {
+	switch (key) {
+	case SDLK_A: return INPUT_KEY_A;
+	case SDLK_B: return INPUT_KEY_B;
+	case SDLK_C: return INPUT_KEY_C;
+	case SDLK_D: return INPUT_KEY_D;
+	case SDLK_E: return INPUT_KEY_E;
+	case SDLK_F: return INPUT_KEY_F;
+	case SDLK_G: return INPUT_KEY_G;
+	case SDLK_H: return INPUT_KEY_H;
+	case SDLK_I: return INPUT_KEY_I;
+	case SDLK_J: return INPUT_KEY_J;
+	case SDLK_K: return INPUT_KEY_K;
+	case SDLK_L: return INPUT_KEY_L;
+	case SDLK_M: return INPUT_KEY_M;
+	case SDLK_N: return INPUT_KEY_N;
+	case SDLK_O: return INPUT_KEY_O;
+	case SDLK_P: return INPUT_KEY_P;
+	case SDLK_Q: return INPUT_KEY_Q;
+	case SDLK_R: return INPUT_KEY_R;
+	case SDLK_S: return INPUT_KEY_S;
+	case SDLK_T: return INPUT_KEY_T;
+	case SDLK_U: return INPUT_KEY_U;
+	case SDLK_V: return INPUT_KEY_V;
+	case SDLK_W: return INPUT_KEY_W;
+	case SDLK_X: return INPUT_KEY_X;
+	case SDLK_Y: return INPUT_KEY_Y;
+	case SDLK_Z: return INPUT_KEY_Z;
+	case SDLK_SPACE: return INPUT_KEY_SPACE;
+	case SDLK_LCTRL:
+	case SDLK_RCTRL: return INPUT_KEY_CONTROL;
+	case SDLK_ESCAPE: return INPUT_KEY_ESCAPE;
+	default: return INPUT_KEY_COUNT;
+	}
+}
+
+static input_mouse_button_t translate_mouse_button(const Uint8 button) {
+	switch (button) {
+	case SDL_BUTTON_LEFT: return INPUT_MOUSE_BUTTON_LEFT;
+	case SDL_BUTTON_MIDDLE: return INPUT_MOUSE_BUTTON_MIDDLE;
+	case SDL_BUTTON_RIGHT: return INPUT_MOUSE_BUTTON_RIGHT;
+	default: return INPUT_MOUSE_BUTTON_COUNT;
+	}
+}
+
+bool platform_poll_events(platform_t *platform, input_t *input) {
 	SDL_Event event;
 
-	if (platform == NULL) { return false; }
+	if (platform == NULL || input == NULL) { return false; }
 
 	while (SDL_PollEvent(&event)) {
 		switch (event.type) {
 		case SDL_EVENT_QUIT: platform->running = false; break;
 
 		case SDL_EVENT_KEY_DOWN:
-			if (event.key.key == SDLK_ESCAPE) {
-				platform->running = false;
+		case SDL_EVENT_KEY_UP: {
+			const input_key_t key = translate_key(event.key.key);
+
+			if (key != INPUT_KEY_COUNT) {
+				input_set_key(input, key,
+					      event.type == SDL_EVENT_KEY_DOWN);
 			}
+			break;
+		}
+
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+		case SDL_EVENT_MOUSE_BUTTON_UP: {
+			const input_mouse_button_t button =
+				translate_mouse_button(event.button.button);
+
+			if (button != INPUT_MOUSE_BUTTON_COUNT) {
+				input_set_mouse_button(
+					input, button,
+					event.type ==
+						SDL_EVENT_MOUSE_BUTTON_DOWN);
+			}
+			break;
+		}
+
+		case SDL_EVENT_MOUSE_MOTION:
+			input_set_mouse_position(input, event.motion.x,
+						 event.motion.y);
+			input_add_mouse_delta(input, event.motion.xrel,
+					      event.motion.yrel);
 			break;
 
 		default: break;
@@ -106,7 +177,7 @@ bool platform_poll_events(platform_t *platform) {
 void *platform_gl_create_context(const platform_t *platform) {
 	if (platform == NULL || platform->window == NULL) { return NULL; }
 
-	const SDL_GLContext context = SDL_GL_CreateContext(platform->window);
+	SDL_GLContext context = SDL_GL_CreateContext(platform->window);
 	if (context == NULL) {
 		log_error("OpenGL context creation failed: %s", SDL_GetError());
 		return NULL;

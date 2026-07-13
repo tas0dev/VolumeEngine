@@ -1,0 +1,7 @@
+material
+{
+	"color" "0.5 0.75 1"
+	"ambient_strength" "0.125"
+	"specular_strength" "0.25"
+	"shininess" "16"
+}

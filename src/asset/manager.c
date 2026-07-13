@@ -7,6 +7,7 @@
  */
 
 #include "asset/manager.h"
+#include "asset/material_loader.h"
 #include "asset/mesh_loader.h"
 #include <stdarg.h>
 #include <stdint.h>
@@ -44,6 +45,7 @@ static bool asset_table_register(asset_table_t *table,
 				 void *asset,
 				 bool owned);
 static void *asset_table_find(const asset_table_t *table, const char *path);
+static void destroy_material_asset(void *asset);
 
 static char *duplicate_string(const char *string) {
 	char *copy;
@@ -167,7 +169,7 @@ asset_manager_t *asset_manager_create_at(const char *root_path) {
 void asset_manager_destroy(asset_manager_t *manager) {
 	if (manager == NULL) { return; }
 
-	asset_table_destroy(&manager->materials, NULL);
+	asset_table_destroy(&manager->materials, destroy_material_asset);
 	asset_table_destroy(&manager->meshes, destroy_mesh_asset);
 
 	free(manager->root_path);
@@ -247,6 +249,73 @@ mesh_t *asset_manager_load_mesh(asset_manager_t *manager,
 	return mesh;
 }
 
+material_t *asset_manager_load_material(asset_manager_t *manager,
+					const char *path,
+					char *error,
+					const size_t error_size) {
+	material_t *material;
+	char *full_path;
+	char loader_error[512];
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+
+	if (manager == NULL || path == NULL || path[0] == '\0') {
+		set_error(error, error_size,
+			  "invalid asset manager or material path");
+		return NULL;
+	}
+
+	material = asset_manager_get_material(manager, path);
+	if (material != NULL) { return material; }
+
+	if (manager->root_path == NULL) {
+		set_error(error, error_size,
+			  "material asset not found: \"%s\" "
+			  "(asset root is not configured)",
+			  path);
+		return NULL;
+	}
+
+	full_path = build_asset_path(manager->root_path, path);
+	if (full_path == NULL) {
+		set_error(error, error_size,
+			  "failed to build material path: \"%s\"", path);
+		return NULL;
+	}
+
+	material = malloc(sizeof(*material));
+	if (material == NULL) {
+		free(full_path);
+
+		set_error(error, error_size,
+			  "failed to allocate material: \"%s\"", path);
+		return NULL;
+	}
+
+	if (!material_load(full_path, material, loader_error,
+			   sizeof(loader_error))) {
+		free(material);
+		free(full_path);
+
+		set_error(error, error_size,
+			  "failed to load material \"%s\": %s", path,
+			  loader_error);
+		return NULL;
+	}
+
+	free(full_path);
+
+	if (!asset_table_register(&manager->materials, path, material, true)) {
+		free(material);
+
+		set_error(error, error_size,
+			  "failed to cache material asset: \"%s\"", path);
+		return NULL;
+	}
+
+	return material;
+}
+
 mesh_t *asset_manager_get_mesh(const asset_manager_t *manager,
 			       const char *path) {
 	if (manager == NULL) { return NULL; }
@@ -309,3 +378,5 @@ static char *build_asset_path(const char *root_path, const char *path) {
 }
 
 static void destroy_mesh_asset(void *asset) { mesh_destroy(asset); }
+
+static void destroy_material_asset(void *asset) { free(asset); }

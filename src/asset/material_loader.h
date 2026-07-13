@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2026, tas0dev.
+ * This software is provided under the zlib License.
+ *
+ * Created by tas0dev
+ *
+ */
+
+#ifndef VOLUME_ASSET_MATERIAL_LOADER_H
+#define VOLUME_ASSET_MATERIAL_LOADER_H
+
+#include "renderer/material.h"
+#include <stdbool.h>
+#include <stddef.h>
+
+bool material_parse(const char *source,
+		    material_t *material,
+		    char *error,
+		    size_t error_size);
+bool material_load(const char *path,
+		   material_t *material,
+		   char *error,
+		   size_t error_size);
+
+#endif

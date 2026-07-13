@@ -15,7 +15,6 @@
 #include "math/mat4.h"
 #include "math/math.h"
 #include "math/vec3.h"
-#include "renderer/material.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"
@@ -28,8 +27,6 @@
 typedef struct game_state {
 	asset_manager_t *assets;
 	world_t *world;
-	material_t material;
-	material_t floor_material;
 	entity_t *mesh_entity;
 	camera_t camera;
 	float yaw;
@@ -80,28 +77,9 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state = user_data;
 
-	game_state->material = material_create(vec3_create(1.0f, 1.0f, 1.0f));
-
-	game_state->floor_material =
-		material_create(vec3_create(0.55f, 0.55f, 0.55f));
-
-	game_state->floor_material.specular_strength = 0.1f;
-	game_state->floor_material.shininess = 8.0f;
-
 	game_state->assets = asset_manager_create_at(VOLUME_ASSET_DIR);
 	if (game_state->assets == NULL) {
 		log_error("Failed to create asset manager");
-		return false;
-	}
-
-	if (!asset_manager_register_material(game_state->assets,
-					     "materials/test_cube",
-					     &game_state->material) ||
-	    !asset_manager_register_material(game_state->assets,
-					     "materials/floor",
-					     &game_state->floor_material)) {
-		log_error("Failed to register materials");
-		destroy_game_resources(game_state);
 		return false;
 	}
 

@@ -12,6 +12,7 @@
 #include "renderer/material.h"
 #include "renderer/mesh.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct asset_manager asset_manager_t;
 
@@ -32,5 +33,9 @@ mesh_t *asset_manager_load_mesh(asset_manager_t *manager,
 				const char *path,
 				char *error,
 				size_t error_size);
+material_t *asset_manager_load_material(asset_manager_t *manager,
+					const char *path,
+					char *error,
+					size_t error_size);
 
 #endif

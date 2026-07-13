@@ -125,6 +125,7 @@ static bool build_properties(const map_entity_t *entity,
 	}
 
 	model_path = map_entity_get_property(entity, "model");
+
 	if (model_path != NULL) {
 		if (assets == NULL) {
 			set_error(error, error_size,
@@ -148,15 +149,10 @@ static bool build_properties(const map_entity_t *entity,
 			return false;
 		}
 
-		properties->material =
-			asset_manager_get_material(assets, material_path);
+		properties->material = asset_manager_load_material(
+			assets, material_path, error, error_size);
 
-		if (properties->material == NULL) {
-			set_error(error, error_size,
-				  "material asset not found: \"%s\"",
-				  material_path);
-			return false;
-		}
+		if (properties->material == NULL) { return false; }
 	}
 
 	return true;

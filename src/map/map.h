@@ -30,5 +30,8 @@ bool map_entity_get_vec3(const map_entity_t *entity,
 bool map_entity_get_bool(const map_entity_t *entity,
 			 const char *key,
 			 bool *value);
+bool map_entity_get_float(const map_entity_t *entity,
+			  const char *key,
+			  float *value);
 
 #endif

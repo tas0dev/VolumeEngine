@@ -26,6 +26,7 @@ sources = files(
         'src/entity/entity.c',
         'src/entity/builtin.c',
         'src/entity/prop_static.c',
+        'src/entity/light_environment.c',
         'src/entity/world.c',
         'src/entity/properties.c',
         'src/renderer/renderer.c',

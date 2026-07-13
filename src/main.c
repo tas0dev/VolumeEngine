@@ -8,6 +8,7 @@
 
 #include "asset/manager.h"
 #include "core/log.h"
+#include "entity/light_environment.h"
 #include "entity/world.h"
 #include "game/game.h"
 #include "input/input.h"
@@ -28,6 +29,7 @@ typedef struct game_state {
 	asset_manager_t *assets;
 	world_t *world;
 	entity_t *mesh_entity;
+	light_environment_t *environment_light;
 	camera_t camera;
 	float yaw;
 	float pitch;
@@ -71,6 +73,7 @@ int main(void) {
 
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
+	entity_t *light_entity;
 	char error[512];
 
 	(void)engine;
@@ -102,6 +105,17 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	if (game_state->mesh_entity == NULL) {
 		log_error("Map entity \"rotating_box\" was not found");
+		destroy_game_resources(game_state);
+		return false;
+	}
+
+	light_entity =
+		world_find_by_classname(game_state->world, "light_environment");
+	game_state->environment_light =
+		light_environment_from_entity(light_entity);
+
+	if (game_state->environment_light == NULL) {
+		log_error("Map has no light_environment entity");
 		destroy_game_resources(game_state);
 		return false;
 	}
@@ -209,6 +223,9 @@ static void render(engine_t *engine, void *user_data) {
 	render_view_t render_view;
 	mat4_t light_view;
 	mat4_t light_projection;
+	vec3_t light_position;
+	vec3_t light_target;
+	vec3_t light_up;
 	int width;
 	int height;
 	float aspect_ratio;
@@ -225,21 +242,35 @@ static void render(engine_t *engine, void *user_data) {
 	render_view.projection =
 		camera_get_projection(&game_state->camera, aspect_ratio);
 
-	light_view = mat4_look_at(vec3_create(3.0f, 4.0f, 3.0f),
-				  vec3_create(0.0f, 0.0f, 0.0f),
-				  vec3_create(0.0f, 1.0f, 0.0f));
+	render_view.light_direction =
+		light_environment_get_direction(game_state->environment_light);
+	render_view.light_color =
+		light_environment_get_color(game_state->environment_light);
+	render_view.light_intensity =
+		light_environment_get_intensity(game_state->environment_light);
 
+	light_target = vec3_create(0.0f, 0.0f, 0.0f);
+	light_position = vec3_subtract(
+		light_target, vec3_scale(render_view.light_direction, 10.0f));
+
+	if (fabsf(render_view.light_direction.y) > 0.99f) {
+		light_up = vec3_create(0.0f, 0.0f, 1.0f);
+	} else {
+		light_up = vec3_create(0.0f, 1.0f, 0.0f);
+	}
+
+	light_view = mat4_look_at(light_position, light_target, light_up);
 	light_projection =
-		mat4_orthographic(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
+		mat4_orthographic(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 25.0f);
 
 	render_view.light_view_projection =
 		mat4_multiply(light_projection, light_view);
 
 	renderer_begin_shadow_pass(renderer,
 				   &render_view.light_view_projection);
-
 	world_draw_shadows(game_state->world, renderer);
 	renderer_end_shadow_pass(renderer);
+
 	world_draw(game_state->world, renderer, &render_view);
 }
 
@@ -256,6 +287,7 @@ static void destroy_game_resources(game_state_t *game_state) {
 	asset_manager_destroy(game_state->assets);
 
 	game_state->mesh_entity = NULL;
+	game_state->environment_light = NULL;
 	game_state->world = NULL;
 	game_state->assets = NULL;
 }

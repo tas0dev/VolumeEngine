@@ -11,6 +11,7 @@
 #include "math/math.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 static void set_error(char *error, size_t error_size, const char *format, ...);
 static bool read_vec3_property(const map_entity_t *entity,
@@ -25,11 +26,17 @@ static bool read_bool_property(const map_entity_t *entity,
 			       size_t error_size);
 static void convert_angles(vec3_t *angles);
 static bool build_properties(const map_entity_t *entity,
+			     const char *classname,
 			     asset_manager_t *assets,
 			     entity_properties_t *properties,
 			     char *error,
-			     size_t error_size);
+			     const size_t error_size);
 static void rollback_entities(world_t *world, size_t initial_count);
+static bool read_float_property(const map_entity_t *entity,
+				const char *key,
+				float *value,
+				char *error,
+				size_t error_size);
 
 static void
 set_error(char *error, const size_t error_size, const char *format, ...) {
@@ -89,6 +96,7 @@ static void convert_angles(vec3_t *angles) {
 }
 
 static bool build_properties(const map_entity_t *entity,
+			     const char *classname,
 			     asset_manager_t *assets,
 			     entity_properties_t *properties,
 			     char *error,
@@ -124,6 +132,34 @@ static bool build_properties(const map_entity_t *entity,
 		return false;
 	}
 
+	if (strcmp(classname, "light_environment") == 0) {
+		if (!read_vec3_property(entity, "color",
+					&properties->light_color, error,
+					error_size)) {
+			return false;
+		}
+
+		if (!read_float_property(entity, "intensity",
+					 &properties->light_intensity, error,
+					 error_size)) {
+			return false;
+		}
+
+		if (properties->light_color.x < 0.0f ||
+		    properties->light_color.y < 0.0f ||
+		    properties->light_color.z < 0.0f) {
+			set_error(error, error_size,
+				  "light color cannot be negative");
+			return false;
+		}
+
+		if (properties->light_intensity < 0.0f) {
+			set_error(error, error_size,
+				  "light intensity cannot be negative");
+			return false;
+		}
+	}
+
 	model_path = map_entity_get_property(entity, "model");
 
 	if (model_path != NULL) {
@@ -153,6 +189,25 @@ static bool build_properties(const map_entity_t *entity,
 			assets, material_path, error, error_size);
 
 		if (properties->material == NULL) { return false; }
+	}
+
+	return true;
+}
+
+static bool read_float_property(const map_entity_t *entity,
+				const char *key,
+				float *value,
+				char *error,
+				const size_t error_size) {
+	const char *text;
+
+	text = map_entity_get_property(entity, key);
+	if (text == NULL) { return true; }
+
+	if (!map_entity_get_float(entity, key, value)) {
+		set_error(error, error_size,
+			  "invalid float property \"%s\": \"%s\"", key, text);
+		return false;
 	}
 
 	return true;
@@ -214,8 +269,8 @@ bool map_spawn_entities(const map_t *map,
 			return false;
 		}
 
-		if (!build_properties(map_entity, assets, &properties, error,
-				      error_size)) {
+		if (!build_properties(map_entity, classname, assets,
+				      &properties, error, error_size)) {
 			rollback_entities(world, initial_count);
 			return false;
 		}

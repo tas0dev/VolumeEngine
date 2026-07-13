@@ -16,6 +16,8 @@ entity_properties_t entity_properties_create(void) {
 	properties.mesh = NULL;
 	properties.material = NULL;
 	properties.transform = transform_create();
+	properties.light_color = vec3_create(1.0f, 1.0f, 1.0f);
+	properties.light_intensity = 1.0f;
 	properties.casts_shadow = true;
 
 	return properties;

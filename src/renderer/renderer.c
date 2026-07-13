@@ -378,27 +378,26 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const mesh_t *mesh,
 			const material_t *material,
 			const mat4_t *model,
-			const mat4_t *view,
-			const mat4_t *projection,
-			const mat4_t *light_view_projection) {
-	const vec3_t light_direction = vec3_create(-1.0f, -1.0f, -1.0f);
-	const vec3_t light_color = vec3_create(1.0f, 1.0f, 1.0f);
+			const render_view_t *view) {
+	vec3_t light_color;
 
 	if (renderer == NULL || mesh == NULL || material == NULL ||
-	    model == NULL || view == NULL || projection == NULL ||
-	    light_view_projection == NULL) {
+	    model == NULL || view == NULL) {
 		return;
 	}
+
+	light_color = vec3_scale(view->light_color, view->light_intensity);
 
 	shader_bind(renderer->shader);
 
 	shader_set_mat4(renderer->shader, "model", model);
-	shader_set_mat4(renderer->shader, "view", view);
-	shader_set_mat4(renderer->shader, "projection", projection);
+	shader_set_mat4(renderer->shader, "view", &view->view);
+	shader_set_mat4(renderer->shader, "projection", &view->projection);
 	shader_set_mat4(renderer->shader, "light_view_projection",
-			light_view_projection);
+			&view->light_view_projection);
 
-	shader_set_vec3(renderer->shader, "light_direction", light_direction);
+	shader_set_vec3(renderer->shader, "light_direction",
+			view->light_direction);
 	shader_set_vec3(renderer->shader, "light_color", light_color);
 	shader_set_vec3(renderer->shader, "material_color", material->color);
 

@@ -11,6 +11,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -330,6 +331,27 @@ bool map_entity_get_bool(const map_entity_t *entity,
 	return false;
 }
 
+bool map_entity_get_float(const map_entity_t *entity,
+			  const char *key,
+			  float *value) {
+	const char *text;
+	float result;
+
+	if (value == NULL) { return false; }
+
+	text = map_entity_get_property(entity, key);
+	if (text == NULL) { return false; }
+
+	if (!parse_float(&text, &result)) { return false; }
+
+	text = skip_whitespace(text);
+	if (*text != '\0') { return false; }
+
+	*value = result;
+
+	return true;
+}
+
 static const char *skip_whitespace(const char *text) {
 	while (*text != '\0' && isspace((unsigned char)*text)) {
 		text++;
@@ -350,7 +372,9 @@ static bool parse_float(const char **text, float *value) {
 	errno = 0;
 	result = strtof(*text, &end);
 
-	if (end == *text || errno == ERANGE) { return false; }
+	if (end == *text || errno == ERANGE || !isfinite(result)) {
+		return false;
+	}
 
 	*text = end;
 	*value = result;

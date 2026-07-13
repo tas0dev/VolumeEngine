@@ -26,3 +26,12 @@ entity
 	"scale" "1 1 1"
 	"casts_shadow" "0"
 }
+
+entity
+{
+	"classname" "light_environment"
+	"targetname" "sun"
+	"angles" "-45 -45 0"
+	"color" "1.0 0.95 0.85"
+	"intensity" "1.0"
+}

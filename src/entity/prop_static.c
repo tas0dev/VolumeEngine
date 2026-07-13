@@ -101,9 +101,7 @@ draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view) {
 
 	model = transform_get_matrix(&entity->transform);
 
-	renderer_draw_mesh(renderer, prop->mesh, prop->material, &model,
-			   &view->view, &view->projection,
-			   &view->light_view_projection);
+	renderer_draw_mesh(renderer, prop->mesh, prop->material, &model, view);
 }
 
 static void destroy_entity(entity_t *entity) { free(entity); }

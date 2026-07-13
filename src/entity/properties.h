@@ -19,6 +19,8 @@ typedef struct entity_properties {
 	const mesh_t *mesh;
 	const material_t *material;
 	transform_t transform;
+	vec3_t light_color;
+	float light_intensity;
 	bool casts_shadow;
 } entity_properties_t;
 

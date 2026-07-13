@@ -12,6 +12,6 @@
 #include "mat4.h"
 #include "vec3.h"
 
-#define PI 3.1415926535
+#define PI 3.14159265358979323846f
 
 #endif

@@ -9,7 +9,7 @@
 #ifndef VOLUME_CORE_TYPES_H
 #define VOLUME_CORE_TYPES_H
 
-typedef struct engine engine_t;
+typedef struct volume engine_t;
 typedef struct renderer renderer_t;
 typedef struct platform platform_t;
 

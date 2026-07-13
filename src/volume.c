@@ -6,33 +6,32 @@
  *
  */
 
-#include "engine.h"
+#include "volume.h"
 #include "core/log.h"
 #include "platform/platform.h"
 #include "renderer/renderer.h"
 #include <stdlib.h>
 
-struct engine {
+struct volume {
 	platform_t *platform;
 	renderer_t *renderer;
+	const game_t *game;
 	bool running;
-	double previous_time;
-	engine_initialize_fn initialize;
-	engine_update_fn update;
-	engine_render_fn render;
-	engine_shutdown_fn shutdown;
-	void *user_data;
 	bool initialized;
+	double previous_time;
 };
 
 engine_t *engine_create(const engine_config_t *config) {
+	engine_t *engine;
 	platform_config_t platform_config;
-	if (config == NULL || config->application_name == NULL) {
+
+	if (config == NULL || config->application_name == NULL ||
+	    config->game == NULL) {
 		log_error("Invalid engine configuration");
 		return NULL;
 	}
 
-	engine_t *engine = calloc(1, sizeof(*engine));
+	engine = calloc(1, sizeof(*engine));
 	if (engine == NULL) {
 		log_error("Failed to allocate engine");
 		return NULL;
@@ -55,14 +54,10 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
-	engine->initialize = config->initialize;
-	engine->update = config->update;
-	engine->render = config->render;
-	engine->shutdown = config->shutdown;
-	engine->user_data = config->user_data;
+	engine->game = config->game;
 
-	if (engine->initialize != NULL &&
-	    !engine->initialize(engine, engine->user_data)) {
+	if (engine->game->initialize != NULL &&
+	    !engine->game->initialize(engine, engine->game->user_data)) {
 		renderer_destroy(engine->renderer);
 		platform_destroy(engine->platform);
 		free(engine);
@@ -70,7 +65,6 @@ engine_t *engine_create(const engine_config_t *config) {
 	}
 
 	engine->initialized = true;
-
 	engine->running = true;
 	engine->previous_time = platform_get_time();
 
@@ -82,8 +76,9 @@ engine_t *engine_create(const engine_config_t *config) {
 void engine_destroy(engine_t *engine) {
 	if (engine == NULL) { return; }
 
-	if (engine->initialized && engine->shutdown != NULL) {
-		engine->shutdown(engine, engine->user_data);
+	if (engine->initialized && engine->game != NULL &&
+	    engine->game->shutdown != NULL) {
+		engine->game->shutdown(engine, engine->game->user_data);
 	}
 
 	renderer_destroy(engine->renderer);
@@ -94,28 +89,30 @@ void engine_destroy(engine_t *engine) {
 }
 
 bool engine_run(engine_t *engine) {
+	double current_time;
+	float delta_time;
+
 	if (engine == NULL) { return false; }
 
 	while (engine->running) {
-
 		if (!platform_poll_events(engine->platform)) {
 			engine->running = false;
 			continue;
 		}
 
-		const double current_time = platform_get_time();
-		const float delta_time =
-			(float)(current_time - engine->previous_time);
+		current_time = platform_get_time();
+		delta_time = (float)(current_time - engine->previous_time);
 		engine->previous_time = current_time;
 
-		if (engine->update != NULL) {
-			engine->update(engine, delta_time, engine->user_data);
+		if (engine->game->update != NULL) {
+			engine->game->update(engine, delta_time,
+					     engine->game->user_data);
 		}
 
 		renderer_begin_frame(engine->renderer);
 
-		if (engine->render != NULL) {
-			engine->render(engine, engine->user_data);
+		if (engine->game->render != NULL) {
+			engine->game->render(engine, engine->game->user_data);
 		}
 
 		renderer_end_frame(engine->renderer);
@@ -125,7 +122,8 @@ bool engine_run(engine_t *engine) {
 }
 
 renderer_t *engine_get_renderer(engine_t *engine) {
-	if (engine == NULL) { return NULL; }
+	if (engine == NULL) {
+		return NULL; }
 
 	return engine->renderer;
 }

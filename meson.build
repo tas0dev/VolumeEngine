@@ -19,7 +19,7 @@ math = cc.find_library('m', required : true)
 
 sources = files(
         'src/main.c',
-        'src/engine.c',
+        'src/volume.c',
         'src/platform/platform.c',
         'src/core/log.c',
         'src/renderer/renderer.c',
@@ -32,6 +32,7 @@ sources = files(
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',
+        'src/game/game.c',
 )
 
 volume_c_args = [

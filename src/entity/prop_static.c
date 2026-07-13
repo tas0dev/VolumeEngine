@@ -15,9 +15,12 @@ static void draw_shadow_entity(entity_t *entity, renderer_t *renderer);
 static void
 draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view);
 static void destroy_entity(entity_t *entity);
+static entity_t *create_entity(entity_id_t id,
+			       const entity_properties_t *properties);
 
 static const entity_class_t prop_static_class = {
 	.classname = "prop_static",
+	.create = create_entity,
 	.update = NULL,
 	.draw_shadow = draw_shadow_entity,
 	.draw = draw_entity,
@@ -104,3 +107,23 @@ draw_entity(entity_t *entity, renderer_t *renderer, const render_view_t *view) {
 }
 
 static void destroy_entity(entity_t *entity) { free(entity); }
+
+bool prop_static_register(void) {
+	return entity_register_class(&prop_static_class);
+}
+
+static entity_t *create_entity(const entity_id_t id,
+			       const entity_properties_t *properties) {
+	prop_static_t *prop;
+
+	if (properties == NULL) { return NULL; }
+
+	prop = prop_static_create(id, properties->mesh, properties->material);
+
+	if (prop == NULL) { return NULL; }
+
+	prop->entity.transform = properties->transform;
+	prop->casts_shadow = properties->casts_shadow;
+
+	return &prop->entity;
+}

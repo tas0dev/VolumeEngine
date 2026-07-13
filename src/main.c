@@ -147,6 +147,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state = user_data;
 
+	if (!prop_static_register()) { return false; }
+
 	game_state->mesh = create_test_mesh();
 	if (game_state->mesh == NULL) { return false; }
 

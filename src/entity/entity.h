@@ -23,6 +23,8 @@ typedef struct entity_class entity_class_t;
 
 struct entity_class {
 	const char *classname;
+	entity_t *(*create)(entity_id_t id,
+			    const entity_properties_t *properties);
 	void (*update)(entity_t *entity, float delta_time);
 	void (*draw_shadow)(entity_t *entity, renderer_t *renderer);
 	void (*draw)(entity_t *entity,
@@ -53,5 +55,6 @@ void entity_draw(entity_t *entity,
 void entity_destroy(entity_t *entity);
 void entity_set_active(entity_t *entity, bool active);
 bool entity_is_active(const entity_t *entity);
+bool entity_register_class(const entity_class_t *class);
 
 #endif

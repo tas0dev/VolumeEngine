@@ -98,6 +98,8 @@ static bool build_properties(const map_entity_t *entity,
 
 	*properties = entity_properties_create();
 
+	properties->targetname = map_entity_get_property(entity, "targetname");
+
 	if (!read_vec3_property(entity, "origin",
 				&properties->transform.position, error,
 				error_size)) {

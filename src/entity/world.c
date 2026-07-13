@@ -243,3 +243,23 @@ void world_draw(world_t *world,
 		entity_draw(world->entities[index], renderer, view);
 	}
 }
+
+entity_t *world_find_by_targetname(world_t *world, const char *targetname) {
+	const char *entity_targetname;
+	size_t index;
+
+	if (world == NULL || targetname == NULL) { return NULL; }
+
+	for (index = 0; index < world->count; index++) {
+		entity_targetname =
+			entity_get_targetname(world->entities[index]);
+
+		if (entity_targetname == NULL) { continue; }
+
+		if (strcmp(entity_targetname, targetname) == 0) {
+			return world->entities[index];
+		}
+	}
+
+	return NULL;
+}

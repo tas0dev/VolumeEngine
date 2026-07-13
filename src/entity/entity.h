@@ -36,6 +36,7 @@ struct entity_class {
 struct entity {
 	entity_id_t id;
 	const entity_class_t *class;
+	char *targetname;
 	transform_t transform;
 	bool active;
 };
@@ -57,5 +58,7 @@ void entity_set_active(entity_t *entity, bool active);
 bool entity_is_active(const entity_t *entity);
 bool entity_register_class(const entity_class_t *class);
 void entity_registry_shutdown(void);
+bool entity_set_targetname(entity_t *entity, const char *targetname);
+const char *entity_get_targetname(const entity_t *entity);
 
 #endif

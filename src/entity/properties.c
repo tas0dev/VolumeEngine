@@ -12,6 +12,7 @@
 entity_properties_t entity_properties_create(void) {
 	entity_properties_t properties;
 
+	properties.targetname = NULL;
 	properties.mesh = NULL;
 	properties.material = NULL;
 	properties.transform = transform_create();

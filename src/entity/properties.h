@@ -15,6 +15,7 @@
 #include <stdbool.h>
 
 typedef struct entity_properties {
+	const char *targetname;
 	const mesh_t *mesh;
 	const material_t *material;
 	transform_t transform;

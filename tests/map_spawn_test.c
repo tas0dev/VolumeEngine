@@ -47,6 +47,11 @@ static entity_t *create_test_entity(const entity_id_t id,
 
 	entity_initialize(&entity->entity, id, &test_entity_class);
 
+	if (!entity_set_targetname(&entity->entity, properties->targetname)) {
+		free(entity);
+		return NULL;
+	}
+
 	entity->properties = *properties;
 
 	return &entity->entity;
@@ -68,6 +73,7 @@ static bool test_spawn_entities(void) {
 				     "\t\"angles\" \"0 90 0\"\n"
 				     "\t\"scale\" \"2 3 4\"\n"
 				     "\t\"casts_shadow\" \"0\"\n"
+				     "\t\"targetname\" \"test_prop\"\n"
 				     "}\n";
 	asset_manager_t *assets;
 	material_t material;
@@ -111,6 +117,9 @@ static bool test_spawn_entities(void) {
 	CHECK(entity->properties.transform.scale.y == 3.0f);
 	CHECK(entity->properties.transform.scale.z == 4.0f);
 	CHECK(!entity->properties.casts_shadow);
+	CHECK(strcmp(entity_get_targetname(&entity->entity), "test_prop") == 0);
+	CHECK(world_find_by_targetname(world, "test_prop") == &entity->entity);
+	CHECK(world_find_by_targetname(world, "missing") == NULL);
 
 	world_destroy(world);
 	map_destroy(map);

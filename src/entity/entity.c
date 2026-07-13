@@ -30,6 +30,7 @@ void entity_initialize(entity_t *entity,
 
 	entity->id = id;
 	entity->class = class;
+	entity->targetname = NULL;
 	entity->transform = transform_create();
 	entity->active = true;
 }
@@ -84,12 +85,18 @@ void entity_draw(entity_t *entity,
 }
 
 void entity_destroy(entity_t *entity) {
-	if (entity == NULL || entity->class == NULL ||
-	    entity->class->destroy == NULL) {
-		return;
-	}
+	const entity_class_t *class;
 
-	entity->class->destroy(entity);
+	if (entity == NULL) { return; }
+
+	class = entity->class;
+
+	free(entity->targetname);
+	entity->targetname = NULL;
+
+	if (class == NULL || class->destroy == NULL) { return; }
+
+	class->destroy(entity);
 }
 
 void entity_set_active(entity_t *entity, const bool active) {
@@ -164,4 +171,33 @@ void entity_registry_shutdown(void) {
 	registry.classes = NULL;
 	registry.count = 0;
 	registry.capacity = 0;
+}
+
+bool entity_set_targetname(entity_t *entity, const char *targetname) {
+	char *copy;
+	size_t length;
+
+	if (entity == NULL) { return false; }
+
+	copy = NULL;
+
+	if (targetname != NULL && targetname[0] != '\0') {
+		length = strlen(targetname);
+
+		copy = malloc(length + 1);
+		if (copy == NULL) { return false; }
+
+		memcpy(copy, targetname, length + 1);
+	}
+
+	free(entity->targetname);
+	entity->targetname = copy;
+
+	return true;
+}
+
+const char *entity_get_targetname(const entity_t *entity) {
+	if (entity == NULL) { return NULL; }
+
+	return entity->targetname;
 }

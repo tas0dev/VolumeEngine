@@ -32,5 +32,6 @@ void world_draw_shadows(world_t *world, renderer_t *renderer);
 void world_draw(world_t *world,
 		renderer_t *renderer,
 		const render_view_t *view);
+entity_t *world_find_by_targetname(world_t *world, const char *targetname);
 
 #endif

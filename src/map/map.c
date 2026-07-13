@@ -8,6 +8,9 @@
 
 #include "map/map.h"
 #include "map/keyvalues.h"
+
+#include <ctype.h>
+#include <errno.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -47,7 +50,8 @@ set_error(char *error, const size_t error_size, const char *format, ...) {
 	vsnprintf(error, error_size, format, arguments);
 	va_end(arguments);
 }
-
+static bool parse_float(const char **text, float *value);
+static const char *skip_whitespace(const char *text);
 static bool reserve_entities(map_t *map, const size_t capacity) {
 	map_entity_t *entities;
 
@@ -277,4 +281,79 @@ const char *map_entity_get_property(const map_entity_t *entity,
 	}
 
 	return keyvalues_node_get_value(property);
+}
+
+bool map_entity_get_vec3(const map_entity_t *entity,
+			 const char *key,
+			 vec3_t *value) {
+	const char *text;
+	vec3_t result;
+
+	if (value == NULL) { return false; }
+
+	text = map_entity_get_property(entity, key);
+	if (text == NULL) { return false; }
+
+	if (!parse_float(&text, &result.x) || !parse_float(&text, &result.y) ||
+	    !parse_float(&text, &result.z)) {
+		return false;
+	}
+
+	text = skip_whitespace(text);
+	if (*text != '\0') { return false; }
+
+	*value = result;
+
+	return true;
+}
+
+bool map_entity_get_bool(const map_entity_t *entity,
+			 const char *key,
+			 bool *value) {
+	const char *text;
+
+	if (value == NULL) { return false; }
+
+	text = map_entity_get_property(entity, key);
+	if (text == NULL) { return false; }
+
+	if (strcmp(text, "1") == 0 || strcmp(text, "true") == 0) {
+		*value = true;
+		return true;
+	}
+
+	if (strcmp(text, "0") == 0 || strcmp(text, "false") == 0) {
+		*value = false;
+		return true;
+	}
+
+	return false;
+}
+
+static const char *skip_whitespace(const char *text) {
+	while (*text != '\0' && isspace((unsigned char)*text)) {
+		text++;
+	}
+
+	return text;
+}
+
+static bool parse_float(const char **text, float *value) {
+	char *end;
+	float result;
+
+	if (*text == NULL) { return false; }
+
+	*text = skip_whitespace(*text);
+	if (**text == '\0') { return false; }
+
+	errno = 0;
+	result = strtof(*text, &end);
+
+	if (end == *text || errno == ERANGE) { return false; }
+
+	*text = end;
+	*value = result;
+
+	return true;
 }

@@ -65,7 +65,8 @@ platform_t *platform_create(const platform_config_t *config) {
 		return NULL;
 	}
 
-	if (!SDL_SetWindowRelativeMouseMode(platform->window, true)) {
+	if (config->capture_mouse &&
+	    !SDL_SetWindowRelativeMouseMode(platform->window, true)) {
 		log_error("Failed to capture mouse: %s", SDL_GetError());
 		SDL_DestroyWindow(platform->window);
 		free(platform);
@@ -241,4 +242,21 @@ void platform_sleep(const double seconds) {
 
 	const Uint64 nanoseconds = (Uint64)(seconds * 1000000000.0);
 	SDL_DelayNS(nanoseconds);
+}
+
+bool platform_set_mouse_captured(platform_t *platform, const bool captured) {
+	if (platform == NULL || platform->window == NULL) { return false; }
+
+	if (!SDL_SetWindowRelativeMouseMode(platform->window, captured)) {
+		log_error("Failed to change mouse capture: %s", SDL_GetError());
+		return false;
+	}
+
+	return true;
+}
+
+bool platform_is_mouse_captured(const platform_t *platform) {
+	if (platform == NULL || platform->window == NULL) { return false; }
+
+	return SDL_GetWindowRelativeMouseMode(platform->window);
 }

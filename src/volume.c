@@ -42,6 +42,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	platform_config.title = config->application_name;
 	platform_config.width = config->window_width;
 	platform_config.height = config->window_height;
+	platform_config.capture_mouse = config->capture_mouse;
 
 	engine->platform = platform_create(&platform_config);
 	if (engine->platform == NULL) {
@@ -145,4 +146,16 @@ input_t *engine_get_input(engine_t *engine) {
 	if (engine == NULL) { return NULL; }
 
 	return engine->input;
+}
+
+bool engine_set_mouse_captured(engine_t *engine, const bool captured) {
+	if (engine == NULL) { return false; }
+
+	return platform_set_mouse_captured(engine->platform, captured);
+}
+
+bool engine_is_mouse_captured(const engine_t *engine) {
+	if (engine == NULL) { return false; }
+
+	return platform_is_mouse_captured(engine->platform);
 }

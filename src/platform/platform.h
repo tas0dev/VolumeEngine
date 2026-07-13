@@ -16,6 +16,7 @@ typedef struct platform_config {
 	const char *title;
 	int width;
 	int height;
+	bool capture_mouse;
 } platform_config_t;
 
 platform_t *platform_create(const platform_config_t *config);
@@ -30,5 +31,7 @@ void platform_get_drawable_size(const platform_t *platform,
 				int *height);
 double platform_get_time(void);
 void platform_sleep(double seconds);
+bool platform_set_mouse_captured(platform_t *platform, bool captured);
+bool platform_is_mouse_captured(const platform_t *platform);
 
 #endif

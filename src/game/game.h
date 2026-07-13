@@ -20,6 +20,4 @@ typedef struct game {
 	void *user_data;
 } game_t;
 
-const game_t *game_get(void);
-
 #endif

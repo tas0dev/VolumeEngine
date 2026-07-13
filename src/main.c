@@ -6,6 +6,8 @@
  *
  */
 
+#include "entity/prop_static.h"
+#include "entity/world.h"
 #include "game/game.h"
 #include "input/input.h"
 #include "math/mat4.h"
@@ -20,15 +22,17 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct game_state {
+	world_t *world;
 	mesh_t *mesh;
 	mesh_t *floor_mesh;
 	material_t material;
 	material_t floor_material;
+	prop_static_t *mesh_prop;
+	prop_static_t *floor_prop;
 	camera_t camera;
-	transform_t mesh_transform;
-	transform_t floor_transform;
 	float yaw;
 	float pitch;
 } game_state_t;
@@ -159,11 +163,62 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->floor_material.specular_strength = 0.1f;
 	game_state->floor_material.shininess = 8.0f;
 
-	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
+	game_state->world = world_create();
+	if (game_state->world == NULL) {
+		mesh_destroy(game_state->floor_mesh);
+		mesh_destroy(game_state->mesh);
+		game_state->floor_mesh = NULL;
+		game_state->mesh = NULL;
+		return false;
+	}
 
-	game_state->mesh_transform = transform_create();
-	game_state->floor_transform = transform_create();
-	game_state->floor_transform.position = vec3_create(0.0f, -1.0f, 0.0f);
+	game_state->mesh_prop =
+		prop_static_create(1, game_state->mesh, &game_state->material);
+	if (game_state->mesh_prop == NULL) {
+		world_destroy(game_state->world);
+		mesh_destroy(game_state->floor_mesh);
+		mesh_destroy(game_state->mesh);
+		game_state->world = NULL;
+		game_state->floor_mesh = NULL;
+		game_state->mesh = NULL;
+		return false;
+	}
+
+	game_state->floor_prop = prop_static_create(
+		2, game_state->floor_mesh, &game_state->floor_material);
+	if (game_state->floor_prop == NULL) {
+		prop_static_destroy(game_state->mesh_prop);
+		world_destroy(game_state->world);
+		mesh_destroy(game_state->floor_mesh);
+		mesh_destroy(game_state->mesh);
+		game_state->mesh_prop = NULL;
+		game_state->world = NULL;
+		game_state->floor_mesh = NULL;
+		game_state->mesh = NULL;
+		return false;
+	}
+
+	game_state->floor_prop->entity.transform.position =
+		vec3_create(0.0f, -1.0f, 0.0f);
+
+	if (!world_add_entity(game_state->world,
+			      prop_static_get_entity(game_state->mesh_prop)) ||
+	    !world_add_entity(game_state->world,
+			      prop_static_get_entity(game_state->floor_prop))) {
+		prop_static_destroy(game_state->floor_prop);
+		prop_static_destroy(game_state->mesh_prop);
+		world_destroy(game_state->world);
+		mesh_destroy(game_state->floor_mesh);
+		mesh_destroy(game_state->mesh);
+		game_state->floor_prop = NULL;
+		game_state->mesh_prop = NULL;
+		game_state->world = NULL;
+		game_state->floor_mesh = NULL;
+		game_state->mesh = NULL;
+		return false;
+	}
+
+	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
 
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
@@ -251,20 +306,23 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 			vec3_add(game_state->camera.position, movement);
 	}
 
-	game_state->mesh_transform.rotation.x += delta_time * 0.7f;
-	game_state->mesh_transform.rotation.y += delta_time;
+	game_state->mesh_prop->entity.transform.rotation.x += delta_time * 0.7f;
+	game_state->mesh_prop->entity.transform.rotation.y += delta_time;
 }
 
 static void render(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	renderer_t *renderer;
+	entity_t *entity;
+	prop_static_t *prop;
 	mat4_t model;
-	mat4_t floor_model;
 	mat4_t view;
 	mat4_t projection;
 	mat4_t light_view;
 	mat4_t light_projection;
 	mat4_t light_view_projection;
+	size_t index;
+	size_t entity_count;
 	int width;
 	int height;
 	float aspect_ratio;
@@ -273,50 +331,77 @@ static void render(engine_t *engine, void *user_data) {
 	renderer = engine_get_renderer(engine);
 
 	renderer_get_size(renderer, &width, &height);
-	if (width <= 0 || height <= 0) { return; }
+	if (width <= 0 || height <= 0) {
+		return; }
 
 	aspect_ratio = (float)width / (float)height;
-
-	model = transform_get_matrix(&game_state->mesh_transform);
-	floor_model = transform_get_matrix(&game_state->floor_transform);
 
 	view = camera_get_view(&game_state->camera);
 	projection = camera_get_projection(&game_state->camera, aspect_ratio);
 
-	light_view = mat4_look_at(vec3_create(3.0f, 4.0f, 3.0f),
+	light_view = mat4_look_at(
+		vec3_create(3.0f, 4.0f, 3.0f),
 				  vec3_create(0.0f, 0.0f, 0.0f),
 				  vec3_create(0.0f, 1.0f, 0.0f));
 
 	light_projection =
 		mat4_orthographic(-5.0f, 5.0f, -5.0f, 5.0f, 0.1f, 20.0f);
 
-	light_view_projection = mat4_multiply(light_projection, light_view);
+	light_view_projection =
+		mat4_multiply(light_projection, light_view);
+
+	entity_count = world_get_entity_count(game_state->world);
 
 	renderer_begin_shadow_pass(renderer, &light_view_projection);
-	renderer_draw_shadow_mesh(renderer, game_state->mesh, &model);
-	renderer_draw_shadow_mesh(renderer, game_state->floor_mesh,
-				  &floor_model);
+
+	for (index = 0; index < entity_count; index++) {
+		entity = world_get_entity(game_state->world, index);
+
+		if (!entity_is_active(entity) || entity->classname == NULL ||
+		    strcmp(entity->classname, "prop_static") != 0) {
+			continue;
+		}
+
+		prop = (prop_static_t *)entity;
+		if (!prop->casts_shadow) { continue; }
+
+		model = transform_get_matrix(&entity->transform);
+		renderer_draw_shadow_mesh(renderer, prop->mesh, &model);
+	}
+
 	renderer_end_shadow_pass(renderer);
 
-	renderer_draw_mesh(renderer, game_state->mesh, &game_state->material,
-			   &model, &view, &projection, &light_view_projection);
+	for (index = 0; index < entity_count; index++) {
+		entity = world_get_entity(game_state->world, index);
 
-	renderer_draw_mesh(
-		renderer, game_state->floor_mesh,
-			   &game_state->floor_material, &floor_model, &view,
-			   &projection, &light_view_projection);
+		if (!entity_is_active(entity) || entity->classname == NULL ||
+		    strcmp(entity->classname, "prop_static") != 0) {
+			continue;
+		}
+
+		prop = (prop_static_t *)entity;
+		model = transform_get_matrix(&entity->transform);
+
+		renderer_draw_mesh(renderer, prop->mesh, prop->material, &model,
+				   &view, &projection, &light_view_projection);
+	}
 }
 
 static void shutdown(engine_t *engine, void *user_data) {
-	game_state_t *game_state;
-
 	(void)engine;
 
+	game_state_t *game_state;
 	game_state = user_data;
 
+	prop_static_destroy(game_state->floor_prop);
+	prop_static_destroy(game_state->mesh_prop);
+	world_destroy(game_state->world);
 	mesh_destroy(game_state->floor_mesh);
 	mesh_destroy(game_state->mesh);
 
+	game_state->floor_prop = NULL;
+	game_state->mesh_prop = NULL;
+	game_state->world = NULL;
 	game_state->floor_mesh = NULL;
 	game_state->mesh = NULL;
 }

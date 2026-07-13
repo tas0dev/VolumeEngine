@@ -272,10 +272,9 @@ static void update(engine_t *engine, float delta_time, void *user_data) {
 		game_state->pitch = -pitch_limit;
 	}
 
-	game_state->camera.forward = vec3_normalize(vec3_create(
-		(float)(cos(game_state->pitch) * cos(game_state->yaw)),
-		(float)sin(game_state->pitch),
-		(float)(cos(game_state->pitch) * sin(game_state->yaw))));
+	game_state->camera.forward = vec3_normalize(vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
+			    sinf(game_state->pitch),
+			    cosf(game_state->pitch) * sinf(game_state->yaw)));
 
 	forward = game_state->camera.forward;
 	forward.y = 0.0f;

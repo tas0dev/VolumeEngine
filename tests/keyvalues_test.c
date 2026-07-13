@@ -12,6 +12,15 @@
 #include <stdio.h>
 #include <string.h>
 
+static const char *get_value(const keyvalues_node_t *node, const char *key) {
+	const keyvalues_node_t *child;
+
+	child = keyvalues_node_find_child(node, key);
+	if (child == NULL) { return NULL; }
+
+	return keyvalues_node_get_value(child);
+}
+
 static bool test_basic_document(void) {
 	static const char source[] = "world\n"
 				     "{\n"
@@ -45,22 +54,19 @@ static bool test_basic_document(void) {
 	CHECK(world != NULL);
 	CHECK(keyvalues_node_is_block(world));
 	CHECK(strcmp(keyvalues_node_get_key(world), "world") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(world, "classname"),
-		     "worldspawn") == 0);
+	CHECK(strcmp(get_value(world, "classname"), "worldspawn") == 0);
 
 	entity = keyvalues_node_get_child(root, 1);
 	CHECK(entity != NULL);
 	CHECK(keyvalues_node_is_block(entity));
 	CHECK(strcmp(keyvalues_node_get_key(entity), "entity") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "classname"),
-		     "prop_static") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "model"),
-		     "models/crate.obj") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "origin"), "1 2 3") == 0);
+	CHECK(strcmp(get_value(entity, "classname"), "prop_static") == 0);
+	CHECK(strcmp(get_value(entity, "model"), "models/crate.obj") == 0);
+	CHECK(strcmp(get_value(entity, "origin"), "1 2 3") == 0);
 
 	entity = keyvalues_node_get_child(root, 2);
 	CHECK(entity != NULL);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "origin"), "4 5 6") == 0);
+	CHECK(strcmp(get_value(entity, "origin"), "4 5 6") == 0);
 
 	keyvalues_destroy(document);
 
@@ -92,14 +98,12 @@ static bool test_comments_and_bare_tokens(void) {
 
 	entity = keyvalues_node_get_child(root, 0);
 	CHECK(entity != NULL);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "classname"),
-		     "prop_static") == 0);
+	CHECK(strcmp(get_value(entity, "classname"), "prop_static") == 0);
 
 	properties = keyvalues_node_find_child(entity, "properties");
 	CHECK(properties != NULL);
 	CHECK(keyvalues_node_is_block(properties));
-	CHECK(strcmp(test_keyvalues_get_value(properties, "value"),
-		     "nested value") == 0);
+	CHECK(strcmp(get_value(properties, "value"), "nested value") == 0);
 
 	keyvalues_destroy(document);
 
@@ -125,7 +129,7 @@ static bool test_escaped_string(void) {
 	entity = keyvalues_node_get_child(root, 0);
 
 	CHECK(entity != NULL);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "value"), expected) == 0);
+	CHECK(strcmp(get_value(entity, "value"), expected) == 0);
 
 	keyvalues_destroy(document);
 
@@ -175,9 +179,8 @@ static bool test_load_file(void) {
 	entity = keyvalues_node_get_child(root, 1);
 	CHECK(entity != NULL);
 	CHECK(strcmp(keyvalues_node_get_key(entity), "entity") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "classname"),
-		     "prop_static") == 0);
-	CHECK(strcmp(test_keyvalues_get_value(entity, "origin"), "0 1 0") == 0);
+	CHECK(strcmp(get_value(entity, "classname"), "prop_static") == 0);
+	CHECK(strcmp(get_value(entity, "origin"), "0 1 0") == 0);
 
 	keyvalues_destroy(document);
 

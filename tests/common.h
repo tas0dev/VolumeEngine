@@ -9,7 +9,6 @@
 #ifndef VOLUME_TESTS_COMMON_H
 #define VOLUME_TESTS_COMMON_H
 
-#include "map/keyvalues.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -29,8 +28,6 @@ bool test_check(bool condition,
 		const char *expression,
 		const char *file,
 		int line);
-const char *test_keyvalues_get_value(const keyvalues_node_t *node,
-				     const char *key);
 int test_run_all(const test_case_t *tests, size_t count);
 
 #endif

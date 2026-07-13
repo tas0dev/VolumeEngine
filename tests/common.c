@@ -20,16 +20,6 @@ bool test_check(const bool condition,
 	return false;
 }
 
-const char *test_keyvalues_get_value(const keyvalues_node_t *node,
-				     const char *key) {
-	const keyvalues_node_t *child;
-
-	child = keyvalues_node_find_child(node, key);
-	if (child == NULL) { return NULL; }
-
-	return keyvalues_node_get_value(child);
-}
-
 int test_run_all(const test_case_t *tests, const size_t count) {
 	size_t index;
 	size_t passed;

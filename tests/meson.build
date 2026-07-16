@@ -1,14 +1,10 @@
-cc = meson.get_compiler('c')
-math = cc.find_library('m', required : true)
-
 keyvalues_test = executable(
     'keyvalues-test',
     [
         'common.c',
         'keyvalues_test.c',
-        '../src/map/keyvalues.c',
     ],
-    include_directories : include_directories('../src'),
+    dependencies : volume_dependency,
     c_args : [
         '-DTEST_KEYVALUES_FILE="@0@"'.format(
             meson.current_source_dir() / 'fixtures/basic.volmap'
@@ -22,10 +18,8 @@ map_test = executable(
     [
         'common.c',
         'map_test.c',
-        '../src/map/map.c',
-        '../src/map/keyvalues.c',
     ],
-    include_directories : include_directories('../src'),
+    dependencies : volume_dependency,
     install : false,
 )
 
@@ -34,23 +28,8 @@ asset_manager_test = executable(
     [
         'common.c',
         'asset_manager_test.c',
-        '../src/asset/manager.c',
-        '../src/asset/mesh_loader.c',
-        '../src/renderer/mesh.c',
-        '../src/core/log.c',
-        '../src/asset/material_loader.c',
-        '../src/map/keyvalues.c',
-        '../src/renderer/material.c',
-        '../src/renderer/texture.c',
-        '../src/math/vec3.c',
     ],
-    dependencies : [
-        assimp,
-        epoxy,
-        opengl,
-        math,
-    ],
-    include_directories : volume_include,
+    dependencies : volume_dependency,
     install : false,
 )
 
@@ -59,30 +38,8 @@ map_spawn_test = executable(
     [
         'common.c',
         'map_spawn_test.c',
-        '../src/asset/manager.c',
-        '../src/asset/mesh_loader.c',
-        '../src/asset/material_loader.c',
-        '../src/core/log.c',
-        '../src/entity/entity.c',
-        '../src/entity/properties.c',
-        '../src/entity/world.c',
-        '../src/map/keyvalues.c',
-        '../src/map/map.c',
-        '../src/map/spawn.c',
-        '../src/math/mat4.c',
-        '../src/math/vec3.c',
-        '../src/renderer/material.c',
-        '../src/renderer/mesh.c',
-        '../src/scene/transform.c',
-        '../src/renderer/texture.c',
     ],
-    include_directories : volume_include,
-    dependencies : [
-        math,
-        assimp,
-        epoxy,
-        opengl,
-    ],
+    dependencies : volume_dependency,
     install : false,
 )
 
@@ -96,20 +53,13 @@ material_loader_test = executable(
     [
         'common.c',
         'material_loader_test.c',
-        '../src/asset/material_loader.c',
-        '../src/map/keyvalues.c',
-        '../src/renderer/material.c',
-        '../src/math/vec3.c',
     ],
-    dependencies : [
-        math,
-    ],
+    dependencies : volume_dependency,
     c_args : [
         '-DTEST_MATERIAL_FILE="@0@"'.format(
             material_fixture
         ),
     ],
-    include_directories : include_directories('../src'),
     install : false,
 )
 
@@ -117,18 +67,22 @@ test(
     'material-loader',
     material_loader_test,
 )
+
 test(
     'map-spawn',
     map_spawn_test,
 )
+
 test(
     'asset-manager',
     asset_manager_test,
 )
+
 test(
     'map',
     map_test,
 )
+
 test(
     'keyvalues',
     keyvalues_test,

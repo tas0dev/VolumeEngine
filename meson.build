@@ -1,5 +1,5 @@
 project(
-        'Volume',
+        'VolumeEngine',
         'c',
         version : '0.1.0',
         meson_version : '>=1.3.0',
@@ -18,11 +18,19 @@ epoxy = dependency('epoxy')
 assimp = dependency('assimp')
 math = cc.find_library('m', required : true)
 
-sources = files(
-        'src/main.c',
+volume_dependencies = [
+        sdl3,
+        opengl,
+        epoxy,
+        assimp,
+        math,
+]
+
+volume_sources = files(
         'src/volume.c',
         'src/platform/platform.c',
         'src/core/log.c',
+        'src/core/path.c',
         'src/entity/entity.c',
         'src/entity/builtin.c',
         'src/entity/prop_static.c',
@@ -50,30 +58,24 @@ sources = files(
         'src/asset/material_loader.c',
 )
 
-volume_c_args = [
-    '-DVOLUME_ASSET_DIR="@0@"'.format(
-        meson.project_source_root() / 'assets'
-    ),
-]
-
 volume_include = include_directories(
-    'src',
-    'libs',
+        'src',
+        'libs',
 )
 
-executable(
-        'volume',
-        sources,
-        dependencies : [
-                sdl3,
-                opengl,
-                epoxy,
-                assimp,
-                math,
-        ],
-        c_args : volume_c_args,
+volume_library = static_library(
+        'volumeengine',
+        volume_sources,
+        dependencies : volume_dependencies,
         include_directories : volume_include,
         install : false,
 )
 
+volume_dependency = declare_dependency(
+        link_with : volume_library,
+        dependencies : volume_dependencies,
+        include_directories : volume_include,
+)
+
+subdir('examples')
 subdir('tests')

@@ -3,11 +3,11 @@
  * This software is provided under the zlib License.
  *
  * Created by tas0dev
- *
  */
 
 #include "asset/manager.h"
 #include "core/log.h"
+#include "core/path.h"
 #include "entity/light_environment.h"
 #include "entity/world.h"
 #include "game/game.h"
@@ -74,33 +74,51 @@ int main(void) {
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	entity_t *light_entity;
+	char *asset_root;
+	char *map_path;
 	char error[512];
 
 	(void)engine;
 
 	game_state = user_data;
 
-	game_state->assets = asset_manager_create_at(VOLUME_ASSET_DIR);
+	asset_root = path_from_executable("assets/game");
+	map_path = path_from_executable("assets/game/maps/test.volmap");
+
+	if (asset_root == NULL || map_path == NULL) {
+		log_error("Failed to resolve game asset paths");
+		free(asset_root);
+		free(map_path);
+		return false;
+	}
+
+	game_state->assets = asset_manager_create_at(asset_root);
+	free(asset_root);
+
 	if (game_state->assets == NULL) {
 		log_error("Failed to create asset manager");
+		free(map_path);
 		return false;
 	}
 
 	game_state->world = world_create();
 	if (game_state->world == NULL) {
+		free(map_path);
 		destroy_game_resources(game_state);
 		return false;
 	}
 
-	if (!world_load_map(game_state->world, game_state->assets,
-			    VOLUME_ASSET_DIR "/maps/test.volmap", error,
-			    sizeof(error))) {
+	if (!world_load_map(game_state->world, game_state->assets, map_path,
+			    error, sizeof(error))) {
 		log_error("Failed to load test map: %s", error);
+		free(map_path);
 		destroy_game_resources(game_state);
 		return false;
-	}
+			    }
 
-	game_state->mesh_entity =
+	free(map_path);
+
+			    game_state->mesh_entity =
 		world_find_by_targetname(game_state->world, "rotating_box");
 
 	if (game_state->mesh_entity == NULL) {
@@ -121,7 +139,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 
 	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
-
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
 

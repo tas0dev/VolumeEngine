@@ -3,12 +3,12 @@
  * This software is provided under the zlib License.
  *
  * Created by tas0dev
- *
  */
 
 #include "renderer/renderer.h"
 
 #include "core/log.h"
+#include "core/path.h"
 #include "math/mat4.h"
 #include "platform/platform.h"
 #include "renderer/bloom_buffer.h"
@@ -66,13 +66,40 @@ static bool renderer_create_screen_quad(renderer_t *renderer) {
 	return true;
 }
 
+static shader_t *renderer_load_shader(const char *vertex_path,
+				      const char *fragment_path) {
+	char *resolved_vertex_path;
+	char *resolved_fragment_path;
+	shader_t *shader;
+
+	resolved_vertex_path = path_from_executable(vertex_path);
+	resolved_fragment_path = path_from_executable(fragment_path);
+
+	if (resolved_vertex_path == NULL || resolved_fragment_path == NULL) {
+		free(resolved_vertex_path);
+		free(resolved_fragment_path);
+		return NULL;
+	}
+
+	shader = shader_create(resolved_vertex_path, resolved_fragment_path);
+
+	free(resolved_vertex_path);
+	free(resolved_fragment_path);
+
+	return shader;
+}
+
 renderer_t *renderer_create(platform_t *platform) {
+	renderer_t *renderer;
+	int width;
+	int height;
+
 	if (platform == NULL) {
 		log_error("Cannot create renderer without a platform");
 		return NULL;
 	}
 
-	renderer_t *renderer = calloc(1, sizeof(*renderer));
+	renderer = calloc(1, sizeof(*renderer));
 	if (renderer == NULL) {
 		log_error("Failed to allocate renderer");
 		return NULL;
@@ -96,92 +123,67 @@ renderer_t *renderer_create(platform_t *platform) {
 		log_info("Failed to enable VSync: %s", SDL_GetError());
 	}
 
-	renderer->shader = shader_create("assets/shaders/basic.vert",
-					 "assets/shaders/basic.frag");
-
+	renderer->shader =
+		renderer_load_shader("assets/engine/shaders/basic.vert",
+				     "assets/engine/shaders/basic.frag");
 	if (renderer->shader == NULL) {
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
+	renderer->shadow_shader =
+		renderer_load_shader("assets/engine/shaders/shadow.vert",
+				     "assets/engine/shaders/shadow.frag");
+	if (renderer->shadow_shader == NULL) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
+	renderer->post_shader =
+		renderer_load_shader("assets/engine/shaders/post.vert",
+				     "assets/engine/shaders/post.frag");
+	if (renderer->post_shader == NULL) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
+	renderer->blur_shader =
+		renderer_load_shader("assets/engine/shaders/blur.vert",
+				     "assets/engine/shaders/blur.frag");
+	if (renderer->blur_shader == NULL) {
+		renderer_destroy(renderer);
 		return NULL;
 	}
 
 	renderer->shadow_map = shadow_map_create(2048, 2048);
 	if (renderer->shadow_map == NULL) {
-		shader_destroy(renderer->shader);
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
+		renderer_destroy(renderer);
 		return NULL;
 	}
 
-	renderer->shadow_shader =
-		shader_create(VOLUME_ASSET_DIR "/shaders/shadow.vert",
-			      VOLUME_ASSET_DIR "/shaders/shadow.frag");
-	if (renderer->shadow_shader == NULL) {
-		shadow_map_destroy(renderer->shadow_map);
-		shader_destroy(renderer->shader);
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
+	platform_get_drawable_size(platform, &width, &height);
+	if (width <= 0 || height <= 0) {
+		log_error("Invalid drawable size: %dx%d", width, height);
+		renderer_destroy(renderer);
 		return NULL;
 	}
 
-	renderer->post_shader =
-		shader_create(VOLUME_ASSET_DIR "/shaders/post.vert",
-			      VOLUME_ASSET_DIR "/shaders/post.frag");
-
-	if (renderer->post_shader == NULL) {
-		shader_destroy(renderer->shadow_shader);
-		shadow_map_destroy(renderer->shadow_map);
-		shader_destroy(renderer->shader);
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
+	renderer->hdr_buffer = hdr_buffer_create(width, height);
+	if (renderer->hdr_buffer == NULL) {
+		renderer_destroy(renderer);
 		return NULL;
 	}
 
-	renderer->blur_shader =
-		shader_create(VOLUME_ASSET_DIR "/shaders/blur.vert",
-			      VOLUME_ASSET_DIR "/shaders/blur.frag");
-	if (renderer->blur_shader == NULL) {
-		shader_destroy(renderer->post_shader);
-		shader_destroy(renderer->shadow_shader);
-		shadow_map_destroy(renderer->shadow_map);
-		shader_destroy(renderer->shader);
-		platform_gl_destroy_context(renderer->context);
-		free(renderer);
+	renderer->bloom_buffer = bloom_buffer_create(width, height);
+	if (renderer->bloom_buffer == NULL) {
+		renderer_destroy(renderer);
 		return NULL;
 	}
 
-	{
-		int width;
-		int height;
-
-		platform_get_drawable_size(platform, &width, &height);
-
-		renderer->hdr_buffer = hdr_buffer_create(width, height);
-		if (renderer->hdr_buffer == NULL) {
-			shader_destroy(renderer->post_shader);
-			shader_destroy(renderer->shadow_shader);
-			shadow_map_destroy(renderer->shadow_map);
-			shader_destroy(renderer->shader);
-			platform_gl_destroy_context(renderer->context);
-			free(renderer);
-			return NULL;
-		}
-
-		renderer->bloom_buffer = bloom_buffer_create(width, height);
-		if (renderer->bloom_buffer == NULL) {
-			hdr_buffer_destroy(renderer->hdr_buffer);
-			shader_destroy(renderer->blur_shader);
-			shader_destroy(renderer->post_shader);
-			shader_destroy(renderer->shadow_shader);
-			shadow_map_destroy(renderer->shadow_map);
-			shader_destroy(renderer->shader);
-			platform_gl_destroy_context(renderer->context);
-			free(renderer);
-			return NULL;
-		}
+	if (!renderer_create_screen_quad(renderer)) {
+		renderer_destroy(renderer);
+		return NULL;
 	}
-
-	renderer_create_screen_quad(renderer);
 
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);

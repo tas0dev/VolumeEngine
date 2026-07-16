@@ -3,7 +3,6 @@
  * This software is provided under the zlib License.
  *
  * Created by tas0dev
- *
  */
 
 #include "math/mat4.h"

@@ -33,6 +33,12 @@ character_controller_find_ground(const character_controller_t *controller,
 static void
 character_controller_resolve_contacts(character_controller_t *controller,
 				      const collision_result_t *collision);
+static void character_controller_slide_move(character_controller_t *controller,
+					    const collision_world_t *world,
+					    float delta_time);
+static vec3_t character_controller_clip_against_planes(vec3_t velocity,
+						       const vec3_t *planes,
+						       size_t plane_count);
 
 character_controller_t character_controller_create(const vec3_t position,
 						   const float radius,
@@ -77,7 +83,6 @@ void character_controller_move(character_controller_t *controller,
 			       const collision_world_t *world,
 			       const character_move_input_t *input,
 			       const float delta_time) {
-	collision_result_t collision;
 	vec3_t wish_direction;
 	float wish_speed;
 	float direction_length;
@@ -124,9 +129,7 @@ void character_controller_move(character_controller_t *controller,
 
 		character_controller_clip_velocity(controller,
 						   controller->ground_normal);
-
 		character_controller_apply_friction(controller, delta_time);
-
 		character_controller_accelerate(
 			controller, wish_direction, wish_speed,
 			controller->ground_acceleration, delta_time);
@@ -143,22 +146,17 @@ void character_controller_move(character_controller_t *controller,
 			controller->gravity * delta_time * 0.5f;
 	}
 
-	controller->position =
-		vec3_add(controller->position,
-			 vec3_scale(controller->velocity, delta_time));
-
 	controller->grounded = false;
 	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
 
-	if (world != NULL &&
-	    collision_world_resolve_aabb(world, controller->bounds,
-					 &controller->position, &collision)) {
-		character_controller_resolve_contacts(controller, &collision);
-	}
+	character_controller_slide_move(controller, world, delta_time);
 
 	if (!controller->grounded) {
 		controller->velocity.y +=
 			controller->gravity * delta_time * 0.5f;
+	} else {
+		character_controller_clip_velocity(controller,
+						   controller->ground_normal);
 	}
 }
 
@@ -330,4 +328,199 @@ character_controller_resolve_contacts(character_controller_t *controller,
 
 	character_controller_clip_velocity(controller,
 					   controller->ground_normal);
+}
+
+static void character_controller_slide_move(character_controller_t *controller,
+					    const collision_world_t *world,
+					    const float delta_time) {
+	const unsigned int maximum_bumps = 4;
+	const size_t maximum_planes = 5;
+	const float movement_epsilon = 0.0001f;
+	collision_result_t overlap;
+	collision_trace_t trace;
+	vec3_t planes[5];
+	vec3_t movement;
+	vec3_t start;
+	vec3_t end;
+	float movement_length;
+	float backed_fraction;
+	float remaining_time;
+	size_t plane_count;
+	unsigned int bump;
+
+	if (controller == NULL || delta_time <= 0.0f) { return; }
+
+	if (world == NULL) {
+		controller->position =
+			vec3_add(controller->position,
+				 vec3_scale(controller->velocity, delta_time));
+		return;
+	}
+
+	if (collision_world_resolve_aabb(world, controller->bounds,
+					 &controller->position, &overlap)) {
+		character_controller_resolve_contacts(controller, &overlap);
+	}
+
+	remaining_time = delta_time;
+	plane_count = 0;
+
+	for (bump = 0; bump < maximum_bumps; bump++) {
+		if (vec3_length(controller->velocity) <= 0.000001f) {
+			controller->velocity = vec3_create(0.0f, 0.0f, 0.0f);
+			break;
+		}
+
+		start = controller->position;
+		movement = vec3_scale(controller->velocity, remaining_time);
+		end = vec3_add(start, movement);
+
+		if (!collision_world_trace_aabb(world, controller->bounds,
+						start, end, &trace)) {
+			controller->position = end;
+			break;
+		}
+
+		if (trace.started_inside) {
+			if (!collision_world_resolve_aabb(
+				    world, controller->bounds,
+				    &controller->position, &overlap)) {
+				controller->velocity =
+					vec3_create(0.0f, 0.0f, 0.0f);
+				break;
+			}
+
+			character_controller_resolve_contacts(controller,
+							      &overlap);
+
+			controller->velocity =
+				character_controller_clip_against_planes(
+					controller->velocity, planes,
+					plane_count);
+
+			continue;
+		}
+
+		movement_length = vec3_length(movement);
+		backed_fraction = trace.fraction;
+
+		if (movement_length > movement_epsilon) {
+			backed_fraction -= movement_epsilon / movement_length;
+
+			if (backed_fraction < 0.0f) { backed_fraction = 0.0f; }
+		}
+
+		controller->position =
+			vec3_add(start, vec3_scale(movement, backed_fraction));
+
+		if (trace.normal.y >= controller->minimum_ground_normal_y) {
+			controller->grounded = true;
+			controller->ground_normal = trace.normal;
+		}
+
+		if (plane_count < maximum_planes) {
+			planes[plane_count] = trace.normal;
+			plane_count++;
+		} else {
+			controller->velocity = vec3_create(0.0f, 0.0f, 0.0f);
+			break;
+		}
+
+		controller->velocity = character_controller_clip_against_planes(
+			controller->velocity, planes, plane_count);
+
+		remaining_time *= 1.0f - trace.fraction;
+
+		if (remaining_time <= 0.000001f) { break; }
+	}
+
+	if (collision_world_resolve_aabb(world, controller->bounds,
+					 &controller->position, &overlap)) {
+		character_controller_resolve_contacts(controller, &overlap);
+	}
+}
+
+static vec3_t character_controller_clip_against_planes(
+	const vec3_t velocity, const vec3_t *planes, const size_t plane_count) {
+	const float plane_epsilon = 0.0001f;
+	vec3_t clipped;
+	vec3_t direction;
+	float direction_length;
+	float speed;
+	size_t first_index;
+	size_t second_index;
+	size_t test_index;
+	bool valid;
+
+	if (planes == NULL || plane_count == 0) { return velocity; }
+
+	for (first_index = 0; first_index < plane_count; first_index++) {
+		clipped = velocity;
+
+		if (vec3_dot(clipped, planes[first_index]) < 0.0f) {
+			clipped = vec3_subtract(
+				clipped,
+				vec3_scale(planes[first_index],
+					   vec3_dot(clipped,
+						    planes[first_index])));
+		}
+
+		valid = true;
+
+		for (test_index = 0; test_index < plane_count; test_index++) {
+			if (test_index == first_index) { continue; }
+
+			if (vec3_dot(clipped, planes[test_index]) <
+			    -plane_epsilon) {
+				valid = false;
+				break;
+			}
+		}
+
+		if (valid) { return clipped; }
+	}
+
+	if (plane_count == 2) {
+		direction = vec3_cross(planes[0], planes[1]);
+		direction_length = vec3_length(direction);
+
+		if (direction_length <= plane_epsilon) {
+			return vec3_create(0.0f, 0.0f, 0.0f);
+		}
+
+		direction = vec3_scale(direction, 1.0f / direction_length);
+		speed = vec3_dot(velocity, direction);
+
+		return vec3_scale(direction, speed);
+	}
+
+	for (first_index = 0; first_index < plane_count; first_index++) {
+		for (second_index = first_index + 1; second_index < plane_count;
+		     second_index++) {
+			direction = vec3_cross(planes[first_index],
+					       planes[second_index]);
+			direction_length = vec3_length(direction);
+
+			if (direction_length <= plane_epsilon) { continue; }
+
+			direction =
+				vec3_scale(direction, 1.0f / direction_length);
+			speed = vec3_dot(velocity, direction);
+			clipped = vec3_scale(direction, speed);
+			valid = true;
+
+			for (test_index = 0; test_index < plane_count;
+			     test_index++) {
+				if (vec3_dot(clipped, planes[test_index]) <
+				    -plane_epsilon) {
+					valid = false;
+					break;
+				}
+			}
+
+			if (valid) { return clipped; }
+		}
+	}
+
+	return vec3_create(0.0f, 0.0f, 0.0f);
 }

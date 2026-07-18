@@ -39,6 +39,15 @@ typedef struct collision_result {
 	collision_contact_t contacts[COLLISION_RESULT_MAX_CONTACTS];
 } collision_result_t;
 
+typedef struct collision_trace {
+	bool hit;
+	bool started_inside;
+	float fraction;
+	vec3_t position;
+	vec3_t normal;
+	entity_id_t entity_id;
+} collision_trace_t;
+
 typedef struct collision_world collision_world_t;
 
 collision_world_t *collision_world_create(void);
@@ -53,5 +62,10 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 				  aabb_t local_bounds,
 				  vec3_t *position,
 				  collision_result_t *result);
+bool collision_world_trace_aabb(const collision_world_t *world,
+				aabb_t local_bounds,
+				vec3_t start,
+				vec3_t end,
+				collision_trace_t *trace);
 
 #endif

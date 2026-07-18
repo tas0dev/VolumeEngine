@@ -33,5 +33,6 @@ mat4_t mat4_orthographic(float left,
 			 float near_plane,
 			 float far_plane);
 mat4_t mat4_scale(vec3_t scale);
+vec3_t mat4_transform_point(mat4_t matrix, vec3_t point);
 
 #endif

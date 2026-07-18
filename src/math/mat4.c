@@ -168,3 +168,16 @@ mat4_t mat4_scale(const vec3_t scale) {
 
 	return result;
 }
+
+vec3_t mat4_transform_point(const mat4_t matrix, const vec3_t point) {
+	vec3_t result;
+
+	result.x = matrix.elements[0] * point.x + matrix.elements[4] * point.y +
+		   matrix.elements[8] * point.z + matrix.elements[12];
+	result.y = matrix.elements[1] * point.x + matrix.elements[5] * point.y +
+		   matrix.elements[9] * point.z + matrix.elements[13];
+	result.z = matrix.elements[2] * point.x + matrix.elements[6] * point.y +
+		   matrix.elements[10] * point.z + matrix.elements[14];
+
+	return result;
+}

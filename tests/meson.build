@@ -83,6 +83,16 @@ collision_world_test = executable(
     install : false,
 )
 
+prop_static_collision_test = executable(
+    'prop-static-collision-test',
+    [
+        'common.c',
+        'prop_static_collision_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -116,4 +126,9 @@ test(
 test(
     'collision-world',
     collision_world_test,
+)
+
+test(
+    'prop-static-collision-test',
+    prop_static_collision_test
 )

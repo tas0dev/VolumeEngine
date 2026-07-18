@@ -8,6 +8,7 @@
 #ifndef VOLUME_ENTITY_WORLD_H
 #define VOLUME_ENTITY_WORLD_H
 
+#include "collision/collision_world.h"
 #include "entity/entity.h"
 #include "renderer/view.h"
 #include <stdbool.h>
@@ -32,5 +33,7 @@ void world_draw(world_t *world,
 		renderer_t *renderer,
 		const render_view_t *view);
 entity_t *world_find_by_targetname(world_t *world, const char *targetname);
+collision_world_t *world_get_collision_world(world_t *world);
+const collision_world_t *world_get_const_collision_world(const world_t *world);
 
 #endif

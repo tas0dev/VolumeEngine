@@ -7,6 +7,7 @@
 
 #include "collision/collision_world.h"
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct collision_entry {
 	entity_id_t entity_id;
@@ -175,4 +176,29 @@ static void collision_result_reset(collision_result_t *result) {
 	result->correction = vec3_create(0.0f, 0.0f, 0.0f);
 	result->sides = COLLISION_SIDE_NONE;
 	result->contact_count = 0;
+}
+
+bool collision_world_remove(collision_world_t *world,
+			    const entity_id_t entity_id) {
+	size_t index;
+
+	if (world == NULL || entity_id == 0) { return false; }
+
+	for (index = 0; index < world->count; index++) {
+		if (world->entries[index].entity_id != entity_id) { continue; }
+
+		if (index + 1 < world->count) {
+			memmove(&world->entries[index],
+				&world->entries[index + 1],
+				(world->count - index - 1) *
+					sizeof(*world->entries));
+		}
+
+		world->count--;
+		world->entries[world->count] = (collision_entry_t){0};
+
+		return true;
+	}
+
+	return false;
 }

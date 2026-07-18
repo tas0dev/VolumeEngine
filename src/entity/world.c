@@ -14,6 +14,7 @@ struct world {
 	size_t count;
 	size_t capacity;
 	entity_id_t next_entity_id;
+	collision_world_t *collision_world;
 };
 
 static bool world_reserve(world_t *world, size_t capacity);
@@ -244,4 +245,16 @@ entity_t *world_find_by_targetname(world_t *world, const char *targetname) {
 	}
 
 	return NULL;
+}
+
+collision_world_t *world_get_collision_world(world_t *world) {
+	if (world == NULL) { return NULL; }
+
+	return world->collision_world;
+}
+
+const collision_world_t *world_get_const_collision_world(const world_t *world) {
+	if (world == NULL) { return NULL; }
+
+	return world->collision_world;
 }

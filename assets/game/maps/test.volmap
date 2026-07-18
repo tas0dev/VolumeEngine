@@ -44,6 +44,19 @@ entity
 
 entity
 {
+	"classname" "prop_static"
+	"targetname" "floor"
+	"model" "models/test_floor.obj"
+	"material" "materials/floor.volmat"
+	"origin" "5 -1 0"
+	"angles" "90 25 0"
+	"scale" "0.1 0.1 0.1"
+	"casts_shadow" "0"
+	"collision" "model"
+}
+
+entity
+{
 	"classname" "light_environment"
 	"targetname" "sun"
 	"angles" "-45 -45 0"

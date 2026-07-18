@@ -22,6 +22,7 @@ typedef struct character_controller {
 	aabb_t bounds;
 	vec3_t position;
 	vec3_t velocity;
+	vec3_t ground_normal;
 	float maximum_speed;
 	float ground_acceleration;
 	float air_acceleration;
@@ -30,6 +31,8 @@ typedef struct character_controller {
 	float stop_speed;
 	float gravity;
 	float jump_speed;
+	float ground_stick_speed;
+	float minimum_ground_normal_y;
 	bool grounded;
 } character_controller_t;
 

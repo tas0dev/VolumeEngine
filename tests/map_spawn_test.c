@@ -3,7 +3,6 @@
  * This software is provided under the zlib License.
  *
  * Created by tas0dev
- *
  */
 
 #include "asset/manager.h"
@@ -19,12 +18,15 @@
 typedef struct test_entity {
 	entity_t entity;
 	entity_properties_t properties;
+	mesh_t *mesh;
+	material_t *material;
+	bool casts_shadow;
 } test_entity_t;
 
 static unsigned char mesh_marker;
 
 static entity_t *create_test_entity(entity_id_t id,
-				    const entity_properties_t *properties);
+				    const entity_spawn_context_t *context);
 static void destroy_test_entity(entity_t *entity);
 
 static const entity_class_t test_entity_class = {
@@ -37,10 +39,14 @@ static const entity_class_t test_entity_class = {
 };
 
 static entity_t *create_test_entity(const entity_id_t id,
-				    const entity_properties_t *properties) {
+				    const entity_spawn_context_t *context) {
 	test_entity_t *entity;
+	const char *model_path;
+	const char *material_path;
+	const char *casts_shadow;
 
-	if (properties == NULL) { return NULL; }
+	if (context == NULL || context->properties == NULL) { return NULL;
+	}
 
 	entity = calloc(1, sizeof(*entity));
 	if (entity == NULL) { return NULL; }
@@ -48,12 +54,45 @@ static entity_t *create_test_entity(const entity_id_t id,
 	entity_initialize((entity_t *)entity, id, &test_entity_class);
 
 	if (!entity_set_targetname((entity_t *)entity,
-				   properties->targetname)) {
+				   context->properties->targetname)) {
 		entity_destroy((entity_t *)entity);
 		return NULL;
-	    }
+	}
 
-	entity->properties = *properties;
+	entity->properties = *context->properties;
+	entity->entity.transform = context->properties->transform;
+	entity->casts_shadow = true;
+
+	model_path = entity_property_get(context->source, "model");
+	if (model_path != NULL) {
+		entity->mesh = asset_manager_load_mesh(
+			context->assets, model_path, context->error,
+			context->error_size);
+
+		if (entity->mesh == NULL) {
+			entity_destroy((entity_t *)entity);
+			return NULL;
+		}
+	}
+
+	material_path = entity_property_get(context->source, "material");
+	if (material_path != NULL) {
+		entity->material = asset_manager_load_material(
+			context->assets, material_path, context->error,
+			context->error_size);
+
+		if (entity->material == NULL) {
+			entity_destroy((entity_t *)entity);
+			return NULL;
+		}
+	}
+
+	casts_shadow = entity_property_get(context->source, "casts_shadow");
+	if (casts_shadow != NULL &&
+	    !entity_property_parse_bool(casts_shadow, &entity->casts_shadow)) {
+		entity_destroy((entity_t *)entity);
+		return NULL;
+	}
 
 	return (entity_t *)entity;
 }
@@ -109,17 +148,17 @@ static bool test_spawn_entities(void) {
 
 	entity = (test_entity_t *)world_get_entity(world, 0);
 	CHECK(entity != NULL);
-	CHECK(entity->properties.mesh == mesh);
-	CHECK(entity->properties.material == &material);
-	CHECK(entity->properties.transform.position.x == 1.0f);
-	CHECK(entity->properties.transform.position.y == 2.0f);
-	CHECK(entity->properties.transform.position.z == 3.0f);
-	CHECK(entity->properties.transform.rotation.y > 1.5707f);
-	CHECK(entity->properties.transform.rotation.y < 1.5709f);
-	CHECK(entity->properties.transform.scale.x == 2.0f);
-	CHECK(entity->properties.transform.scale.y == 3.0f);
-	CHECK(entity->properties.transform.scale.z == 4.0f);
-	CHECK(!entity->properties.casts_shadow);
+	CHECK(entity->mesh == mesh);
+	CHECK(entity->material == &material);
+	CHECK(entity->entity.transform.position.x == 1.0f);
+	CHECK(entity->entity.transform.position.y == 2.0f);
+	CHECK(entity->entity.transform.position.z == 3.0f);
+	CHECK(entity->entity.transform.rotation.y > 1.5707f);
+	CHECK(entity->entity.transform.rotation.y < 1.5709f);
+	CHECK(entity->entity.transform.scale.x == 2.0f);
+	CHECK(entity->entity.transform.scale.y == 3.0f);
+	CHECK(entity->entity.transform.scale.z == 4.0f);
+	CHECK(!entity->casts_shadow);
 	CHECK(strcmp(entity_get_targetname(&entity->entity), "test_prop") == 0);
 	CHECK(world_find_by_targetname(world, "test_prop") == &entity->entity);
 	CHECK(world_find_by_targetname(world, "missing") == NULL);
@@ -148,6 +187,7 @@ static bool test_missing_asset_rolls_back(void) {
 				     "}\n";
 	asset_manager_t *assets;
 	entity_properties_t properties;
+	entity_spawn_context_t context = {0};
 	world_t *world;
 	map_t *map;
 	char error[256];
@@ -165,7 +205,11 @@ static bool test_missing_asset_rolls_back(void) {
 
 	properties = entity_properties_create();
 
-	CHECK(world_spawn_entity(world, "test_entity", &properties) != NULL);
+	context.properties = &properties;
+	context.error = error;
+	context.error_size = sizeof(error);
+
+	CHECK(world_spawn_entity(world, "test_entity", &context) != NULL);
 	CHECK(world_get_entity_count(world) == 1);
 
 	CHECK(!map_spawn_entities(map, world, assets, error, sizeof(error)));

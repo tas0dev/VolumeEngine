@@ -16,6 +16,7 @@
 #include "math/mat4.h"
 #include "math/math.h"
 #include "math/vec3.h"
+#include "physics/character_controller.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"
@@ -29,9 +30,15 @@ typedef struct game_state {
 	entity_t *mesh_entity;
 	light_environment_t *environment_light;
 	camera_t camera;
+	character_controller_t player;
+	vec3_t movement_input;
 	float yaw;
 	float pitch;
+	bool jump_requested;
 } game_state_t;
+
+static const float player_move_speed = 4.0f;
+static const float player_eye_height = 1.55f;
 
 static bool initialize(engine_t *engine, void *user_data);
 static void update(engine_t *engine, float delta_time, void *user_data);
@@ -117,11 +124,11 @@ static bool initialize(engine_t *engine, void *user_data) {
 		free(map_path);
 		destroy_game_resources(game_state);
 		return false;
-			    }
+	}
 
 	free(map_path);
 
-			    game_state->mesh_entity =
+	game_state->mesh_entity =
 		world_find_by_targetname(game_state->world, "rotating_box");
 
 	if (game_state->mesh_entity == NULL) {
@@ -130,8 +137,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	light_entity =
-		world_find_by_classname(game_state->world, "light_environment");
+	light_entity = world_find_by_classname(game_state->world, "light_environment");
 	game_state->environment_light =
 		light_environment_from_entity(light_entity);
 
@@ -141,14 +147,22 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	game_state->camera = camera_create(vec3_create(0.0f, 1.5f, 4.0f));
+	game_state->player = character_controller_create(
+		vec3_create(0.0f, -0.9f, 2.0f), 0.35f, 1.7f);
+	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
+	game_state->jump_requested = false;
+
+	game_state->camera = camera_create(
+		vec3_add(game_state->player.position,
+			 vec3_create(0.0f, player_eye_height, 0.0f)));
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
 
 	return true;
 }
 
-static void update(engine_t *engine, const float delta_time, void *user_data) {
+static void update(engine_t *engine,
+		   const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	input_t *input;
 	vec3_t movement;
@@ -157,20 +171,23 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	float mouse_x;
 	float mouse_y;
 	float pitch_limit;
-	const float move_speed = 4.0f;
 	const float mouse_sensitivity = 0.0025f;
+
+	(void)delta_time;
 
 	game_state = user_data;
 	input = engine_get_input(engine);
 
-	if (input == NULL) { return; }
+	if (game_state == NULL || input == NULL) { return; }
 
 	if (input_key_pressed(input, INPUT_KEY_ESCAPE)) {
 		engine_set_mouse_captured(engine, false);
 	}
 
 	if (!engine_is_mouse_captured(engine) &&
-	    input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
+	    input_mouse_button_pressed(
+		    input,
+		    INPUT_MOUSE_BUTTON_LEFT)) {
 		engine_set_mouse_captured(engine, true);
 	}
 
@@ -180,7 +197,8 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	if (engine_is_mouse_captured(engine)) {
 		input_get_mouse_delta(input, &mouse_x, &mouse_y);
 
-		game_state->yaw += mouse_x * mouse_sensitivity;
+		game_state->yaw +=
+			mouse_x * mouse_sensitivity;
 		game_state->pitch -= mouse_y * mouse_sensitivity;
 	}
 
@@ -195,13 +213,17 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	game_state->camera.forward = vec3_normalize(
-		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
+		vec3_create(
+			cosf(game_state->pitch) *
+				cosf(game_state->yaw),
 			    sinf(game_state->pitch),
 			    cosf(game_state->pitch) * sinf(game_state->yaw)));
 
 	forward = game_state->camera.forward;
 	forward.y = 0.0f;
-	forward = vec3_normalize(forward);
+
+	if (vec3_length(forward) > 0.0f) {
+		forward = vec3_normalize(forward); }
 
 	right = vec3_normalize(vec3_cross(forward, game_state->camera.up));
 
@@ -224,28 +246,53 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	if (vec3_length(movement) > 0.0f) {
-		movement = vec3_normalize(movement);
-		movement = vec3_scale(movement, move_speed * delta_time);
+		movement = vec3_scale(
+			vec3_normalize(movement),
+			player_move_speed);
+	}
 
-		game_state->camera.position =
-			vec3_add(game_state->camera.position, movement);
+	game_state->movement_input = movement;
+
+	if (input_key_pressed(input, INPUT_KEY_SPACE)) {
+		game_state->jump_requested = true;
 	}
 }
 
-static void fixed_update(engine_t *engine,
-			 const float delta_time,
+static void
+fixed_update(engine_t *engine, const float delta_time,
 			 void *user_data) {
 	game_state_t *game_state;
+	const collision_world_t *collision_world;
 
 	(void)engine;
 
 	game_state = user_data;
-	if (game_state == NULL || game_state->world == NULL) { return; }
+	if (game_state == NULL || game_state->world == NULL) {
+		return;
+	}
+
+	collision_world = world_get_const_collision_world(game_state->world);
+
+	character_controller_set_horizontal_velocity(
+		&game_state->player, game_state->movement_input);
+
+	if (game_state->jump_requested) {
+		character_controller_jump(&game_state->player);
+		game_state->jump_requested = false;
+	}
+
+	character_controller_update(&game_state->player, collision_world,
+				    delta_time);
+
+	game_state->camera.position =
+		vec3_add(game_state->player.position,
+			 vec3_create(0.0f, player_eye_height, 0.0f));
 
 	if (game_state->mesh_entity != NULL) {
 		game_state->mesh_entity->transform.rotation.x +=
 			delta_time * 0.7f;
-		game_state->mesh_entity->transform.rotation.y += delta_time;
+		game_state->mesh_entity->transform.rotation.y +=
+			delta_time;
 	}
 
 	world_update(game_state->world, delta_time);

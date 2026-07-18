@@ -60,6 +60,7 @@ volume_sources = files(
         'src/collision/box_collider.c',
         'src/collision/collision_world.c',
         'src/collision/collider.c',
+        'src/physics/character_controller.c',
 )
 
 volume_include = include_directories(

@@ -216,7 +216,7 @@ static void update(engine_t *engine,
 		vec3_create(
 			cosf(game_state->pitch) *
 				cosf(game_state->yaw),
-			    sinf(game_state->pitch),
+			sinf(game_state->pitch),
 			    cosf(game_state->pitch) * sinf(game_state->yaw)));
 
 	forward = game_state->camera.forward;
@@ -258,38 +258,39 @@ static void update(engine_t *engine,
 	}
 }
 
-static void
-fixed_update(engine_t *engine, const float delta_time,
-			 void *user_data) {
+static void fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
+	character_move_input_t move_input;
 	const collision_world_t *collision_world;
+	float wish_speed;
 
 	(void)engine;
 
 	game_state = user_data;
-	if (game_state == NULL || game_state->world == NULL) {
-		return;
-	}
+
+	if (game_state == NULL ||
+	    game_state->world == NULL) { return; }
 
 	collision_world = world_get_const_collision_world(game_state->world);
 
-	character_controller_set_horizontal_velocity(
-		&game_state->player, game_state->movement_input);
+	wish_speed = vec3_length(game_state->movement_input);
 
-	if (game_state->jump_requested) {
-		character_controller_jump(&game_state->player);
-		game_state->jump_requested = false;
-	}
+	move_input.wish_direction = game_state->movement_input;
+	move_input.wish_speed = wish_speed;
+	move_input.jump = game_state->jump_requested;
 
-	character_controller_update(&game_state->player, collision_world,
-				    delta_time);
+	character_controller_move(&game_state->player, collision_world,
+				  &move_input, delta_time);
+
+	game_state->jump_requested = false;
 
 	game_state->camera.position =
 		vec3_add(game_state->player.position,
 			 vec3_create(0.0f, player_eye_height, 0.0f));
 
 	if (game_state->mesh_entity != NULL) {
-		game_state->mesh_entity->transform.rotation.x +=
+		game_state->mesh_entity->
+			transform.rotation.x +=
 			delta_time * 0.7f;
 		game_state->mesh_entity->transform.rotation.y +=
 			delta_time;

@@ -12,10 +12,22 @@
 #include "math/vec3.h"
 #include <stdbool.h>
 
+typedef struct character_move_input {
+	vec3_t wish_direction;
+	float wish_speed;
+	bool jump;
+} character_move_input_t;
+
 typedef struct character_controller {
 	aabb_t bounds;
 	vec3_t position;
 	vec3_t velocity;
+	float maximum_speed;
+	float ground_acceleration;
+	float air_acceleration;
+	float air_speed_cap;
+	float friction;
+	float stop_speed;
 	float gravity;
 	float jump_speed;
 	bool grounded;
@@ -23,11 +35,10 @@ typedef struct character_controller {
 
 character_controller_t
 character_controller_create(vec3_t position, float radius, float height);
-void character_controller_set_horizontal_velocity(
-	character_controller_t *controller, vec3_t velocity);
 bool character_controller_jump(character_controller_t *controller);
-void character_controller_update(character_controller_t *controller,
-				 const collision_world_t *world,
-				 float delta_time);
+void character_controller_move(character_controller_t *controller,
+			       const collision_world_t *world,
+			       const character_move_input_t *input,
+			       float delta_time);
 
 #endif

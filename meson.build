@@ -58,6 +58,7 @@ volume_sources = files(
         'src/asset/material_loader.c',
         'src/collision/aabb.c',
         'src/collision/box_collider.c',
+        'src/collision/collision_world.c',
 )
 
 volume_include = include_directories(

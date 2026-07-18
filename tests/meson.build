@@ -73,6 +73,16 @@ aabb_test = executable(
     install : false,
 )
 
+collision_world_test = executable(
+    'collision-world-test',
+    [
+        'common.c',
+        'collision_world_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -101,4 +111,9 @@ test(
 test(
     'aabb',
     aabb_test,
+)
+
+test(
+    'collision-world',
+    collision_world_test,
 )

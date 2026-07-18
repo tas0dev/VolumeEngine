@@ -20,10 +20,8 @@
 #include "scene/camera.h"
 #include "scene/transform.h"
 #include "volume.h"
-
 #include <math.h>
 #include <stdlib.h>
-#include <string.h>
 
 typedef struct game_state {
 	asset_manager_t *assets;
@@ -40,12 +38,16 @@ static void update(engine_t *engine, float delta_time, void *user_data);
 static void render(engine_t *engine, void *user_data);
 static void shutdown(engine_t *engine, void *user_data);
 static void destroy_game_resources(game_state_t *game_state);
+static void fixed_update(engine_t *engine,
+			 float delta_time,
+			 void *user_data);
 
 static game_state_t state;
 
 static const game_t game = {
 	.initialize = initialize,
 	.update = update,
+	.fixed_update = fixed_update,
 	.render = render,
 	.shutdown = shutdown,
 	.user_data = &state,
@@ -61,6 +63,7 @@ int main(void) {
 	config.window_height = 720;
 	config.capture_mouse = true;
 	config.game = &game;
+	config.fixed_delta_time = 1.0f / 60.0f;
 
 	engine = engine_create(&config);
 	if (engine == NULL) { return EXIT_FAILURE; }
@@ -227,9 +230,23 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		game_state->camera.position =
 			vec3_add(game_state->camera.position, movement);
 	}
+}
 
-	game_state->mesh_entity->transform.rotation.x += delta_time * 0.7f;
-	game_state->mesh_entity->transform.rotation.y += delta_time;
+static void fixed_update(engine_t *engine,
+			 const float delta_time,
+			 void *user_data) {
+	game_state_t *game_state;
+
+	(void)engine;
+
+	game_state = user_data;
+	if (game_state == NULL || game_state->world == NULL) { return; }
+
+	if (game_state->mesh_entity != NULL) {
+		game_state->mesh_entity->transform.rotation.x +=
+			delta_time * 0.7f;
+		game_state->mesh_entity->transform.rotation.y += delta_time;
+	}
 
 	world_update(game_state->world, delta_time);
 }

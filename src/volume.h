@@ -17,6 +17,7 @@ typedef struct engine_config {
 	int window_width;
 	int window_height;
 	bool capture_mouse;
+	float fixed_delta_time;
 	const game_t *game;
 } engine_config_t;
 

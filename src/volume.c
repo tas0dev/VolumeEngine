@@ -22,6 +22,8 @@ struct volumeEngine {
 	bool running;
 	bool initialized;
 	double previous_time;
+	double accumulator;
+	float fixed_delta_time;
 };
 
 engine_t *engine_create(const engine_config_t *config) {
@@ -32,7 +34,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	    config->game == NULL) {
 		log_error("Invalid engine configuration");
 		return NULL;
-	}
+	    }
 
 	if (!entity_register_builtin_classes()) {
 		log_error("Failed to register built-in entity classes");
@@ -76,6 +78,9 @@ engine_t *engine_create(const engine_config_t *config) {
 	}
 
 	engine->game = config->game;
+	engine->fixed_delta_time = config->fixed_delta_time > 0.0f
+					   ? config->fixed_delta_time
+					   : 1.0f / 60.0f;
 
 	if (engine->game->initialize != NULL &&
 	    !engine->game->initialize(engine, engine->game->user_data)) {
@@ -85,11 +90,12 @@ engine_t *engine_create(const engine_config_t *config) {
 		entity_registry_shutdown();
 		free(engine);
 		return NULL;
-	}
+	    }
 
 	engine->initialized = true;
 	engine->running = true;
 	engine->previous_time = platform_get_time();
+	engine->accumulator = 0.0;
 
 	log_info("Volume initialized");
 
@@ -114,8 +120,12 @@ void engine_destroy(engine_t *engine) {
 }
 
 bool engine_run(engine_t *engine) {
+	const double maximum_frame_time = 0.25;
+	const unsigned int maximum_fixed_steps = 8;
 	double current_time;
+	double frame_time;
 	float delta_time;
+	unsigned int fixed_steps;
 
 	if (engine == NULL) { return false; }
 
@@ -128,13 +138,42 @@ bool engine_run(engine_t *engine) {
 		}
 
 		current_time = platform_get_time();
-		delta_time = (float)(current_time - engine->previous_time);
+		frame_time = current_time - engine->previous_time;
 		engine->previous_time = current_time;
+
+		if (frame_time < 0.0) { frame_time = 0.0; }
+
+		if (frame_time > maximum_frame_time) {
+			frame_time = maximum_frame_time;
+		}
+
+		delta_time = (float)frame_time;
 
 		if (engine->game->update != NULL) {
 			engine->game->update(engine, delta_time,
 					     engine->game->user_data);
 		}
+
+		engine->accumulator += frame_time;
+		fixed_steps = 0;
+
+		while (engine->accumulator >= engine->fixed_delta_time &&
+		       fixed_steps < maximum_fixed_steps) {
+			if (engine->game->fixed_update != NULL) {
+				engine->game->fixed_update(
+					engine,
+					engine->fixed_delta_time,
+					engine->game->user_data);
+			}
+
+			engine->accumulator -= engine->fixed_delta_time;
+			fixed_steps++;
+		       }
+
+		if (fixed_steps == maximum_fixed_steps &&
+		    engine->accumulator >= engine->fixed_delta_time) {
+			engine->accumulator = 0.0;
+		    }
 
 		renderer_begin_frame(engine->renderer);
 

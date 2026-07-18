@@ -14,6 +14,9 @@
 typedef struct game {
 	bool (*initialize)(engine_t *engine, void *user_data);
 	void (*update)(engine_t *engine, float delta_time, void *user_data);
+	void (*fixed_update)(engine_t *engine,
+			     float delta_time,
+			     void *user_data);
 	void (*render)(engine_t *engine, void *user_data);
 	void (*shutdown)(engine_t *engine, void *user_data);
 	void *user_data;

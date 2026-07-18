@@ -63,6 +63,16 @@ material_loader_test = executable(
     install : false,
 )
 
+aabb_test = executable(
+    'aabb-test',
+    [
+        'common.c',
+        'aabb_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -86,4 +96,9 @@ test(
 test(
     'keyvalues',
     keyvalues_test,
+)
+
+test(
+    'aabb',
+    aabb_test,
 )

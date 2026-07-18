@@ -56,6 +56,8 @@ volume_sources = files(
         'src/asset/manager.c',
         'src/asset/mesh_loader.c',
         'src/asset/material_loader.c',
+        'src/collision/aabb.c',
+        'src/collision/box_collider.c',
 )
 
 volume_include = include_directories(

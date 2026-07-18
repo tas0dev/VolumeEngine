@@ -8,6 +8,8 @@
 #ifndef VOLUME_RENDERER_MESH_H
 #define VOLUME_RENDERER_MESH_H
 #include "collision/aabb.h"
+#include "collision/triangle_mesh_collider.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -29,5 +31,6 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 void mesh_destroy(mesh_t *mesh);
 void mesh_draw(const mesh_t *mesh);
 bool mesh_get_bounds(const mesh_t *mesh, aabb_t *bounds);
+const triangle_mesh_collider_t *mesh_get_collision_mesh(const mesh_t *mesh);
 
 #endif

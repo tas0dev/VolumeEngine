@@ -14,6 +14,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define COLLISION_RESULT_MAX_CONTACTS 16
+
+typedef struct collision_contact {
+	vec3_t normal;
+	float depth;
+	entity_id_t entity_id;
+} collision_contact_t;
+
 typedef enum collision_side {
 	COLLISION_SIDE_NONE = 0,
 	COLLISION_SIDE_NEGATIVE_X = 1u << 0,
@@ -28,6 +36,7 @@ typedef struct collision_result {
 	vec3_t correction;
 	unsigned int sides;
 	size_t contact_count;
+	collision_contact_t contacts[COLLISION_RESULT_MAX_CONTACTS];
 } collision_result_t;
 
 typedef struct collision_world collision_world_t;

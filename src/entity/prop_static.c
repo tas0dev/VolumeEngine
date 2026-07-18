@@ -110,6 +110,30 @@ static bool create_model_collider(const mesh_t *mesh,
 	return true;
 }
 
+static bool create_triangle_mesh_collider(const mesh_t *mesh,
+					  const transform_t *transform,
+					  collider_t *collider) {
+	const triangle_mesh_collider_t *collision_mesh;
+	transform_t local_transform;
+	mat4_t matrix;
+
+	if (mesh == NULL || transform == NULL || collider == NULL) {
+		return false;
+	}
+
+	collision_mesh = mesh_get_collision_mesh(mesh);
+
+	if (collision_mesh == NULL) { return false; }
+
+	local_transform = *transform;
+	local_transform.position = vec3_create(0.0f, 0.0f, 0.0f);
+	matrix = transform_get_matrix(&local_transform);
+
+	*collider = collider_create_triangle_mesh(collision_mesh, matrix);
+
+	return collider->type == COLLIDER_TYPE_TRIANGLE_MESH;
+}
+
 prop_static_properties_t prop_static_properties_create(void) {
 	prop_static_properties_t properties;
 
@@ -251,7 +275,8 @@ static entity_t *create_entity(const entity_id_t id,
 
 	model_path = entity_property_get(context->source, "model");
 
-	if (model_path == NULL || model_path[0] == '\0') {
+	if (model_path == NULL ||
+	    model_path[0] == '\0') {
 		set_error(context, "prop_static requires a model");
 		return NULL;
 	}
@@ -264,28 +289,35 @@ static entity_t *create_entity(const entity_id_t id,
 	}
 
 	if (context->assets == NULL) {
-		set_error(context,
-			  "prop_static assets require an asset manager");
+		set_error(
+			context,
+			"prop_static assets require an asset manager");
 		return NULL;
 	}
 
 	properties.mesh =
-		asset_manager_load_mesh(context->assets, model_path,
+		asset_manager_load_mesh(
+		context->assets, model_path,
 					context->error, context->error_size);
 
 	if (properties.mesh == NULL) { return NULL; }
 
 	properties.material = asset_manager_load_material(
-		context->assets, material_path, context->error,
+		context->assets,
+		material_path,
+		context->error,
 		context->error_size);
 
-	if (properties.material == NULL) { return NULL; }
+	if (properties.material == NULL) {
+		return NULL;
+	}
 
 	casts_shadow = entity_property_get(context->source, "casts_shadow");
 
 	if (casts_shadow != NULL &&
-	    !entity_property_parse_bool(casts_shadow,
-					&properties.casts_shadow)) {
+	    !entity_property_parse_bool(
+		    casts_shadow,
+		    &properties.casts_shadow)) {
 		set_error(context,
 			  "invalid boolean property "
 			  "\"casts_shadow\": \"%s\"",
@@ -293,26 +325,39 @@ static entity_t *create_entity(const entity_id_t id,
 		return NULL;
 	}
 
-	collision_type = entity_property_get(context->source, "collision");
+	collision_type = entity_property_get(context->source,
+		"collision");
 
 	if (collision_type != NULL && strcmp(collision_type, "none") != 0) {
 		if (strcmp(collision_type, "model") == 0) {
-			if (!create_model_collider(properties.mesh,
-						   &properties.entity.transform,
-						   &properties.collider)) {
+			if (!create_triangle_mesh_collider(
+				    properties.mesh,
+				    &properties.entity.transform,
+				    &properties.collider)) {
 				set_error(context,
 					  "failed to create model collider");
 				return NULL;
 			}
 
 			properties.has_collider = true;
+		} else if (strcmp(collision_type, "bounds") == 0) {
+			if (!create_model_collider(properties.mesh,
+						   &properties.entity.transform,
+						   &properties.collider)) {
+				set_error(context,
+					  "failed to create bounds collider");
+				return NULL;
+			}
+
+			properties.has_collider = true;
 		} else if (strcmp(collision_type, "box") == 0) {
-			collision_size = entity_property_get(context->source,
-							     "collision_size");
+			collision_size = entity_property_get(
+				context->source,
+				"collision_size");
 
 			if (collision_size == NULL ||
 			    !entity_property_parse_vec3(collision_size,
-							&size)) {
+				    &size)) {
 				set_error(context, "prop_static box collision "
 						   "requires a valid "
 						   "collision_size");
@@ -321,8 +366,9 @@ static entity_t *create_entity(const entity_id_t id,
 
 			if (size.x <= 0.0f || size.y <= 0.0f ||
 			    size.z <= 0.0f) {
-				set_error(context, "collision_size must be "
-						   "positive");
+				set_error(
+					context,
+					  "collision_size must be positive");
 				return NULL;
 			}
 
@@ -334,9 +380,9 @@ static entity_t *create_entity(const entity_id_t id,
 			if (collision_center != NULL &&
 			    !entity_property_parse_vec3(collision_center,
 							&center)) {
-				set_error(context,
-					  "invalid collision_center: "
-					  "\"%s\"",
+				set_error(
+					context,
+					"invalid collision_center: \"%s\"",
 					  collision_center);
 				return NULL;
 			}
@@ -352,6 +398,7 @@ static entity_t *create_entity(const entity_id_t id,
 	}
 
 	prop = prop_static_create(id, &properties);
+
 	if (prop == NULL) {
 		set_error(context, "failed to create prop_static");
 		return NULL;

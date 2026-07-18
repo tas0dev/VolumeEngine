@@ -23,7 +23,7 @@ entity
 	"model" "models/test_floor.obj"
 	"material" "materials/floor.volmat"
 	"origin" "0 -1 0"
-	"angles" "0 0 0"
+	"angles" "0 0 30"
 	"scale" "1 1 1"
 	"casts_shadow" "0"
 	"collision" "model"

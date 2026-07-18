@@ -13,6 +13,7 @@ entity
 	"angles" "0 0 0"
 	"scale" "1 1 1"
 	"casts_shadow" "1"
+	"collision" "model"
 }
 
 entity
@@ -25,8 +26,7 @@ entity
 	"angles" "0 0 0"
 	"scale" "1 1 1"
 	"casts_shadow" "0"
-	"collision" "box"
-	"collision_size" "18 0.2 18"
+	"collision" "model"
 }
 
 entity

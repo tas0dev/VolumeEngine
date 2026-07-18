@@ -163,8 +163,7 @@ vec3_t light_environment_get_direction(const light_environment_t *light) {
 }
 
 vec3_t light_environment_get_color(const light_environment_t *light) {
-	if (light == NULL) {
-		return vec3_create(1.0f, 1.0f, 1.0f); }
+	if (light == NULL) { return vec3_create(1.0f, 1.0f, 1.0f); }
 
 	return light->color;
 }

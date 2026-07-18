@@ -7,7 +7,8 @@
 
 #ifndef VOLUME_RENDERER_MESH_H
 #define VOLUME_RENDERER_MESH_H
-
+#include "collision/aabb.h"
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct mesh_vertex {
@@ -27,5 +28,6 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		    size_t index_count);
 void mesh_destroy(mesh_t *mesh);
 void mesh_draw(const mesh_t *mesh);
+bool mesh_get_bounds(const mesh_t *mesh, aabb_t *bounds);
 
 #endif

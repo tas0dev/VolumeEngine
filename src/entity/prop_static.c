@@ -9,6 +9,8 @@
 #include "asset/manager.h"
 #include "renderer/renderer.h"
 #include "scene/transform.h"
+
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +34,34 @@ set_error(const entity_spawn_context_t *context, const char *format, ...) {
 	va_start(arguments, format);
 	vsnprintf(context->error, context->error_size, format, arguments);
 	va_end(arguments);
+}
+
+static bool create_model_collider(const mesh_t *mesh,
+				  const transform_t *transform,
+				  collider_t *collider) {
+	aabb_t bounds;
+	vec3_t center;
+	vec3_t half_extents;
+
+	if (mesh == NULL || transform == NULL || collider == NULL ||
+	    !mesh_get_bounds(mesh, &bounds)) {
+		return false;
+	}
+
+	center = aabb_get_center(bounds);
+	half_extents = aabb_get_half_extents(bounds);
+
+	center.x *= transform->scale.x;
+	center.y *= transform->scale.y;
+	center.z *= transform->scale.z;
+
+	half_extents.x *= fabsf(transform->scale.x);
+	half_extents.y *= fabsf(transform->scale.y);
+	half_extents.z *= fabsf(transform->scale.z);
+
+	*collider = collider_create_box(center, half_extents);
+
+	return true;
 }
 
 prop_static_properties_t prop_static_properties_create(void) {
@@ -74,7 +104,7 @@ prop_static_t *prop_static_create(const entity_id_t id,
 				   properties->entity.targetname)) {
 		free(prop);
 		return NULL;
-		    }
+	}
 
 	prop->entity.transform = properties->entity.transform;
 	prop->mesh = properties->mesh;
@@ -174,12 +204,14 @@ static entity_t *create_entity(const entity_id_t id,
 	properties.entity = *context->properties;
 
 	model_path = entity_property_get(context->source, "model");
+
 	if (model_path == NULL || model_path[0] == '\0') {
 		set_error(context, "prop_static requires a model");
 		return NULL;
 	}
 
 	material_path = entity_property_get(context->source, "material");
+
 	if (material_path == NULL || material_path[0] == '\0') {
 		set_error(context, "prop_static requires a material");
 		return NULL;
@@ -194,11 +226,13 @@ static entity_t *create_entity(const entity_id_t id,
 	properties.mesh =
 		asset_manager_load_mesh(context->assets, model_path,
 					context->error, context->error_size);
+
 	if (properties.mesh == NULL) { return NULL; }
 
 	properties.material = asset_manager_load_material(
 		context->assets, material_path, context->error,
 		context->error_size);
+
 	if (properties.material == NULL) { return NULL; }
 
 	casts_shadow = entity_property_get(context->source, "casts_shadow");
@@ -213,46 +247,62 @@ static entity_t *create_entity(const entity_id_t id,
 		return NULL;
 	}
 
-	collision_type =
-		entity_property_get(context->source, "collision");
+	collision_type = entity_property_get(context->source, "collision");
 
 	if (collision_type != NULL && strcmp(collision_type, "none") != 0) {
-		if (strcmp(collision_type, "box") != 0) {
+		if (strcmp(collision_type, "model") == 0) {
+			if (!create_model_collider(properties.mesh,
+						   &properties.entity.transform,
+						   &properties.collider)) {
+				set_error(context,
+					  "failed to create model collider");
+				return NULL;
+			}
+
+			properties.has_collider = true;
+		} else if (strcmp(collision_type, "box") == 0) {
+			collision_size = entity_property_get(context->source,
+							     "collision_size");
+
+			if (collision_size == NULL ||
+			    !entity_property_parse_vec3(collision_size,
+							&size)) {
+				set_error(context, "prop_static box collision "
+						   "requires a valid "
+						   "collision_size");
+				return NULL;
+			}
+
+			if (size.x <= 0.0f || size.y <= 0.0f ||
+			    size.z <= 0.0f) {
+				set_error(context, "collision_size must be "
+						   "positive");
+				return NULL;
+			}
+
+			center = vec3_create(0.0f, 0.0f, 0.0f);
+
+			collision_center = entity_property_get(
+				context->source, "collision_center");
+
+			if (collision_center != NULL &&
+			    !entity_property_parse_vec3(collision_center,
+							&center)) {
+				set_error(context,
+					  "invalid collision_center: "
+					  "\"%s\"",
+					  collision_center);
+				return NULL;
+			}
+
+			properties.collider = collider_create_box(
+				center, vec3_scale(size, 0.5f));
+			properties.has_collider = true;
+		} else {
 			set_error(context, "unsupported collision type: \"%s\"",
 				  collision_type);
 			return NULL;
 		}
-
-		collision_size =
-			entity_property_get(context->source, "collision_size");
-
-		if (collision_size == NULL ||
-		    !entity_property_parse_vec3(collision_size, &size)) {
-			set_error(context, "prop_static box collision requires "
-					   "a valid collision_size");
-			return NULL;
-		}
-
-		if (size.x <= 0.0f || size.y <= 0.0f || size.z <= 0.0f) {
-			set_error(context, "collision_size must be positive");
-			return NULL;
-		}
-
-		center = vec3_create(0.0f, 0.0f, 0.0f);
-
-		collision_center = entity_property_get(context->source,
-						       "collision_center");
-
-		if (collision_center != NULL &&
-		    !entity_property_parse_vec3(collision_center, &center)) {
-			set_error(context, "invalid collision_center: \"%s\"",
-				  collision_center);
-			return NULL;
-		}
-
-		properties.collider =
-			collider_create_box(center, vec3_scale(size, 0.5f));
-		properties.has_collider = true;
 	}
 
 	prop = prop_static_create(id, &properties);

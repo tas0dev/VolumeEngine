@@ -15,6 +15,7 @@ struct mesh {
 	GLuint vertex_buffer;
 	GLuint index_buffer;
 	GLsizei index_count;
+	aabb_t bounds;
 };
 
 mesh_t *mesh_create(const mesh_vertex_t *vertices,
@@ -22,6 +23,11 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		    const unsigned int *indices,
 		    const size_t index_count) {
 	mesh_t *mesh;
+	vec3_t minimum;
+	vec3_t maximum;
+	vec3_t center;
+	vec3_t half_extents;
+	size_t index;
 
 	if (vertices == NULL || vertex_count == 0 || indices == NULL ||
 	    index_count == 0) {
@@ -40,6 +46,40 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		return NULL;
 	}
 
+	minimum = vec3_create(vertices[0].position[0], vertices[0].position[1],
+			      vertices[0].position[2]);
+	maximum = minimum;
+
+	for (index = 1; index < vertex_count; index++) {
+		if (vertices[index].position[0] < minimum.x) {
+			minimum.x = vertices[index].position[0];
+		}
+
+		if (vertices[index].position[1] < minimum.y) {
+			minimum.y = vertices[index].position[1];
+		}
+
+		if (vertices[index].position[2] < minimum.z) {
+			minimum.z = vertices[index].position[2];
+		}
+
+		if (vertices[index].position[0] > maximum.x) {
+			maximum.x = vertices[index].position[0];
+		}
+
+		if (vertices[index].position[1] > maximum.y) {
+			maximum.y = vertices[index].position[1];
+		}
+
+		if (vertices[index].position[2] > maximum.z) {
+			maximum.z = vertices[index].position[2];
+		}
+	}
+
+	center = vec3_scale(vec3_add(minimum, maximum), 0.5f);
+	half_extents = vec3_scale(vec3_subtract(maximum, minimum), 0.5f);
+
+	mesh->bounds = aabb_create(center, half_extents);
 	mesh->index_count = (GLsizei)index_count;
 
 	glGenVertexArrays(1, &mesh->vertex_array);
@@ -70,7 +110,9 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 	glEnableVertexAttribArray(2);
 
 	glVertexAttribPointer(
-		3, 2, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+		3,
+		2,
+		GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 		(const void *)offsetof(mesh_vertex_t, texture_coordinate));
 	glEnableVertexAttribArray(3);
 
@@ -78,7 +120,8 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 			      (const void *)offsetof(mesh_vertex_t, tangent));
 	glEnableVertexAttribArray(4);
 
-	glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+	glVertexAttribPointer(
+		5, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 			      (const void *)offsetof(mesh_vertex_t, bitangent));
 	glEnableVertexAttribArray(5);
 
@@ -112,4 +155,14 @@ void mesh_draw(const mesh_t *mesh) {
 	glBindVertexArray(mesh->vertex_array);
 	glDrawElements(GL_TRIANGLES, mesh->index_count, GL_UNSIGNED_INT, NULL);
 	glBindVertexArray(0);
+}
+
+bool mesh_get_bounds(const mesh_t *mesh, aabb_t *bounds) {
+	if (mesh == NULL || bounds == NULL) {
+		return false;
+	}
+
+	*bounds = mesh->bounds;
+
+	return true;
 }

@@ -117,7 +117,6 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 
 		if (!world_reserve(world, capacity)) { return false; }
 	}
-
 	world->entities[world->count] = entity;
 	world->count++;
 

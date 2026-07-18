@@ -9,8 +9,8 @@
 #define VOLUME_COLLISION_COLLISION_WORLD_H
 
 #include "collision/aabb.h"
-#include "collision/box_collider.h"
-#include "entity/entity.h"
+#include "collision/collider.h"
+#include "core/types.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -34,10 +34,10 @@ typedef struct collision_world collision_world_t;
 
 collision_world_t *collision_world_create(void);
 void collision_world_destroy(collision_world_t *world);
-bool collision_world_add_box(collision_world_t *world,
-			     entity_id_t entity_id,
-			     box_collider_t collider,
-			     vec3_t position);
+bool collision_world_add_collider(collision_world_t *world,
+				  entity_id_t entity_id,
+				  collider_t collider,
+				  vec3_t position);
 bool collision_world_remove(collision_world_t *world, entity_id_t entity_id);
 size_t collision_world_get_count(const collision_world_t *world);
 bool collision_world_resolve_aabb(const collision_world_t *world,

@@ -17,6 +17,8 @@ typedef struct prop_static_properties {
 	const mesh_t *mesh;
 	const material_t *material;
 	bool casts_shadow;
+	bool has_collider;
+	collider_t collider;
 } prop_static_properties_t;
 
 typedef struct prop_static {

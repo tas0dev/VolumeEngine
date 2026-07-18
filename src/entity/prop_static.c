@@ -40,6 +40,8 @@ prop_static_properties_t prop_static_properties_create(void) {
 	properties.mesh = NULL;
 	properties.material = NULL;
 	properties.casts_shadow = true;
+	properties.has_collider = false;
+	properties.collider = collider_create_none();
 
 	return properties;
 }
@@ -71,6 +73,10 @@ prop_static_t *prop_static_create(const entity_id_t id,
 				   properties->entity.targetname)) {
 		free(prop);
 		return NULL;
+	}
+
+	if (properties->has_collider) {
+		entity_set_collider((entity_t *)prop, properties->collider);
 	}
 
 	prop->entity.transform = properties->entity.transform;

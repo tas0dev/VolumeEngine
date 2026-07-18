@@ -8,15 +8,13 @@
 #ifndef VOLUME_ENTITY_ENTITY_H
 #define VOLUME_ENTITY_ENTITY_H
 
+#include "collision/collider.h"
 #include "core/types.h"
 #include "entity/properties.h"
 #include "renderer/view.h"
 #include "scene/transform.h"
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
-
-typedef uint32_t entity_id_t;
 
 typedef struct entity entity_t;
 typedef struct entity_class entity_class_t;
@@ -48,6 +46,8 @@ struct entity {
 	char *targetname;
 	transform_t transform;
 	bool active;
+	bool has_collider;
+	collider_t collider;
 };
 
 void entity_initialize(entity_t *entity,
@@ -69,5 +69,8 @@ bool entity_register_class(const entity_class_t *class);
 void entity_registry_shutdown(void);
 bool entity_set_targetname(entity_t *entity, const char *targetname);
 const char *entity_get_targetname(const entity_t *entity);
+void entity_set_collider(entity_t *entity, collider_t collider);
+void entity_clear_collider(entity_t *entity);
+bool entity_get_collider(const entity_t *entity, collider_t *collider);
 
 #endif

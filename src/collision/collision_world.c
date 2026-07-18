@@ -7,16 +7,15 @@
 
 #include "collision/collision_world.h"
 #include <stdlib.h>
-#include <string.h>
 
-typedef struct collision_box_entry {
+typedef struct collision_entry {
 	entity_id_t entity_id;
-	box_collider_t collider;
+	collider_t collider;
 	vec3_t position;
-} collision_box_entry_t;
+} collision_entry_t;
 
 struct collision_world {
-	collision_box_entry_t *entries;
+	collision_entry_t *entries;
 	size_t count;
 	size_t capacity;
 };
@@ -36,19 +35,22 @@ void collision_world_destroy(collision_world_t *world) {
 	free(world);
 }
 
-bool collision_world_add_box(collision_world_t *world,
-			     const entity_id_t entity_id,
-			     const box_collider_t collider,
-			     const vec3_t position) {
+bool collision_world_add_collider(collision_world_t *world,
+				  const entity_id_t entity_id,
+				  const collider_t collider,
+				  const vec3_t position) {
 	size_t capacity;
 	size_t index;
 
-	if (world == NULL || entity_id == 0) { return false; }
+	if (world == NULL || entity_id == 0 ||
+	    collider.type == COLLIDER_TYPE_NONE) {
+		return false;
+	    }
 
 	for (index = 0; index < world->count; index++) {
-		if (world->entries[index].entity_id == entity_id) {
+		    if (world->entries[index].entity_id == entity_id) {
 			return false;
-		}
+		    }
 	}
 
 	if (world->count == world->capacity) {
@@ -57,41 +59,16 @@ bool collision_world_add_box(collision_world_t *world,
 		if (capacity < world->capacity ||
 		    !collision_world_reserve(world, capacity)) {
 			return false;
-		}
+			    }
 	}
 
 	world->entries[world->count].entity_id = entity_id;
 	world->entries[world->count].collider =
-		box_collider_create(collider.center, collider.half_extents);
+		collider;
 	world->entries[world->count].position = position;
 	world->count++;
 
 	return true;
-}
-
-bool collision_world_remove(collision_world_t *world,
-			    const entity_id_t entity_id) {
-	size_t index;
-
-	if (world == NULL || entity_id == 0) { return false; }
-
-	for (index = 0; index < world->count; index++) {
-		if (world->entries[index].entity_id != entity_id) { continue; }
-
-		if (index + 1 < world->count) {
-			memmove(&world->entries[index],
-				&world->entries[index + 1],
-				(world->count - index - 1) *
-					sizeof(*world->entries));
-		}
-
-		world->count--;
-		world->entries[world->count] = (collision_box_entry_t){0};
-
-		return true;
-	}
-
-	return false;
 }
 
 size_t collision_world_get_count(const collision_world_t *world) {
@@ -124,9 +101,12 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 		moving_bounds = aabb_translate(local_bounds, *position);
 
 		for (index = 0; index < world->count; index++) {
-			static_bounds = box_collider_get_aabb(
-				world->entries[index].collider,
-				world->entries[index].position);
+			if (!collider_get_aabb(
+				    &world->entries[index].collider,
+					       world->entries[index].position,
+					       &static_bounds)) {
+				continue;
+			}
 
 			if (!aabb_get_collision(moving_bounds, static_bounds,
 						&collision)) {
@@ -158,7 +138,7 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 
 static bool collision_world_reserve(collision_world_t *world,
 				    const size_t capacity) {
-	collision_box_entry_t *entries;
+	collision_entry_t *entries;
 
 	if (capacity <= world->capacity) { return true; }
 

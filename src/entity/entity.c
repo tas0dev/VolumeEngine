@@ -6,8 +6,6 @@
  */
 
 #include "entity/entity.h"
-#include "prop_static.h"
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,6 +30,8 @@ void entity_initialize(entity_t *entity,
 	entity->targetname = NULL;
 	entity->transform = transform_create();
 	entity->active = true;
+	entity->has_collider = false;
+	entity->collider = collider_create_none();
 }
 
 entity_t *entity_create(const char *classname,
@@ -202,4 +202,26 @@ const char *entity_get_targetname(const entity_t *entity) {
 	if (entity == NULL) { return NULL; }
 
 	return entity->targetname;
+}
+
+void entity_set_collider(entity_t *entity, const collider_t collider) {
+	if (entity == NULL || collider.type == COLLIDER_TYPE_NONE) { return; }
+
+	entity->collider = collider;
+	entity->has_collider = true;
+}
+
+void entity_clear_collider(entity_t *entity) {
+	if (entity == NULL) { return; }
+
+	entity->collider = collider_create_none();
+	entity->has_collider = false;
+}
+
+bool entity_get_collider(const entity_t *entity, collider_t *collider) {
+	if (entity == NULL || !entity->has_collider) { return false; }
+
+	if (collider != NULL) { *collider = entity->collider; }
+
+	return true;
 }

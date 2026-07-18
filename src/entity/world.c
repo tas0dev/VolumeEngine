@@ -61,6 +61,12 @@ world_t *world_create(void) {
 	world = calloc(1, sizeof(*world));
 	if (world == NULL) { return NULL; }
 
+	world->collision_world = collision_world_create();
+	if (world->collision_world == NULL) {
+		free(world);
+		return NULL;
+	}
+
 	world->next_entity_id = 1;
 
 	return world;
@@ -75,10 +81,10 @@ void world_destroy(world_t *world) {
 		entity_destroy(world->entities[index]);
 	}
 
+	collision_world_destroy(world->collision_world);
 	free(world->entities);
 	free(world);
 }
-
 entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,
 			     const entity_spawn_context_t *context) {
@@ -118,6 +124,14 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 
 		if (!world_reserve(world, capacity)) { return false; }
 	}
+
+	if (entity->has_collider &&
+	    !collision_world_add_collider(world->collision_world, entity->id,
+					  entity->collider,
+					  entity->transform.position)) {
+		return false;
+	}
+
 	world->entities[world->count] = entity;
 	world->count++;
 
@@ -132,6 +146,7 @@ bool world_remove_entity(world_t *world, const entity_id_t id) {
 	for (index = 0; index < world->count; index++) {
 		if (world->entities[index]->id != id) { continue; }
 
+		collision_world_remove(world->collision_world, id);
 		entity_destroy(world->entities[index]);
 
 		if (index + 1 < world->count) {

@@ -8,7 +8,17 @@
 #ifndef VOLUME_CORE_LOG_H
 #define VOLUME_CORE_LOG_H
 
+/// 情報レベルの整形済みログを出力する。
+///
+/// ### Args
+/// - `const char *fmt`: `printf`形式のフォーマット文字列。
+/// - `...`: フォーマットへ渡す値。
 void log_info(const char *fmt, ...);
+/// エラーレベルの整形済みログを出力する。
+///
+/// ### Args
+/// - `const char *fmt`: `printf`形式のフォーマット文字列。
+/// - `...`: フォーマットへ渡す値。
 void log_error(const char *fmt, ...);
 
 #endif // VOLUME_CORE_LOG_H

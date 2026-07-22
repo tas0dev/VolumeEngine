@@ -10,6 +10,11 @@
 
 #include <stdbool.h>
 
+/// エンジン組み込みの全エンティティクラスを登録する。
+///
+/// ### Returns
+/// - `true`: 全クラスの登録に成功した。
+/// - `false`: いずれかのクラス登録に失敗した。
 bool entity_register_builtin_classes(void);
 
 #endif

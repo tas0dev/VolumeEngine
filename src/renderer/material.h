@@ -20,6 +20,13 @@ typedef struct material {
 	float shininess;
 } material_t;
 
+/// 指定色を持つ既定マテリアルを作成する。
+///
+/// ### Args
+/// - `vec3_t color`: 基本色。
+///
+/// ### Returns
+/// - `material_t`: 既定の反射設定を持つマテリアル。
 material_t material_create(vec3_t color);
 
 #endif

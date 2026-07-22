@@ -10,7 +10,17 @@
 
 #include "entity/entity.h"
 
+/// `trigger_once`エンティティクラスを登録する。
+///
+/// ### Returns
+/// - `true`: 登録に成功した。
+/// - `false`: 登録に失敗した。
 bool trigger_once_register(void);
+/// `trigger_multiple`エンティティクラスを登録する。
+///
+/// ### Returns
+/// - `true`: 登録に成功した。
+/// - `false`: 登録に失敗した。
 bool trigger_multiple_register(void);
 
 #endif

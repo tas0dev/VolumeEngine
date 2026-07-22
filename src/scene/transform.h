@@ -17,7 +17,18 @@ typedef struct transform {
 	vec3_t scale;
 } transform_t;
 
+/// 単位スケールの既定トランスフォームを作成する。
+///
+/// ### Returns
+/// - `transform_t`: 初期化済みのトランスフォーム。
 transform_t transform_create(void);
+/// 位置、回転、スケールを合成した変換行列を取得する。
+///
+/// ### Args
+/// - `const transform_t *transform`: 対象のトランスフォーム。
+///
+/// ### Returns
+/// - `mat4_t`: 合成済みの変換行列。
 mat4_t transform_get_matrix(const transform_t *transform);
 
 #endif

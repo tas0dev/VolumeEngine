@@ -10,6 +10,11 @@
 
 #include "entity/entity.h"
 
+/// `logic_relay`エンティティクラスを登録する。
+///
+/// ### Returns
+/// - `true`: 登録に成功した。
+/// - `false`: 登録に失敗した。
 bool logic_relay_register(void);
 
 #endif

@@ -54,18 +54,58 @@ typedef struct character_controller {
 	bool crouched;
 } character_controller_t;
 
+/// 指定位置と寸法からキャラクターコントローラーを作成する。
+///
+/// ### Args
+/// - `vec3_t position`: 足元を基準とした初期ワールド座標。
+/// - `float radius`: 水平方向の半径。
+/// - `float height`: 立ち状態の高さ。
+///
+/// ### Returns
+/// - `character_controller_t`: 初期化済みのコントローラー。
 character_controller_t
 character_controller_create(vec3_t position, float radius, float height);
+/// 接地中のコントローラーをジャンプさせる。
+///
+/// ### Args
+/// - `character_controller_t *controller`: 対象のコントローラー。
+///
+/// ### Returns
+/// - `true`: ジャンプを開始した。
+/// - `false`: 非接地または無効な引数により開始できなかった。
 bool character_controller_jump(character_controller_t *controller);
+/// 全衝突レイヤーを対象にコントローラーを移動する。
+///
+/// ### Args
+/// - `character_controller_t *controller`: 移動するコントローラー。
+/// - `const collision_world_t *world`: 衝突判定に使用するワールド。
+/// - `const character_move_input_t *input`: このtickの入力。
+/// - `float delta_time`: 物理tickの経過秒数。
 void character_controller_move(character_controller_t *controller,
 			       const collision_world_t *world,
 			       const character_move_input_t *input,
 			       float delta_time);
+/// 指定エンティティを無視してコントローラーを移動する。
+///
+/// ### Args
+/// - `character_controller_t *controller`: 移動するコントローラー。
+/// - `const collision_world_t *world`: 衝突判定に使用するワールド。
+/// - `entity_id_t ignored_entity_id`: 衝突判定から除外するID。
+/// - `const character_move_input_t *input`: このtickの入力。
+/// - `float delta_time`: 物理tickの経過秒数。
 void character_controller_move_ignoring(character_controller_t *controller,
 					const collision_world_t *world,
 					entity_id_t ignored_entity_id,
 					const character_move_input_t *input,
 					float delta_time);
+/// 衝突フィルターを指定してコントローラーを移動する。
+///
+/// ### Args
+/// - `character_controller_t *controller`: 移動するコントローラー。
+/// - `const collision_world_t *world`: 衝突判定に使用するワールド。
+/// - `collision_filter_t filter`: 適用する衝突フィルター。
+/// - `const character_move_input_t *input`: このtickの入力。
+/// - `float delta_time`: 物理tickの経過秒数。
 void character_controller_move_filtered(character_controller_t *controller,
 					const collision_world_t *world,
 					collision_filter_t filter,

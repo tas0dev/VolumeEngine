@@ -70,7 +70,7 @@ entity
 	"targetname" "example_door"
 	"model" "models/test_cube.obj"
 	"material" "materials/test_cube.volmat"
-	"origin" "0 0.5 -2"
+	"origin" "0 0.6 -2"
 	"angles" "0 0 0"
 	"scale" "2 3 0.3"
 	"casts_shadow" "1"

@@ -8,6 +8,7 @@
 #include "entity/func_door.h"
 #include "entity/prop_internal.h"
 #include "entity/world.h"
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,9 @@ static void begin_open(func_door_t *door, entity_t *activator);
 static void begin_close(func_door_t *door, entity_t *activator);
 static bool move_towards(vec3_t *position, vec3_t target, float distance);
 static entity_t *get_activator(func_door_t *door);
+static bool
+trace_movement(func_door_t *door, vec3_t end, collision_trace_t *trace);
+static void handle_blocked(func_door_t *door, const collision_trace_t *trace);
 
 static const entity_class_t func_door_class = {
 	.classname = "func_door",
@@ -132,6 +136,8 @@ static entity_t *create_entity(const entity_id_t id,
 
 static void update_entity(entity_t *entity, const float delta_time) {
 	func_door_t *door;
+	collision_trace_t trace;
+	vec3_t next_position;
 	bool reached;
 
 	if (entity == NULL || delta_time < 0.0f) { return; }
@@ -153,11 +159,20 @@ static void update_entity(entity_t *entity, const float delta_time) {
 		return;
 	}
 
-	reached = move_towards(&entity->transform.position,
+	next_position = entity->transform.position;
+	reached = move_towards(&next_position,
 			       door->state == FUNC_DOOR_OPENING
 				       ? door->open_position
 				       : door->closed_position,
 			       door->speed * delta_time);
+
+	if (trace_movement(door, next_position, &trace)) {
+		entity->transform.position = trace.position;
+		handle_blocked(door, &trace);
+		return;
+	}
+
+	entity->transform.position = next_position;
 
 	if (!reached) { return; }
 
@@ -269,6 +284,57 @@ static entity_t *get_activator(func_door_t *door) {
 	}
 
 	return world_find_entity(door->prop.entity.world, door->activator_id);
+}
+
+static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_t *trace) {
+	const float skin = 0.001f;
+	entity_t *entity;
+	aabb_t world_bounds;
+	aabb_t local_bounds;
+	vec3_t center;
+	vec3_t half_extents;
+
+	if (door == NULL || trace == NULL) { return false; }
+
+	entity = &door->prop.entity;
+	if (entity->world == NULL || !entity->has_collider ||
+	    vec3_length(vec3_subtract(end, entity->transform.position)) <=
+		    0.000001f ||
+	    !collider_get_aabb(&entity->collider, entity->transform.position,
+			       &world_bounds)) {
+		return false;
+	}
+
+	center = vec3_subtract(aabb_get_center(world_bounds),
+			       entity->transform.position);
+	half_extents = aabb_get_half_extents(world_bounds);
+	half_extents.x = fmaxf(0.0f, half_extents.x - skin);
+	half_extents.y = fmaxf(0.0f, half_extents.y - skin);
+	half_extents.z = fmaxf(0.0f, half_extents.z - skin);
+	local_bounds = aabb_create(center, half_extents);
+
+	return collision_world_trace_aabb_ignoring(
+		world_get_const_collision_world(entity->world), local_bounds,
+		entity->transform.position, end, entity->id, trace);
+}
+
+static void handle_blocked(func_door_t *door, const collision_trace_t *trace) {
+	entity_t *blocker;
+	bool was_opening;
+
+	if (door == NULL || trace == NULL) { return; }
+
+	blocker = world_find_entity(door->prop.entity.world, trace->entity_id);
+	was_opening = door->state == FUNC_DOOR_OPENING;
+
+	world_fire_output(door->prop.entity.world, &door->prop.entity,
+			  "OnBlocked", blocker);
+
+	if (was_opening) {
+		begin_close(door, blocker);
+	} else {
+		begin_open(door, blocker);
+	}
 }
 
 static void

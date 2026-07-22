@@ -384,6 +384,16 @@ bool collision_world_trace_aabb(const collision_world_t *world,
 				const vec3_t start,
 				const vec3_t end,
 				collision_trace_t *trace) {
+	return collision_world_trace_aabb_ignoring(world, local_bounds, start,
+						   end, 0, trace);
+}
+
+bool collision_world_trace_aabb_ignoring(const collision_world_t *world,
+					 const aabb_t local_bounds,
+					 const vec3_t start,
+					 const vec3_t end,
+					 const entity_id_t ignored_entity_id,
+					 collision_trace_t *trace) {
 	collision_trace_t candidate;
 	aabb_t static_bounds;
 	size_t index;
@@ -400,6 +410,10 @@ bool collision_world_trace_aabb(const collision_world_t *world,
 	if (world == NULL) { return false; }
 
 	for (index = 0; index < world->count; index++) {
+		if (world->entries[index].entity_id == ignored_entity_id) {
+			continue;
+		}
+
 		candidate.hit = false;
 		candidate.started_inside = false;
 		candidate.fraction = 1.0f;
@@ -496,8 +510,8 @@ static bool trace_aabb_against_aabb(const aabb_t local_bounds,
 	}
 
 	movement = vec3_subtract(end, start);
-	entry_time = 0.0f;
-	exit_time = 1.0f;
+	entry_time = -INFINITY;
+	exit_time = INFINITY;
 	normal = vec3_create(0.0f, 0.0f, 0.0f);
 
 	if (!update_sweep_axis(start_bounds.minimum.x, start_bounds.maximum.x,
@@ -577,8 +591,8 @@ static bool trace_aabb_against_triangle(const aabb_t local_bounds,
 	box_axes[1] = vec3_create(0.0f, 1.0f, 0.0f);
 	box_axes[2] = vec3_create(0.0f, 0.0f, 1.0f);
 
-	entry_time = 0.0f;
-	exit_time = 1.0f;
+	entry_time = -INFINITY;
+	exit_time = INFINITY;
 	normal = vec3_create(0.0f, 0.0f, 0.0f);
 
 	for (axis_index = 0; axis_index < 3; axis_index++) {

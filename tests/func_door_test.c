@@ -11,6 +11,7 @@
 #include "common.h"
 #include "entity/entity.h"
 #include "entity/func_door.h"
+#include "entity/prop_static.h"
 #include "entity/world.h"
 #include "map/map.h"
 #include "map/spawn.h"
@@ -96,10 +97,86 @@ static bool test_door_motion_inputs_and_collision(void) {
 	return true;
 }
 
+static bool test_door_reverses_and_fires_on_blocked(void) {
+	static const char source[] =
+		"world\n"
+		"{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"func_door\"\n"
+		"\t\"targetname\" \"door\"\n"
+		"\t\"model\" \"models/door\"\n"
+		"\t\"material\" \"materials/door\"\n"
+		"\t\"collision\" \"box\"\n"
+		"\t\"collision_size\" \"1 1 1\"\n"
+		"\t\"move_offset\" \"4 0 0\"\n"
+		"\t\"speed\" \"4\"\n"
+		"\t\"OnBlocked\" \"blocker,Disable,,0,1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"prop_static\"\n"
+		"\t\"targetname\" \"blocker\"\n"
+		"\t\"model\" \"models/door\"\n"
+		"\t\"material\" \"materials/door\"\n"
+		"\t\"origin\" \"2 0 0\"\n"
+		"\t\"collision\" \"box\"\n"
+		"\t\"collision_size\" \"1 1 1\"\n}\n";
+	asset_manager_t *assets;
+	func_door_t *door;
+	entity_t *blocker;
+	material_t material = {0};
+	mesh_t *mesh;
+	world_t *world;
+	map_t *map;
+	float blocked_position;
+	char error[256];
+
+	CHECK(func_door_register());
+	CHECK(prop_static_register());
+	assets = asset_manager_create();
+	CHECK(assets != NULL);
+	mesh = (mesh_t *)(void *)&mesh_marker;
+	CHECK(asset_manager_register_mesh(assets, "models/door", mesh));
+	CHECK(asset_manager_register_material(assets, "materials/door",
+					      &material));
+
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, assets, error, sizeof(error)));
+	door = func_door_from_entity(world_get_entity(world, 0));
+	blocker = world_find_by_targetname(world, "blocker");
+	CHECK(door != NULL && blocker != NULL);
+
+	CHECK(world_send_input(world, "door", "Open", "", NULL, NULL) == 1);
+	world_update(world, 1.0f);
+	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSING);
+	blocked_position = door->prop.entity.transform.position.x;
+	CHECK(blocked_position > 0.9f && blocked_position < 1.1f);
+
+	world_update(world, 0.5f);
+	CHECK(!entity_is_active(blocker));
+	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSED);
+
+	door->prop.entity.transform.position = door->open_position;
+	door->state = FUNC_DOOR_OPEN;
+	world_update(world, 0.0f);
+	CHECK(world_send_input(world, "door", "Close", "", NULL, NULL) == 1);
+	world_update(world, 1.0f);
+	CHECK(func_door_get_state(door) == FUNC_DOOR_OPENING);
+	blocked_position = door->prop.entity.transform.position.x;
+	CHECK(blocked_position > 2.9f && blocked_position < 3.1f);
+
+	world_destroy(world);
+	map_destroy(map);
+	asset_manager_destroy(assets);
+	entity_registry_shutdown();
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"door motion, inputs, and collision",
 		 test_door_motion_inputs_and_collision},
+		{"door reverses and fires OnBlocked",
+		 test_door_reverses_and_fires_on_blocked},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

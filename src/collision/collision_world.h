@@ -71,5 +71,11 @@ bool collision_world_trace_aabb(const collision_world_t *world,
 				vec3_t start,
 				vec3_t end,
 				collision_trace_t *trace);
+bool collision_world_trace_aabb_ignoring(const collision_world_t *world,
+					 aabb_t local_bounds,
+					 vec3_t start,
+					 vec3_t end,
+					 entity_id_t ignored_entity_id,
+					 collision_trace_t *trace);
 
 #endif

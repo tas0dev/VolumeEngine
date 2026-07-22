@@ -111,6 +111,8 @@ entity
 	"collision" "box"
 	"collision_size" "0.35 0.35 0.15"
 	"starts_disabled" "1"
+	"move_offset" "0 0 -0.1"
+	"speed" "0.5"
 	"wait" "1"
 	"OnPressed" "example_door,Open,,0,-1"
 }

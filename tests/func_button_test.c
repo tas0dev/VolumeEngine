@@ -12,6 +12,7 @@
 #include "entity/world.h"
 #include "map/map.h"
 #include "map/spawn.h"
+#include <math.h>
 
 static unsigned char mesh_marker;
 
@@ -29,6 +30,8 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 		"\t\"collision\" \"box\"\n"
 		"\t\"collision_size\" \"1 1 1\"\n"
 		"\t\"starts_disabled\" \"1\"\n"
+		"\t\"move_offset\" \"0 0 -0.2\"\n"
+		"\t\"speed\" \"0.2\"\n"
 		"\t\"wait\" \"1\"\n"
 		"\t\"OnPressed\" \"player,Disable,,0,-1\"\n}\n";
 	asset_manager_t *assets;
@@ -79,11 +82,25 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",
 					 player, player));
 	CHECK(func_button_is_pressed(button));
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
+	world_update(world, 0.0f);
+	CHECK(entity_is_active(player));
+	world_update(world, 0.5f);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
+	CHECK(fabsf(button_entity->transform.position.z + 2.1f) < 0.0001f);
+	world_update(world, 0.5f);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSED);
+	CHECK(fabsf(button_entity->transform.position.z + 2.2f) < 0.0001f);
+	CHECK(entity_is_active(player));
 	world_update(world, 0.0f);
 	CHECK(!entity_is_active(player));
 
 	world_update(world, 1.0f);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_RELEASING);
+	world_update(world, 1.0f);
 	CHECK(!func_button_is_pressed(button));
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_IDLE);
+	CHECK(fabsf(button_entity->transform.position.z + 2.0f) < 0.0001f);
 	CHECK(world_send_input_to_entity(world, button_entity, "Lock", "",
 					 player, player));
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",

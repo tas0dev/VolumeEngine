@@ -8,7 +8,7 @@
 #ifndef VOLUME_ENTITY_ENTITY_H
 #define VOLUME_ENTITY_ENTITY_H
 
-#include "collision/collider.h"
+#include "collision/collision_world.h"
 #include "core/types.h"
 #include "entity/io.h"
 #include "entity/properties.h"
@@ -54,6 +54,8 @@ struct entity {
 	bool collider_follows_transform;
 	bool pending_destroy;
 	collider_t collider;
+	collision_layer_t collision_layer;
+	collision_layer_t collision_mask;
 	entity_output_connection_t *outputs;
 	size_t output_count;
 	size_t output_capacity;
@@ -81,5 +83,8 @@ const char *entity_get_targetname(const entity_t *entity);
 void entity_set_collider(entity_t *entity, collider_t collider);
 void entity_clear_collider(entity_t *entity);
 bool entity_get_collider(const entity_t *entity, collider_t *collider);
+void entity_set_collision_filter(entity_t *entity,
+				 collision_layer_t layer,
+				 collision_layer_t mask);
 
 #endif

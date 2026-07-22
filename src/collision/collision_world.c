@@ -17,6 +17,8 @@ typedef struct collision_entry {
 	entity_id_t entity_id;
 	collider_t collider;
 	vec3_t position;
+	collision_layer_t layer;
+	collision_layer_t mask;
 } collision_entry_t;
 
 struct collision_world {
@@ -90,6 +92,17 @@ bool collision_world_add_collider(collision_world_t *world,
 				  const entity_id_t entity_id,
 				  const collider_t collider,
 				  const vec3_t position) {
+	return collision_world_add_collider_filtered(
+		world, entity_id, collider, position, COLLISION_LAYER_ALL,
+		COLLISION_LAYER_ALL);
+}
+
+bool collision_world_add_collider_filtered(collision_world_t *world,
+					   const entity_id_t entity_id,
+					   const collider_t collider,
+					   const vec3_t position,
+					   const collision_layer_t layer,
+					   const collision_layer_t mask) {
 	size_t capacity;
 	size_t index;
 
@@ -116,6 +129,8 @@ bool collision_world_add_collider(collision_world_t *world,
 	world->entries[world->count].entity_id = entity_id;
 	world->entries[world->count].collider = collider;
 	world->entries[world->count].position = position;
+	world->entries[world->count].layer = layer;
+	world->entries[world->count].mask = mask;
 	world->count++;
 
 	return true;
@@ -125,6 +140,17 @@ bool collision_world_update_collider(collision_world_t *world,
 				     const entity_id_t entity_id,
 				     const collider_t collider,
 				     const vec3_t position) {
+	return collision_world_update_collider_filtered(
+		world, entity_id, collider, position, COLLISION_LAYER_ALL,
+		COLLISION_LAYER_ALL);
+}
+
+bool collision_world_update_collider_filtered(collision_world_t *world,
+					      const entity_id_t entity_id,
+					      const collider_t collider,
+					      const vec3_t position,
+					      const collision_layer_t layer,
+					      const collision_layer_t mask) {
 	size_t index;
 
 	if (world == NULL || entity_id == 0) { return false; }
@@ -138,11 +164,13 @@ bool collision_world_update_collider(collision_world_t *world,
 
 		world->entries[index].collider = collider;
 		world->entries[index].position = position;
+		world->entries[index].layer = layer;
+		world->entries[index].mask = mask;
 		return true;
 	}
 
-	return collision_world_add_collider(world, entity_id, collider,
-					    position);
+	return collision_world_add_collider_filtered(world, entity_id, collider,
+						     position, layer, mask);
 }
 
 size_t collision_world_get_count(const collision_world_t *world) {
@@ -155,6 +183,29 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 				  const aabb_t local_bounds,
 				  vec3_t *position,
 				  collision_result_t *result) {
+	return collision_world_resolve_aabb_ignoring(world, local_bounds,
+						     position, 0, result);
+}
+
+bool collision_world_resolve_aabb_ignoring(const collision_world_t *world,
+					   const aabb_t local_bounds,
+					   vec3_t *position,
+					   const entity_id_t ignored_entity_id,
+					   collision_result_t *result) {
+	collision_filter_t filter;
+
+	filter.layer = COLLISION_LAYER_ALL;
+	filter.mask = COLLISION_LAYER_ALL;
+	filter.ignored_entity_id = ignored_entity_id;
+	return collision_world_resolve_aabb_filtered(world, local_bounds,
+						     position, filter, result);
+}
+
+bool collision_world_resolve_aabb_filtered(const collision_world_t *world,
+					   const aabb_t local_bounds,
+					   vec3_t *position,
+					   const collision_filter_t filter,
+					   collision_result_t *result) {
 	const unsigned int maximum_iterations = 8;
 	bool entry_collided;
 	bool iteration_collided;
@@ -171,6 +222,13 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 		iteration_collided = false;
 
 		for (index = 0; index < world->count; index++) {
+			if (world->entries[index].entity_id ==
+				    filter.ignored_entity_id ||
+			    (filter.mask & world->entries[index].layer) == 0 ||
+			    (world->entries[index].mask & filter.layer) == 0) {
+				continue;
+			}
+
 			entry_collided = false;
 
 			switch (world->entries[index].collider.type) {
@@ -394,6 +452,21 @@ bool collision_world_trace_aabb_ignoring(const collision_world_t *world,
 					 const vec3_t end,
 					 const entity_id_t ignored_entity_id,
 					 collision_trace_t *trace) {
+	collision_filter_t filter;
+
+	filter.layer = COLLISION_LAYER_ALL;
+	filter.mask = COLLISION_LAYER_ALL;
+	filter.ignored_entity_id = ignored_entity_id;
+	return collision_world_trace_aabb_filtered(world, local_bounds, start,
+						   end, filter, trace);
+}
+
+bool collision_world_trace_aabb_filtered(const collision_world_t *world,
+					 const aabb_t local_bounds,
+					 const vec3_t start,
+					 const vec3_t end,
+					 const collision_filter_t filter,
+					 collision_trace_t *trace) {
 	collision_trace_t candidate;
 	aabb_t static_bounds;
 	size_t index;
@@ -410,7 +483,10 @@ bool collision_world_trace_aabb_ignoring(const collision_world_t *world,
 	if (world == NULL) { return false; }
 
 	for (index = 0; index < world->count; index++) {
-		if (world->entries[index].entity_id == ignored_entity_id) {
+		if (world->entries[index].entity_id ==
+			    filter.ignored_entity_id ||
+		    (filter.mask & world->entries[index].layer) == 0 ||
+		    (world->entries[index].mask & filter.layer) == 0) {
 			continue;
 		}
 

@@ -9,6 +9,7 @@
 #include "core/log.h"
 #include "core/path.h"
 #include "entity/light_environment.h"
+#include "entity/player.h"
 #include "entity/world.h"
 #include "game/game.h"
 #include "input/input.h"
@@ -30,7 +31,7 @@ typedef struct game_state {
 	entity_t *mesh_entity;
 	light_environment_t *environment_light;
 	camera_t camera;
-	character_controller_t player;
+	player_t *player;
 	vec3_t movement_input;
 	float yaw;
 	float pitch;
@@ -82,6 +83,9 @@ int main(void) {
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	entity_t *light_entity;
+	entity_t *player_entity;
+	entity_properties_t player_properties;
+	entity_spawn_context_t player_context;
 	char *asset_root;
 	char *map_path;
 	char error[512];
@@ -146,13 +150,27 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	game_state->player = character_controller_create(
-		vec3_create(0.0f, -0.9f, 2.0f), 0.35f, 1.7f);
+	player_properties = entity_properties_create();
+	player_properties.targetname = "player";
+	player_properties.transform.position = vec3_create(0.0f, -0.9f, 2.0f);
+	player_context = (entity_spawn_context_t){0};
+	player_context.properties = &player_properties;
+	player_context.error = error;
+	player_context.error_size = sizeof(error);
+	error[0] = '\0';
+	player_entity = world_spawn_entity(game_state->world, "player",
+					   &player_context);
+	game_state->player = player_from_entity(player_entity);
+	if (game_state->player == NULL) {
+		log_error("Failed to spawn player entity: %s", error);
+		destroy_game_resources(game_state);
+		return false;
+	}
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
 	game_state->jump_requested = false;
 
 	game_state->camera = camera_create(
-		vec3_add(game_state->player.position,
+		vec3_add(player_get_position(game_state->player),
 			 vec3_create(0.0f, player_eye_height, 0.0f)));
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
@@ -251,7 +269,8 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 	if (input_key_pressed(input, INPUT_KEY_E)) {
 		world_send_input(game_state->world, "example_door", "Toggle",
-				 "", NULL, NULL);
+				 "", player_get_entity(game_state->player),
+				 player_get_entity(game_state->player));
 	}
 }
 
@@ -259,7 +278,6 @@ static void
 fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	character_move_input_t move_input;
-	const collision_world_t *collision_world;
 	float wish_speed;
 
 	(void)engine;
@@ -268,21 +286,18 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 
 	if (game_state == NULL || game_state->world == NULL) { return; }
 
-	collision_world = world_get_const_collision_world(game_state->world);
-
 	wish_speed = vec3_length(game_state->movement_input);
 
 	move_input.wish_direction = game_state->movement_input;
 	move_input.wish_speed = wish_speed;
 	move_input.jump = game_state->jump_requested;
 
-	character_controller_move(&game_state->player, collision_world,
-				  &move_input, delta_time);
+	player_move(game_state->player, &move_input, delta_time);
 
 	game_state->jump_requested = false;
 
 	game_state->camera.position =
-		vec3_add(game_state->player.position,
+		vec3_add(player_get_position(game_state->player),
 			 vec3_create(0.0f, player_eye_height, 0.0f));
 
 	if (game_state->mesh_entity != NULL) {
@@ -365,6 +380,7 @@ static void destroy_game_resources(game_state_t *game_state) {
 
 	game_state->mesh_entity = NULL;
 	game_state->environment_light = NULL;
+	game_state->player = NULL;
 	game_state->world = NULL;
 	game_state->assets = NULL;
 }

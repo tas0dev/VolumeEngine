@@ -164,6 +164,9 @@ prop_static_t *prop_static_create(const entity_id_t id,
 	if (prop == NULL) { return NULL; }
 
 	entity_initialize((entity_t *)prop, id, &prop_static_class);
+	entity_set_collision_filter((entity_t *)prop,
+				    COLLISION_LAYER_WORLD_STATIC,
+				    COLLISION_LAYER_ALL);
 
 	if (!entity_set_targetname((entity_t *)prop,
 				   properties->entity.targetname)) {

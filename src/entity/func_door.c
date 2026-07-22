@@ -126,6 +126,8 @@ static entity_t *create_entity(const entity_id_t id,
 	door->state = starts_open ? FUNC_DOOR_OPEN : FUNC_DOOR_CLOSED;
 	door->wait_remaining = door->wait;
 	door->prop.entity.collider_follows_transform = true;
+	entity_set_collision_filter(&door->prop.entity, COLLISION_LAYER_DYNAMIC,
+				    COLLISION_LAYER_ALL);
 
 	if (starts_open) {
 		door->prop.entity.transform.position = door->open_position;

@@ -11,6 +11,7 @@
 #include "common.h"
 #include "entity/entity.h"
 #include "entity/func_door.h"
+#include "entity/player.h"
 #include "entity/prop_static.h"
 #include "entity/world.h"
 #include "map/map.h"
@@ -171,12 +172,68 @@ static bool test_door_reverses_and_fires_on_blocked(void) {
 	return true;
 }
 
+static bool test_door_is_blocked_by_player(void) {
+	static const char source[] =
+		"world\n"
+		"{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"func_door\"\n"
+		"\t\"targetname\" \"door\"\n"
+		"\t\"model\" \"models/door\"\n"
+		"\t\"material\" \"materials/door\"\n"
+		"\t\"collision\" \"box\"\n"
+		"\t\"collision_size\" \"1 1 1\"\n"
+		"\t\"move_offset\" \"4 0 0\"\n"
+		"\t\"speed\" \"4\"\n}\n"
+		"entity\n{\n\t\"classname\" \"player\"\n"
+		"\t\"targetname\" \"player\"\n"
+		"\t\"origin\" \"2 -0.85 0\"\n"
+		"\t\"height\" \"1.7\"\n"
+		"\t\"radius\" \"0.35\"\n}\n";
+	asset_manager_t *assets;
+	func_door_t *door;
+	material_t material = {0};
+	mesh_t *mesh;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	CHECK(func_door_register());
+	CHECK(player_register());
+	assets = asset_manager_create();
+	CHECK(assets != NULL);
+	mesh = (mesh_t *)(void *)&mesh_marker;
+	CHECK(asset_manager_register_mesh(assets, "models/door", mesh));
+	CHECK(asset_manager_register_material(assets, "materials/door",
+					      &material));
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, assets, error, sizeof(error)));
+	door = func_door_from_entity(world_find_by_targetname(world, "door"));
+	CHECK(door != NULL);
+	CHECK(world_find_by_targetname(world, "player") != NULL);
+
+	CHECK(world_send_input(world, "door", "Open", "", NULL, NULL) == 1);
+	world_update(world, 1.0f);
+	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSING);
+	CHECK(door->prop.entity.transform.position.x > 1.1f);
+	CHECK(door->prop.entity.transform.position.x < 1.2f);
+
+	world_destroy(world);
+	map_destroy(map);
+	asset_manager_destroy(assets);
+	entity_registry_shutdown();
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"door motion, inputs, and collision",
 		 test_door_motion_inputs_and_collision},
 		{"door reverses and fires OnBlocked",
 		 test_door_reverses_and_fires_on_blocked},
+		{"door is blocked by player",	      test_door_is_blocked_by_player},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

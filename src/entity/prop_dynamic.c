@@ -35,6 +35,8 @@ prop_dynamic_create(const entity_id_t id,
 	if (prop == NULL) { return NULL; }
 
 	prop->entity.class = &prop_dynamic_class;
+	entity_set_collision_filter(&prop->entity, COLLISION_LAYER_DYNAMIC,
+				    COLLISION_LAYER_ALL);
 	prop->entity.collider_follows_transform = true;
 
 	return prop;
@@ -82,6 +84,8 @@ static entity_t *create_entity(const entity_id_t id,
 	if (entity == NULL) { return NULL; }
 
 	entity->class = &prop_dynamic_class;
+	entity_set_collision_filter(entity, COLLISION_LAYER_DYNAMIC,
+				    COLLISION_LAYER_ALL);
 	entity->collider_follows_transform = true;
 
 	return entity;

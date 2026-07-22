@@ -43,5 +43,15 @@ void character_controller_move(character_controller_t *controller,
 			       const collision_world_t *world,
 			       const character_move_input_t *input,
 			       float delta_time);
+void character_controller_move_ignoring(character_controller_t *controller,
+					const collision_world_t *world,
+					entity_id_t ignored_entity_id,
+					const character_move_input_t *input,
+					float delta_time);
+void character_controller_move_filtered(character_controller_t *controller,
+					const collision_world_t *world,
+					collision_filter_t filter,
+					const character_move_input_t *input,
+					float delta_time);
 
 #endif

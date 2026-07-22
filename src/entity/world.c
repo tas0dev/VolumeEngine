@@ -181,9 +181,10 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 	}
 
 	if (entity->has_collider &&
-	    !collision_world_add_collider(world->collision_world, entity->id,
-					  entity->collider,
-					  entity->transform.position)) {
+	    !collision_world_add_collider_filtered(
+		    world->collision_world, entity->id, entity->collider,
+		    entity->transform.position, entity->collision_layer,
+		    entity->collision_mask)) {
 		return false;
 	}
 
@@ -282,9 +283,11 @@ void world_update(world_t *world, const float delta_time) {
 		entity_update(entity, delta_time);
 
 		if (entity->collider_follows_transform) {
-			collision_world_update_collider(
+			collision_world_update_collider_filtered(
 				world->collision_world, entity->id,
-				entity->collider, entity->transform.position);
+				entity->collider, entity->transform.position,
+				entity->collision_layer,
+				entity->collision_mask);
 		}
 	}
 

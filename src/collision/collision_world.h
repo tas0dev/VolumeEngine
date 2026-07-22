@@ -13,8 +13,24 @@
 #include "core/types.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define COLLISION_RESULT_MAX_CONTACTS 16
+
+typedef uint32_t collision_layer_t;
+
+#define COLLISION_LAYER_NONE ((collision_layer_t)0)
+#define COLLISION_LAYER_WORLD_STATIC ((collision_layer_t)1u << 0)
+#define COLLISION_LAYER_DYNAMIC ((collision_layer_t)1u << 1)
+#define COLLISION_LAYER_PLAYER ((collision_layer_t)1u << 2)
+#define COLLISION_LAYER_TRIGGER ((collision_layer_t)1u << 3)
+#define COLLISION_LAYER_ALL UINT32_MAX
+
+typedef struct collision_filter {
+	collision_layer_t layer;
+	collision_layer_t mask;
+	entity_id_t ignored_entity_id;
+} collision_filter_t;
 
 typedef struct collision_contact {
 	vec3_t normal;
@@ -56,16 +72,38 @@ bool collision_world_add_collider(collision_world_t *world,
 				  entity_id_t entity_id,
 				  collider_t collider,
 				  vec3_t position);
+bool collision_world_add_collider_filtered(collision_world_t *world,
+					   entity_id_t entity_id,
+					   collider_t collider,
+					   vec3_t position,
+					   collision_layer_t layer,
+					   collision_layer_t mask);
 bool collision_world_update_collider(collision_world_t *world,
 				     entity_id_t entity_id,
 				     collider_t collider,
 				     vec3_t position);
+bool collision_world_update_collider_filtered(collision_world_t *world,
+					      entity_id_t entity_id,
+					      collider_t collider,
+					      vec3_t position,
+					      collision_layer_t layer,
+					      collision_layer_t mask);
 bool collision_world_remove(collision_world_t *world, entity_id_t entity_id);
 size_t collision_world_get_count(const collision_world_t *world);
 bool collision_world_resolve_aabb(const collision_world_t *world,
 				  aabb_t local_bounds,
 				  vec3_t *position,
 				  collision_result_t *result);
+bool collision_world_resolve_aabb_ignoring(const collision_world_t *world,
+					   aabb_t local_bounds,
+					   vec3_t *position,
+					   entity_id_t ignored_entity_id,
+					   collision_result_t *result);
+bool collision_world_resolve_aabb_filtered(const collision_world_t *world,
+					   aabb_t local_bounds,
+					   vec3_t *position,
+					   collision_filter_t filter,
+					   collision_result_t *result);
 bool collision_world_trace_aabb(const collision_world_t *world,
 				aabb_t local_bounds,
 				vec3_t start,
@@ -76,6 +114,12 @@ bool collision_world_trace_aabb_ignoring(const collision_world_t *world,
 					 vec3_t start,
 					 vec3_t end,
 					 entity_id_t ignored_entity_id,
+					 collision_trace_t *trace);
+bool collision_world_trace_aabb_filtered(const collision_world_t *world,
+					 aabb_t local_bounds,
+					 vec3_t start,
+					 vec3_t end,
+					 collision_filter_t filter,
 					 collision_trace_t *trace);
 
 #endif

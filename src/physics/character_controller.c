@@ -35,6 +35,7 @@ character_controller_resolve_contacts(character_controller_t *controller,
 				      const collision_result_t *collision);
 static void character_controller_slide_move(character_controller_t *controller,
 					    const collision_world_t *world,
+					    collision_filter_t filter,
 					    float delta_time);
 static vec3_t character_controller_clip_against_planes(vec3_t velocity,
 						       const vec3_t *planes,
@@ -83,6 +84,29 @@ void character_controller_move(character_controller_t *controller,
 			       const collision_world_t *world,
 			       const character_move_input_t *input,
 			       const float delta_time) {
+	character_controller_move_ignoring(controller, world, 0, input,
+					   delta_time);
+}
+
+void character_controller_move_ignoring(character_controller_t *controller,
+					const collision_world_t *world,
+					const entity_id_t ignored_entity_id,
+					const character_move_input_t *input,
+					const float delta_time) {
+	collision_filter_t filter;
+
+	filter.layer = COLLISION_LAYER_ALL;
+	filter.mask = COLLISION_LAYER_ALL;
+	filter.ignored_entity_id = ignored_entity_id;
+	character_controller_move_filtered(controller, world, filter, input,
+					   delta_time);
+}
+
+void character_controller_move_filtered(character_controller_t *controller,
+					const collision_world_t *world,
+					const collision_filter_t filter,
+					const character_move_input_t *input,
+					const float delta_time) {
 	vec3_t wish_direction;
 	float wish_speed;
 	float direction_length;
@@ -149,7 +173,7 @@ void character_controller_move(character_controller_t *controller,
 	controller->grounded = false;
 	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
 
-	character_controller_slide_move(controller, world, delta_time);
+	character_controller_slide_move(controller, world, filter, delta_time);
 
 	if (!controller->grounded) {
 		controller->velocity.y +=
@@ -332,6 +356,7 @@ character_controller_resolve_contacts(character_controller_t *controller,
 
 static void character_controller_slide_move(character_controller_t *controller,
 					    const collision_world_t *world,
+					    const collision_filter_t filter,
 					    const float delta_time) {
 	const unsigned int maximum_bumps = 4;
 	const size_t maximum_planes = 5;
@@ -357,8 +382,9 @@ static void character_controller_slide_move(character_controller_t *controller,
 		return;
 	}
 
-	if (collision_world_resolve_aabb(world, controller->bounds,
-					 &controller->position, &overlap)) {
+	if (collision_world_resolve_aabb_filtered(world, controller->bounds,
+						  &controller->position, filter,
+						  &overlap)) {
 		character_controller_resolve_contacts(controller, &overlap);
 	}
 
@@ -375,16 +401,17 @@ static void character_controller_slide_move(character_controller_t *controller,
 		movement = vec3_scale(controller->velocity, remaining_time);
 		end = vec3_add(start, movement);
 
-		if (!collision_world_trace_aabb(world, controller->bounds,
-						start, end, &trace)) {
+		if (!collision_world_trace_aabb_filtered(
+			    world, controller->bounds, start, end, filter,
+			    &trace)) {
 			controller->position = end;
 			break;
 		}
 
 		if (trace.started_inside) {
-			if (!collision_world_resolve_aabb(
+			if (!collision_world_resolve_aabb_filtered(
 				    world, controller->bounds,
-				    &controller->position, &overlap)) {
+				    &controller->position, filter, &overlap)) {
 				controller->velocity =
 					vec3_create(0.0f, 0.0f, 0.0f);
 				break;
@@ -434,8 +461,9 @@ static void character_controller_slide_move(character_controller_t *controller,
 		if (remaining_time <= 0.000001f) { break; }
 	}
 
-	if (collision_world_resolve_aabb(world, controller->bounds,
-					 &controller->position, &overlap)) {
+	if (collision_world_resolve_aabb_filtered(world, controller->bounds,
+						  &controller->position, filter,
+						  &overlap)) {
 		character_controller_resolve_contacts(controller, &overlap);
 	}
 }

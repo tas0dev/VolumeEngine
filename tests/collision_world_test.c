@@ -196,6 +196,62 @@ static bool test_invalid_arguments(void) {
 	return true;
 }
 
+static bool test_resolve_ignores_entity(void) {
+	collision_world_t *world;
+	collision_result_t result;
+	vec3_t position;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider(
+		world, 42,
+		collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.5f, 0.5f, 0.5f)),
+		vec3_create(0.0f, 0.0f, 0.0f)));
+
+	position = vec3_create(0.0f, 0.0f, 0.0f);
+	CHECK(!collision_world_resolve_aabb_ignoring(
+		world, create_moving_bounds(), &position, 42, &result));
+	CHECK(position.x == 0.0f && position.y == 0.0f && position.z == 0.0f);
+
+	position = vec3_create(0.0f, 0.0f, 0.0f);
+	CHECK(collision_world_resolve_aabb_ignoring(
+		world, create_moving_bounds(), &position, 0, &result));
+
+	collision_world_destroy(world);
+	return true;
+}
+
+static bool test_collision_layers_filter_queries(void) {
+	collision_filter_t filter;
+	collision_result_t result;
+	collision_world_t *world;
+	vec3_t position;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider_filtered(
+		world, 1,
+		collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.5f, 0.5f, 0.5f)),
+		vec3_create(0.0f, 0.0f, 0.0f), COLLISION_LAYER_TRIGGER,
+		COLLISION_LAYER_PLAYER));
+
+	filter.layer = COLLISION_LAYER_PLAYER;
+	filter.mask = COLLISION_LAYER_WORLD_STATIC | COLLISION_LAYER_DYNAMIC;
+	filter.ignored_entity_id = 0;
+	position = vec3_create(0.0f, 0.0f, 0.0f);
+	CHECK(!collision_world_resolve_aabb_filtered(
+		world, create_moving_bounds(), &position, filter, &result));
+
+	filter.mask |= COLLISION_LAYER_TRIGGER;
+	CHECK(collision_world_resolve_aabb_filtered(
+		world, create_moving_bounds(), &position, filter, &result));
+
+	collision_world_destroy(world);
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"add and remove collider",	    test_add_and_remove       },
@@ -205,6 +261,9 @@ int main(void) {
 		{"wall collision",			   test_wall_collision	      },
 		{"floor and wall corner",		  test_floor_and_wall_corner},
 		{"invalid collision world arguments", test_invalid_arguments    },
+		{"resolve ignores an entity",	      test_resolve_ignores_entity},
+		{"collision layers filter queries",
+		 test_collision_layers_filter_queries			     },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

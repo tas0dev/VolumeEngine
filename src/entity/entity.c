@@ -36,6 +36,8 @@ void entity_initialize(entity_t *entity,
 	entity->collider_follows_transform = false;
 	entity->pending_destroy = false;
 	entity->collider = collider_create_none();
+	entity->collision_layer = COLLISION_LAYER_ALL;
+	entity->collision_mask = COLLISION_LAYER_ALL;
 	entity->outputs = NULL;
 	entity->output_count = 0;
 	entity->output_capacity = 0;
@@ -232,4 +234,12 @@ bool entity_get_collider(const entity_t *entity, collider_t *collider) {
 	if (collider != NULL) { *collider = entity->collider; }
 
 	return true;
+}
+
+void entity_set_collision_filter(entity_t *entity,
+				 const collision_layer_t layer,
+				 const collision_layer_t mask) {
+	if (entity == NULL) { return; }
+	entity->collision_layer = layer;
+	entity->collision_mask = mask;
 }

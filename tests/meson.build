@@ -113,6 +113,16 @@ func_door_test = executable(
     install : false,
 )
 
+player_test = executable(
+    'player-test',
+    [
+        'common.c',
+        'player_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -161,4 +171,9 @@ test(
 test(
     'func-door',
     func_door_test
+)
+
+test(
+    'player',
+    player_test
 )

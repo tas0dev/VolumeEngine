@@ -14,8 +14,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef struct world world_t;
-
 world_t *world_create(void);
 void world_destroy(world_t *world);
 entity_t *world_spawn_entity(world_t *world,
@@ -35,5 +33,16 @@ void world_draw(world_t *world,
 entity_t *world_find_by_targetname(world_t *world, const char *targetname);
 collision_world_t *world_get_collision_world(world_t *world);
 const collision_world_t *world_get_const_collision_world(const world_t *world);
+size_t world_send_input(world_t *world,
+			const char *target_name,
+			const char *input_name,
+			const char *parameter,
+			entity_t *activator,
+			entity_t *caller);
+bool world_fire_output(world_t *world,
+		       entity_t *caller,
+		       const char *output_name,
+		       entity_t *activator);
+size_t world_get_pending_event_count(const world_t *world);
 
 #endif

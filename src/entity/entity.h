@@ -11,12 +11,12 @@
 #include "collision/collider.h"
 #include "core/types.h"
 #include "entity/properties.h"
+#include "entity/io.h"
 #include "renderer/view.h"
 #include "scene/transform.h"
 #include <stdbool.h>
 #include <stddef.h>
 
-typedef struct entity entity_t;
 typedef struct entity_class entity_class_t;
 struct asset_manager;
 
@@ -37,6 +37,9 @@ struct entity_class {
 	void (*draw)(entity_t *entity,
 		     renderer_t *renderer,
 		     const render_view_t *view);
+	bool (*accept_input)(entity_t *entity,
+			     const char *input_name,
+			     const entity_input_context_t *context);
 	void (*destroy)(entity_t *entity);
 };
 
@@ -48,7 +51,11 @@ struct entity {
 	bool active;
 	bool has_collider;
 	bool collider_follows_transform;
+	bool pending_destroy;
 	collider_t collider;
+	entity_output_connection_t *outputs;
+	size_t output_count;
+	size_t output_capacity;
 };
 
 void entity_initialize(entity_t *entity,

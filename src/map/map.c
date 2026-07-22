@@ -283,6 +283,31 @@ const char *map_entity_get_property(const map_entity_t *entity,
 	return keyvalues_node_get_value(property);
 }
 
+size_t map_entity_get_property_count(const map_entity_t *entity) {
+	if (entity == NULL || entity->node == NULL) { return 0; }
+
+	return keyvalues_node_get_child_count(entity->node);
+}
+
+bool map_entity_get_property_at(const map_entity_t *entity,
+				const size_t index,
+				const char **key,
+				const char **value) {
+	const keyvalues_node_t *property;
+
+	if (entity == NULL || entity->node == NULL) { return false; }
+
+	property = keyvalues_node_get_child(entity->node, index);
+	if (property == NULL || keyvalues_node_is_block(property)) {
+		return false;
+	}
+
+	if (key != NULL) { *key = keyvalues_node_get_key(property); }
+	if (value != NULL) { *value = keyvalues_node_get_value(property); }
+
+	return true;
+}
+
 bool map_entity_get_vec3(const map_entity_t *entity,
 			 const char *key,
 			 vec3_t *value) {

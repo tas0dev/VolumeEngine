@@ -23,6 +23,11 @@ size_t map_get_entity_count(const map_t *map);
 const map_entity_t *map_get_entity(const map_t *map, size_t index);
 const char *map_entity_get_property(const map_entity_t *entity,
 				    const char *key);
+size_t map_entity_get_property_count(const map_entity_t *entity);
+bool map_entity_get_property_at(const map_entity_t *entity,
+				size_t index,
+				const char **key,
+				const char **value);
 bool map_entity_get_vec3(const map_entity_t *entity,
 			 const char *key,
 			 vec3_t *value);

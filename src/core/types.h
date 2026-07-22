@@ -14,6 +14,8 @@ typedef struct volumeEngine engine_t;
 typedef struct renderer renderer_t;
 typedef struct platform platform_t;
 typedef struct input input_t;
+typedef struct world world_t;
+typedef struct entity entity_t;
 
 typedef uint32_t entity_id_t;
 

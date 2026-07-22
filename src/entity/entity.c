@@ -6,6 +6,7 @@
  */
 
 #include "entity/entity.h"
+#include "entity/io.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -32,7 +33,11 @@ void entity_initialize(entity_t *entity,
 	entity->active = true;
 	entity->has_collider = false;
 	entity->collider_follows_transform = false;
+	entity->pending_destroy = false;
 	entity->collider = collider_create_none();
+	entity->outputs = NULL;
+	entity->output_count = 0;
+	entity->output_capacity = 0;
 }
 
 entity_t *entity_create(const char *classname,
@@ -94,6 +99,7 @@ void entity_destroy(entity_t *entity) {
 
 	class = entity->class;
 
+	entity_io_destroy(entity);
 	free(entity->targetname);
 	entity->targetname = NULL;
 

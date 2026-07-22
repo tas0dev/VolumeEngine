@@ -93,6 +93,16 @@ prop_static_collision_test = executable(
     install : false,
 )
 
+entity_io_test = executable(
+    'entity-io-test',
+    [
+        'common.c',
+        'entity_io_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -131,4 +141,9 @@ test(
 test(
     'prop-static-collision-test',
     prop_static_collision_test
+)
+
+test(
+    'entity-io',
+    entity_io_test
 )

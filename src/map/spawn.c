@@ -6,6 +6,7 @@
  */
 
 #include "map/spawn.h"
+#include "entity/io.h"
 #include "entity/properties.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,6 +15,10 @@
 static void set_error(char *error, size_t error_size, const char *format, ...);
 static void rollback_entities(world_t *world, size_t initial_count);
 static const char *get_map_property(const void *context, const char *key);
+static bool load_entity_outputs(entity_t *entity,
+				const map_entity_t *map_entity,
+				char *error,
+				size_t error_size);
 
 static void
 set_error(char *error, const size_t error_size, const char *format, ...) {
@@ -47,6 +52,37 @@ static const char *get_map_property(const void *context, const char *key) {
 	return map_entity_get_property(context, key);
 }
 
+static bool load_entity_outputs(entity_t *entity,
+				const map_entity_t *map_entity,
+				char *error,
+				const size_t error_size) {
+	const char *key;
+	const char *value;
+	size_t index;
+	size_t count;
+
+	count = map_entity_get_property_count(map_entity);
+
+	for (index = 0; index < count; index++) {
+		if (!map_entity_get_property_at(map_entity, index, &key,
+						&value)) {
+			set_error(error, error_size,
+				  "invalid entity property at index %zu",
+				  index);
+			return false;
+		}
+
+		if (key == NULL || key[0] != 'O' || key[1] != 'n') { continue; }
+
+		if (!entity_add_output_from_string(entity, key, value, error,
+						   error_size)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool map_spawn_entities(const map_t *map,
 			world_t *world,
 			asset_manager_t *assets,
@@ -60,6 +96,7 @@ bool map_spawn_entities(const map_t *map,
 	size_t initial_count;
 	size_t index;
 	size_t count;
+	entity_t *entity;
 
 	if (error != NULL && error_size > 0) { error[0] = '\0'; }
 
@@ -103,7 +140,8 @@ bool map_spawn_entities(const map_t *map,
 		context.error = error;
 		context.error_size = error_size;
 
-		if (world_spawn_entity(world, classname, &context) == NULL) {
+		entity = world_spawn_entity(world, classname, &context);
+		if (entity == NULL) {
 			if (error == NULL || error_size == 0 ||
 			    error[0] == '\0') {
 				set_error(error, error_size,
@@ -112,6 +150,12 @@ bool map_spawn_entities(const map_t *map,
 					  index, classname);
 			}
 
+			rollback_entities(world, initial_count);
+			return false;
+		}
+
+		if (!load_entity_outputs(entity, map_entity, error,
+					 error_size)) {
 			rollback_entities(world, initial_count);
 			return false;
 		}

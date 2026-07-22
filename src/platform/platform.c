@@ -175,6 +175,11 @@ bool platform_poll_events(platform_t *platform, input_t *input) {
 					      event.motion.yrel);
 			break;
 
+		case SDL_EVENT_MOUSE_WHEEL:
+			input_add_mouse_wheel(input, event.wheel.x,
+					      event.wheel.y);
+			break;
+
 		default: break;
 		}
 	}

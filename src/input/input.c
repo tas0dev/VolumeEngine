@@ -18,6 +18,8 @@ struct input {
 	float mouse_y;
 	float mouse_delta_x;
 	float mouse_delta_y;
+	float mouse_wheel_x;
+	float mouse_wheel_y;
 };
 
 input_t *input_create(void) {
@@ -41,6 +43,8 @@ void input_begin_frame(input_t *input) {
 
 	input->mouse_delta_x = 0.0f;
 	input->mouse_delta_y = 0.0f;
+	input->mouse_wheel_x = 0.0f;
+	input->mouse_wheel_y = 0.0f;
 }
 
 bool input_key_down(const input_t *input, input_key_t const key) {
@@ -114,6 +118,14 @@ void input_get_mouse_delta(const input_t *input, float *x, float *y) {
 	if (y != NULL) { *y = input->mouse_delta_y; }
 }
 
+void input_get_mouse_wheel(const input_t *input, float *x, float *y) {
+	if (x != NULL) { *x = 0.0f; }
+	if (y != NULL) { *y = 0.0f; }
+	if (input == NULL) { return; }
+	if (x != NULL) { *x = input->mouse_wheel_x; }
+	if (y != NULL) { *y = input->mouse_wheel_y; }
+}
+
 void input_set_key(input_t *input, const input_key_t key, const bool down) {
 	if (input == NULL || key >= INPUT_KEY_COUNT) { return; }
 
@@ -140,4 +152,10 @@ void input_add_mouse_delta(input_t *input, const float x, const float y) {
 
 	input->mouse_delta_x += x;
 	input->mouse_delta_y += y;
+}
+
+void input_add_mouse_wheel(input_t *input, const float x, const float y) {
+	if (input == NULL) { return; }
+	input->mouse_wheel_x += x;
+	input->mouse_wheel_y += y;
 }

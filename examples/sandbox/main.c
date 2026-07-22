@@ -71,7 +71,7 @@ int main(void) {
 	config.window_height = 720;
 	config.capture_mouse = true;
 	config.game = &game;
-	config.fixed_delta_time = 1.0f / 60.0f;
+	config.fixed_delta_time = 1.0f / 120.0f;
 
 	engine = engine_create(&config);
 	if (engine == NULL) { return EXIT_FAILURE; }
@@ -198,6 +198,7 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	vec3_t right;
 	float mouse_x;
 	float mouse_y;
+	float mouse_wheel_y;
 	float pitch_limit;
 	const float mouse_sensitivity = 0.0025f;
 
@@ -219,6 +220,8 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 	mouse_x = 0.0f;
 	mouse_y = 0.0f;
+	mouse_wheel_y = 0.0f;
+	input_get_mouse_wheel(input, NULL, &mouse_wheel_y);
 
 	if (engine_is_mouse_captured(engine)) {
 		input_get_mouse_delta(input, &mouse_x, &mouse_y);
@@ -274,7 +277,8 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 	game_state->movement_input = movement;
 
-	if (input_key_pressed(input, INPUT_KEY_SPACE)) {
+	if (input_key_pressed(input, INPUT_KEY_SPACE) ||
+	    mouse_wheel_y != 0.0f) {
 		game_state->jump_requested = true;
 	}
 

@@ -64,11 +64,13 @@ bool input_mouse_button_released(const input_t *input,
 				 input_mouse_button_t button);
 void input_get_mouse_position(const input_t *input, float *x, float *y);
 void input_get_mouse_delta(const input_t *input, float *x, float *y);
+void input_get_mouse_wheel(const input_t *input, float *x, float *y);
 void input_set_key(input_t *input, input_key_t key, bool down);
 void input_set_mouse_button(input_t *input,
 			    input_mouse_button_t button,
 			    bool down);
 void input_set_mouse_position(input_t *input, float x, float y);
 void input_add_mouse_delta(input_t *input, float x, float y);
+void input_add_mouse_wheel(input_t *input, float x, float y);
 
 #endif

@@ -57,8 +57,8 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
 	controller.maximum_speed = 4.0f;
 	controller.ground_acceleration = 10.0f;
-	controller.air_acceleration = 10.0f;
-	controller.air_speed_cap = 0.4f;
+	controller.air_acceleration = 12.0f;
+	controller.air_speed_cap = 0.8f;
 	controller.friction = 4.0f;
 	controller.stop_speed = 1.25f;
 	controller.gravity = -20.0f;
@@ -199,10 +199,12 @@ character_controller_apply_friction(character_controller_t *controller,
 	float new_speed;
 	float scale;
 
-	speed = vec3_length(controller->velocity);
+	speed = sqrtf(controller->velocity.x * controller->velocity.x +
+		      controller->velocity.z * controller->velocity.z);
 
 	if (speed < 0.001f) {
-		controller->velocity = vec3_create(0.0f, 0.0f, 0.0f);
+		controller->velocity.x = 0.0f;
+		controller->velocity.z = 0.0f;
 		return;
 	}
 
@@ -220,7 +222,8 @@ character_controller_apply_friction(character_controller_t *controller,
 	if (new_speed == speed) { return; }
 
 	scale = new_speed / speed;
-	controller->velocity = vec3_scale(controller->velocity, scale);
+	controller->velocity.x *= scale;
+	controller->velocity.z *= scale;
 }
 
 static void character_controller_accelerate(character_controller_t *controller,

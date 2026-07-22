@@ -6,6 +6,7 @@
  */
 
 #include "entity/player.h"
+#include "entity/func_ladder.h"
 #include "entity/world.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -14,12 +15,16 @@
 struct player {
 	entity_t entity;
 	character_controller_t controller;
+	entity_id_t ladder_id;
+	float ladder_detach_time;
 };
 
 static entity_t *create_entity(entity_id_t id,
 			       const entity_spawn_context_t *context);
 static void destroy_entity(entity_t *entity);
 static void sync_player_transform_and_collider(player_t *player);
+static func_ladder_t *find_touching_ladder(const player_t *player,
+					   entity_id_t preferred_id);
 static void
 set_error(const entity_spawn_context_t *context, const char *format, ...);
 
@@ -72,6 +77,10 @@ bool player_is_crouched(const player_t *player) {
 
 bool player_is_surfing(const player_t *player) {
 	return player != NULL && player->controller.surfing;
+}
+
+bool player_is_on_ladder(const player_t *player) {
+	return player != NULL && player->controller.on_ladder;
 }
 
 entity_id_t player_get_ground_entity_id(const player_t *player) {
@@ -133,7 +142,12 @@ void player_move(player_t *player,
 	character_move_input_t adjusted_input;
 	const character_move_input_t *movement_input;
 	entity_t *ground_entity;
+	entity_t *ladder_entity;
+	func_ladder_t *ladder;
 	vec3_t base_velocity;
+	vec3_t ladder_normal;
+	vec3_t wish_direction;
+	bool entering_ladder;
 
 	if (player == NULL) { return; }
 
@@ -145,7 +159,47 @@ void player_move(player_t *player,
 	filter.layer = player->entity.collision_layer;
 	filter.mask = player->entity.collision_mask;
 	filter.ignored_entity_id = player->entity.id;
-	movement_input = input;
+	adjusted_input = input == NULL ? (character_move_input_t){0} : *input;
+	adjusted_input.ladder = false;
+	adjusted_input.ladder_normal = vec3_create(0.0f, 0.0f, 0.0f);
+	movement_input = &adjusted_input;
+	player->ladder_detach_time -= delta_time;
+	ladder = find_touching_ladder(player, player->ladder_id);
+	if (ladder == NULL) { player->ladder_id = 0; }
+
+	entering_ladder = false;
+	if (ladder != NULL && input != NULL &&
+	    player->ladder_detach_time <= 0.0f) {
+		ladder_entity = func_ladder_get_entity(ladder);
+		ladder_normal = func_ladder_get_normal(ladder);
+		wish_direction = input->wish_direction;
+		wish_direction.y = 0.0f;
+		if (vec3_length(wish_direction) > 0.000001f) {
+			wish_direction = vec3_normalize(wish_direction);
+		}
+		entering_ladder =
+			player->ladder_id == ladder_entity->id ||
+			vec3_dot(wish_direction, ladder_normal) < -0.1f;
+		if (entering_ladder) { player->ladder_id = ladder_entity->id; }
+	}
+
+	if (entering_ladder && input->jump) {
+		player->controller.on_ladder = false;
+		player->controller.grounded = false;
+		player->controller.ground_entity_id = 0;
+		player->controller.velocity = vec3_add(
+			vec3_scale(ladder_normal,
+				   player->controller.jump_speed * 0.6f),
+			vec3_create(0.0f, player->controller.jump_speed * 0.25f,
+				    0.0f));
+		player->ladder_id = 0;
+		player->ladder_detach_time = 0.2f;
+		adjusted_input.jump = false;
+	} else if (entering_ladder) {
+		adjusted_input.ladder = true;
+		adjusted_input.ladder_normal = ladder_normal;
+	}
+
 	if (input != NULL && input->jump && player->controller.grounded) {
 		ground_entity =
 			player->entity.world == NULL
@@ -159,9 +213,7 @@ void player_move(player_t *player,
 		if (character_controller_jump(&player->controller)) {
 			player->controller.velocity = vec3_add(
 				player->controller.velocity, base_velocity);
-			adjusted_input = *input;
 			adjusted_input.jump = false;
-			movement_input = &adjusted_input;
 		}
 	}
 	character_controller_move_filtered(&player->controller, collision_world,
@@ -185,6 +237,44 @@ static void sync_player_transform_and_collider(player_t *player) {
 			player->entity.collision_layer,
 			player->entity.collision_mask);
 	}
+}
+
+static func_ladder_t *find_touching_ladder(const player_t *player,
+					   const entity_id_t preferred_id) {
+	const size_t maximum_candidates = 16;
+	collision_filter_t filter;
+	entity_id_t candidates[16];
+	func_ladder_t *fallback;
+	func_ladder_t *ladder;
+	entity_t *entity;
+	aabb_t bounds;
+	size_t candidate_count;
+	size_t index;
+
+	if (player == NULL || player->entity.world == NULL) { return NULL; }
+
+	bounds = aabb_translate(player->controller.bounds,
+				player->controller.position);
+	filter.layer = COLLISION_LAYER_PLAYER;
+	filter.mask = COLLISION_LAYER_TRIGGER;
+	filter.ignored_entity_id = player->entity.id;
+	candidate_count = collision_world_query_aabb(
+		world_get_const_collision_world(player->entity.world), bounds,
+		filter, candidates, maximum_candidates);
+	if (candidate_count > maximum_candidates) {
+		candidate_count = maximum_candidates;
+	}
+
+	fallback = NULL;
+	for (index = 0; index < candidate_count; index++) {
+		entity = world_find_entity(player->entity.world,
+					   candidates[index]);
+		ladder = func_ladder_from_entity(entity);
+		if (ladder == NULL || !entity_is_active(entity)) { continue; }
+		if (entity->id == preferred_id) { return ladder; }
+		if (fallback == NULL) { fallback = ladder; }
+	}
+	return fallback;
 }
 
 static entity_t *create_entity(const entity_id_t id,

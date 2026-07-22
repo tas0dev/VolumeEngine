@@ -249,7 +249,7 @@ static bool test_door_carries_rider_and_passes_velocity_to_jump(void) {
 		"\t\"height\" \"1.7\"\n"
 		"\t\"radius\" \"0.35\"\n}\n";
 	asset_manager_t *assets;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	entity_t *platform_entity;
 	func_door_t *door;
 	material_t material = {0};

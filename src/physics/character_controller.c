@@ -30,6 +30,12 @@ character_controller_air_accelerate(character_controller_t *controller,
 				    float wish_speed,
 				    float delta_time);
 static void
+character_controller_ladder_move(character_controller_t *controller,
+				 const collision_world_t *world,
+				 collision_filter_t filter,
+				 const character_move_input_t *input,
+				 float delta_time);
+static void
 character_controller_clip_velocity(character_controller_t *controller,
 				   vec3_t normal);
 static void
@@ -85,6 +91,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.stop_speed = 1.25f;
 	controller.gravity = -20.0f;
 	controller.jump_speed = 7.0f;
+	controller.ladder_speed = 3.0f;
 	controller.ground_stick_speed = 0.5f;
 	controller.step_height = 0.35f;
 	controller.standing_view_height = height - 0.15f;
@@ -97,6 +104,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.surf_normal = vec3_create(0.0f, 0.0f, 0.0f);
 	controller.grounded = false;
 	controller.surfing = false;
+	controller.on_ladder = false;
 	controller.crouched = false;
 
 	return controller;
@@ -158,11 +166,20 @@ void character_controller_move_filtered(character_controller_t *controller,
 		wish_speed = input->wish_speed;
 		wants_crouch = input->crouch;
 
-		if (input->jump) { character_controller_jump(controller); }
 	}
 
 	character_controller_update_crouch(controller, world, filter,
 					   wants_crouch, delta_time);
+	controller->on_ladder = input != NULL && input->ladder;
+	if (controller->on_ladder) {
+		character_controller_ladder_move(controller, world, filter,
+						 input, delta_time);
+		return;
+	}
+
+	if (input != NULL && input->jump) {
+		character_controller_jump(controller);
+	}
 
 	direction_length = vec3_length(wish_direction);
 
@@ -233,6 +250,73 @@ void character_controller_move_filtered(character_controller_t *controller,
 					   controller->ground_normal);
 		controller->surfing = false;
 	}
+}
+
+static void
+character_controller_ladder_move(character_controller_t *controller,
+				 const collision_world_t *world,
+				 const collision_filter_t filter,
+				 const character_move_input_t *input,
+				 const float delta_time) {
+	vec3_t ladder_normal;
+	vec3_t movement_direction;
+	vec3_t tangent;
+	vec3_t wish_direction;
+	float climb_input;
+	float direction_length;
+	float look_climb_sign;
+	float side_input;
+	float wish_speed;
+
+	if (controller == NULL || input == NULL || delta_time <= 0.0f) {
+		return;
+	}
+
+	ladder_normal = input->ladder_normal;
+	ladder_normal.y = 0.0f;
+	if (vec3_length(ladder_normal) <= 0.000001f) {
+		controller->on_ladder = false;
+		return;
+	}
+	ladder_normal = vec3_normalize(ladder_normal);
+	tangent = vec3_normalize(
+		vec3_cross(vec3_create(0.0f, 1.0f, 0.0f), ladder_normal));
+	wish_direction = input->wish_direction;
+	wish_direction.y = 0.0f;
+	direction_length = vec3_length(wish_direction);
+	if (direction_length > 0.000001f) {
+		wish_direction =
+			vec3_scale(wish_direction, 1.0f / direction_length);
+	} else {
+		wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
+	}
+
+	look_climb_sign = input->look_direction.y < -0.25f ? -1.0f : 1.0f;
+	climb_input =
+		-vec3_dot(wish_direction, ladder_normal) * look_climb_sign;
+	side_input = vec3_dot(wish_direction, tangent);
+	movement_direction =
+		vec3_add(vec3_scale(vec3_create(0.0f, 1.0f, 0.0f), climb_input),
+			 vec3_scale(tangent, side_input));
+	direction_length = vec3_length(movement_direction);
+	if (direction_length > 1.0f) {
+		movement_direction =
+			vec3_scale(movement_direction, 1.0f / direction_length);
+	}
+
+	wish_speed = input->wish_speed;
+	if (wish_speed > controller->ladder_speed) {
+		wish_speed = controller->ladder_speed;
+	}
+	if (wish_speed < 0.0f) { wish_speed = 0.0f; }
+	controller->velocity = vec3_scale(movement_direction, wish_speed);
+	controller->grounded = false;
+	controller->ground_entity_id = 0;
+	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
+	controller->surfing = false;
+	controller->surf_normal = vec3_create(0.0f, 0.0f, 0.0f);
+	character_controller_slide_move(controller, world, filter, false,
+					delta_time);
 }
 
 static void

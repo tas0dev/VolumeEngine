@@ -319,7 +319,7 @@ static void use_look_target(game_state_t *game_state) {
 static void
 fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
-	character_move_input_t move_input;
+	character_move_input_t move_input = {0};
 	float wish_speed;
 
 	game_state = user_data;
@@ -329,6 +329,7 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	wish_speed = vec3_length(game_state->movement_input);
 
 	move_input.wish_direction = game_state->movement_input;
+	move_input.look_direction = game_state->camera.forward;
 	move_input.wish_speed = wish_speed;
 	move_input.jump = game_state->jump_requested;
 	move_input.crouch =

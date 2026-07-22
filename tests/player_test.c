@@ -8,8 +8,11 @@
 #include "common.h"
 #include "collision/triangle.h"
 #include "collision/triangle_mesh_collider.h"
+#include "entity/func_ladder.h"
 #include "entity/player.h"
 #include "entity/world.h"
+#include "map/map.h"
+#include "map/spawn.h"
 #include "math/mat4.h"
 #include <math.h>
 
@@ -26,7 +29,7 @@ static triangle_mesh_collider_t *create_ramp(const float slope) {
 }
 
 static bool test_player_moves_without_hitting_itself(void) {
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	entity_properties_t properties;
 	entity_spawn_context_t context = {0};
 	entity_t *entity;
@@ -63,7 +66,7 @@ static bool test_player_moves_without_hitting_itself(void) {
 
 static bool test_air_strafe_exceeds_ground_speed(void) {
 	character_controller_t controller;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	vec3_t perpendicular;
 	float horizontal_speed;
 	size_t tick;
@@ -93,7 +96,7 @@ static bool test_air_strafe_exceeds_ground_speed(void) {
 
 static bool test_ground_move_steps_over_small_ledge(void) {
 	character_controller_t controller;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	collision_world_t *world;
 
 	world = collision_world_create();
@@ -128,7 +131,7 @@ static bool test_ground_move_steps_over_small_ledge(void) {
 
 static bool test_crouch_waits_for_standing_clearance(void) {
 	character_controller_t controller;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	collision_world_t *world;
 	float crouched_view_height;
 
@@ -171,7 +174,7 @@ static bool test_crouch_waits_for_standing_clearance(void) {
 
 static bool test_walkable_ramp_becomes_ground(void) {
 	character_controller_t controller;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	triangle_mesh_collider_t *ramp;
 	collision_world_t *world;
 	size_t tick;
@@ -206,7 +209,7 @@ static bool test_walkable_ramp_becomes_ground(void) {
 
 static bool test_steep_ramp_surfs_without_grounding(void) {
 	character_controller_t controller;
-	character_move_input_t input;
+	character_move_input_t input = {0};
 	triangle_mesh_collider_t *ramp;
 	collision_world_t *world;
 	size_t tick;
@@ -243,6 +246,63 @@ static bool test_steep_ramp_surfs_without_grounding(void) {
 	return true;
 }
 
+static bool test_player_climbs_and_jumps_off_ladder(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"func_ladder\"\n"
+		"\t\"targetname\" \"ladder\"\n"
+		"\t\"origin\" \"0 1 0\"\n"
+		"\t\"size\" \"2 4 0.5\"\n"
+		"\t\"normal\" \"0 0 1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"player\"\n"
+		"\t\"targetname\" \"climber\"\n"
+		"\t\"origin\" \"0 0 0.3\"\n}\n";
+	character_move_input_t input = {0};
+	player_t *player;
+	world_t *world;
+	map_t *map;
+	vec3_t climbed_position;
+	char error[256];
+
+	CHECK(func_ladder_register());
+	CHECK(player_register());
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	player = player_from_entity(world_find_by_targetname(world, "climber"));
+	CHECK(player != NULL);
+
+	input.wish_direction = vec3_create(0.0f, 0.0f, -1.0f);
+	input.look_direction = vec3_create(0.0f, 0.0f, -1.0f);
+	input.wish_speed = 4.0f;
+	player_move(player, &input, 0.3f);
+	CHECK(player_is_on_ladder(player));
+	CHECK(player_get_position(player).y > 0.89f);
+	climbed_position = player_get_position(player);
+
+	input.wish_direction = vec3_create(0.0f, 0.0f, 1.0f);
+	player_move(player, &input, 0.1f);
+	CHECK(player_is_on_ladder(player));
+	CHECK(player_get_position(player).y < climbed_position.y);
+
+	input.wish_direction = vec3_create(0.0f, 0.0f, -1.0f);
+	input.jump = true;
+	player_move(player, &input, 0.01f);
+	CHECK(!player_is_on_ladder(player));
+	CHECK(player_get_velocity(player).z > 0.0f);
+
+	input.jump = false;
+	player_move(player, &input, 0.05f);
+	CHECK(!player_is_on_ladder(player));
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"player moves without hitting itself",
@@ -257,6 +317,8 @@ int main(void) {
 		 test_walkable_ramp_becomes_ground	  },
 		{"steep ramp surfs without grounding",
 		 test_steep_ramp_surfs_without_grounding },
+		{"player climbs and jumps off ladder",
+		 test_player_climbs_and_jumps_off_ladder },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

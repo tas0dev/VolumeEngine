@@ -14,9 +14,12 @@
 
 typedef struct character_move_input {
 	vec3_t wish_direction;
+	vec3_t look_direction;
+	vec3_t ladder_normal;
 	float wish_speed;
 	bool jump;
 	bool crouch;
+	bool ladder;
 } character_move_input_t;
 
 typedef struct character_controller {
@@ -34,6 +37,7 @@ typedef struct character_controller {
 	float stop_speed;
 	float gravity;
 	float jump_speed;
+	float ladder_speed;
 	float ground_stick_speed;
 	float step_height;
 	float standing_view_height;
@@ -46,6 +50,7 @@ typedef struct character_controller {
 	vec3_t surf_normal;
 	bool grounded;
 	bool surfing;
+	bool on_ladder;
 	bool crouched;
 } character_controller_t;
 

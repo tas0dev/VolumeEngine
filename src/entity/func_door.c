@@ -29,6 +29,7 @@ static entity_t *get_activator(func_door_t *door);
 static bool
 trace_movement(func_door_t *door, vec3_t end, collision_trace_t *trace);
 static void handle_blocked(func_door_t *door, const collision_trace_t *trace);
+static void handle_unblocked(func_door_t *door);
 
 static const entity_class_t func_door_class = {
 	.classname = "func_door",
@@ -162,6 +163,7 @@ static void update_entity(entity_t *entity, const float delta_time) {
 	    door->state != FUNC_DOOR_CLOSING) {
 		return;
 	}
+	if (delta_time <= 0.0f) { return; }
 
 	next_position = entity->transform.position;
 	reached = move_towards(&next_position,
@@ -176,16 +178,21 @@ static void update_entity(entity_t *entity, const float delta_time) {
 		return;
 	}
 
+	handle_unblocked(door);
 	entity->transform.position = next_position;
 
 	if (!reached) { return; }
 
 	if (door->state == FUNC_DOOR_OPENING) {
+		door->blocked = false;
+		door->blocker_id = 0;
 		door->state = FUNC_DOOR_OPEN;
 		door->wait_remaining = door->wait;
 		world_fire_output(entity->world, entity, "OnFullyOpen",
 				  get_activator(door));
 	} else {
+		door->blocked = false;
+		door->blocker_id = 0;
 		door->state = FUNC_DOOR_CLOSED;
 		world_fire_output(entity->world, entity, "OnFullyClosed",
 				  get_activator(door));
@@ -328,21 +335,26 @@ static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_
 
 static void handle_blocked(func_door_t *door, const collision_trace_t *trace) {
 	entity_t *blocker;
-	bool was_opening;
 
 	if (door == NULL || trace == NULL) { return; }
+	if (door->blocked && door->blocker_id == trace->entity_id) { return; }
 
 	blocker = world_find_entity(door->prop.entity.world, trace->entity_id);
-	was_opening = door->state == FUNC_DOOR_OPENING;
-
+	door->blocked = true;
+	door->blocker_id = trace->entity_id;
 	world_fire_output(door->prop.entity.world, &door->prop.entity,
 			  "OnBlocked", blocker);
+}
 
-	if (was_opening) {
-		begin_close(door, blocker);
-	} else {
-		begin_open(door, blocker);
-	}
+static void handle_unblocked(func_door_t *door) {
+	entity_t *blocker;
+
+	if (door == NULL || !door->blocked) { return; }
+	blocker = world_find_entity(door->prop.entity.world, door->blocker_id);
+	door->blocked = false;
+	door->blocker_id = 0;
+	world_fire_output(door->prop.entity.world, &door->prop.entity,
+			  "OnUnblocked", blocker);
 }
 
 static void
@@ -375,6 +387,10 @@ const func_door_t *func_door_from_const_entity(const entity_t *entity) {
 
 func_door_state_t func_door_get_state(const func_door_t *door) {
 	return door == NULL ? FUNC_DOOR_CLOSED : door->state;
+}
+
+bool func_door_is_blocked(const func_door_t *door) {
+	return door != NULL && door->blocked;
 }
 
 bool func_door_register(void) {

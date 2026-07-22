@@ -98,7 +98,7 @@ static bool test_door_motion_inputs_and_collision(void) {
 	return true;
 }
 
-static bool test_door_reverses_and_fires_on_blocked(void) {
+static bool test_door_stops_and_resumes_after_blocked(void) {
 	static const char source[] =
 		"world\n"
 		"{\n\t\"classname\" \"worldspawn\"\n}\n"
@@ -110,7 +110,7 @@ static bool test_door_reverses_and_fires_on_blocked(void) {
 		"\t\"collision_size\" \"1 1 1\"\n"
 		"\t\"move_offset\" \"4 0 0\"\n"
 		"\t\"speed\" \"4\"\n"
-		"\t\"OnBlocked\" \"blocker,Disable,,0,1\"\n}\n"
+		"\t\"OnBlocked\" \"blocker,Kill,,0,1\"\n}\n"
 		"entity\n{\n\t\"classname\" \"prop_static\"\n"
 		"\t\"targetname\" \"blocker\"\n"
 		"\t\"model\" \"models/door\"\n"
@@ -148,22 +148,20 @@ static bool test_door_reverses_and_fires_on_blocked(void) {
 
 	CHECK(world_send_input(world, "door", "Open", "", NULL, NULL) == 1);
 	world_update(world, 1.0f);
-	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSING);
+	CHECK(func_door_get_state(door) == FUNC_DOOR_OPENING);
+	CHECK(func_door_is_blocked(door));
 	blocked_position = door->prop.entity.transform.position.x;
 	CHECK(blocked_position > 0.9f && blocked_position < 1.1f);
 
-	world_update(world, 0.5f);
-	CHECK(!entity_is_active(blocker));
-	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSED);
+	world_update(world, 0.1f);
+	CHECK(world_find_by_targetname(world, "blocker") == NULL);
+	CHECK(func_door_is_blocked(door));
+	CHECK(door->prop.entity.transform.position.x == blocked_position);
 
-	door->prop.entity.transform.position = door->open_position;
-	door->state = FUNC_DOOR_OPEN;
-	world_update(world, 0.0f);
-	CHECK(world_send_input(world, "door", "Close", "", NULL, NULL) == 1);
 	world_update(world, 1.0f);
-	CHECK(func_door_get_state(door) == FUNC_DOOR_OPENING);
-	blocked_position = door->prop.entity.transform.position.x;
-	CHECK(blocked_position > 2.9f && blocked_position < 3.1f);
+	CHECK(!func_door_is_blocked(door));
+	CHECK(func_door_get_state(door) == FUNC_DOOR_OPEN);
+	CHECK(door->prop.entity.transform.position.x == 4.0f);
 
 	world_destroy(world);
 	map_destroy(map);
@@ -216,9 +214,15 @@ static bool test_door_is_blocked_by_player(void) {
 
 	CHECK(world_send_input(world, "door", "Open", "", NULL, NULL) == 1);
 	world_update(world, 1.0f);
-	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSING);
+	CHECK(func_door_get_state(door) == FUNC_DOOR_OPENING);
+	CHECK(func_door_is_blocked(door));
 	CHECK(door->prop.entity.transform.position.x > 1.1f);
 	CHECK(door->prop.entity.transform.position.x < 1.2f);
+	CHECK(world_remove_entity(
+		world, world_find_by_targetname(world, "player")->id));
+	world_update(world, 1.0f);
+	CHECK(!func_door_is_blocked(door));
+	CHECK(func_door_get_state(door) == FUNC_DOOR_OPEN);
 
 	world_destroy(world);
 	map_destroy(map);
@@ -231,8 +235,8 @@ int main(void) {
 	static const test_case_t tests[] = {
 		{"door motion, inputs, and collision",
 		 test_door_motion_inputs_and_collision},
-		{"door reverses and fires OnBlocked",
-		 test_door_reverses_and_fires_on_blocked},
+		{"door stops and resumes after OnBlocked",
+		 test_door_stops_and_resumes_after_blocked				  },
 		{"door is blocked by player",	      test_door_is_blocked_by_player},
 	};
 

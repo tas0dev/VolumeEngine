@@ -25,13 +25,16 @@ typedef struct func_door {
 	float wait;
 	float wait_remaining;
 	entity_id_t activator_id;
+	entity_id_t blocker_id;
 	func_door_state_t state;
 	bool locked;
+	bool blocked;
 } func_door_t;
 
 func_door_t *func_door_from_entity(entity_t *entity);
 const func_door_t *func_door_from_const_entity(const entity_t *entity);
 func_door_state_t func_door_get_state(const func_door_t *door);
+bool func_door_is_blocked(const func_door_t *door);
 bool func_door_register(void);
 
 #endif

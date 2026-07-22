@@ -12,6 +12,7 @@
 #include "entity/player.h"
 #include "entity/prop_dynamic.h"
 #include "entity/prop_static.h"
+#include "entity/trigger.h"
 
 bool entity_register_builtin_classes(void) {
 	if (!func_door_register()) { return false; }
@@ -20,6 +21,8 @@ bool entity_register_builtin_classes(void) {
 	if (!light_environment_register()) { return false; }
 	if (!logic_relay_register()) { return false; }
 	if (!player_register()) { return false; }
+	if (!trigger_once_register()) { return false; }
+	if (!trigger_multiple_register()) { return false; }
 
 	return true;
 }

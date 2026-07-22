@@ -80,3 +80,12 @@ entity
 	"wait" "-1"
 	"OnFullyOpen" "!self,Close,,2,-1"
 }
+
+entity
+{
+	"classname" "trigger_once"
+	"targetname" "door_trigger"
+	"origin" "0 0 -0.5"
+	"size" "3 2 1.5"
+	"OnTrigger" "example_door,Open,,0,1"
+}

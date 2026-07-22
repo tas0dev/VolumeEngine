@@ -534,6 +534,38 @@ bool collision_world_trace_aabb_filtered(const collision_world_t *world,
 	return trace->hit;
 }
 
+size_t collision_world_query_aabb(const collision_world_t *world,
+				  const aabb_t bounds,
+				  const collision_filter_t filter,
+				  entity_id_t *entity_ids,
+				  const size_t capacity) {
+	aabb_t entry_bounds;
+	size_t count;
+	size_t index;
+
+	if (world == NULL) { return 0; }
+
+	count = 0;
+	for (index = 0; index < world->count; index++) {
+		if (world->entries[index].entity_id ==
+			    filter.ignored_entity_id ||
+		    (filter.mask & world->entries[index].layer) == 0 ||
+		    !collider_get_aabb(&world->entries[index].collider,
+				       world->entries[index].position,
+				       &entry_bounds) ||
+		    !aabb_intersects(bounds, entry_bounds)) {
+			continue;
+		}
+
+		if (entity_ids != NULL && count < capacity) {
+			entity_ids[count] = world->entries[index].entity_id;
+		}
+		count++;
+	}
+
+	return count;
+}
+
 static aabb_t create_swept_bounds(const aabb_t local_bounds,
 				  const vec3_t start,
 				  const vec3_t end) {

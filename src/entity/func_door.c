@@ -127,7 +127,9 @@ static entity_t *create_entity(const entity_id_t id,
 	door->wait_remaining = door->wait;
 	door->prop.entity.collider_follows_transform = true;
 	entity_set_collision_filter(&door->prop.entity, COLLISION_LAYER_DYNAMIC,
-				    COLLISION_LAYER_ALL);
+				    COLLISION_LAYER_WORLD_STATIC |
+					    COLLISION_LAYER_DYNAMIC |
+					    COLLISION_LAYER_PLAYER);
 
 	if (starts_open) {
 		door->prop.entity.transform.position = door->open_position;
@@ -290,6 +292,7 @@ static entity_t *get_activator(func_door_t *door) {
 
 static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_t *trace) {
 	const float skin = 0.001f;
+	collision_filter_t filter;
 	entity_t *entity;
 	aabb_t world_bounds;
 	aabb_t local_bounds;
@@ -315,9 +318,12 @@ static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_
 	half_extents.z = fmaxf(0.0f, half_extents.z - skin);
 	local_bounds = aabb_create(center, half_extents);
 
-	return collision_world_trace_aabb_ignoring(
+	filter.layer = entity->collision_layer;
+	filter.mask = entity->collision_mask;
+	filter.ignored_entity_id = entity->id;
+	return collision_world_trace_aabb_filtered(
 		world_get_const_collision_world(entity->world), local_bounds,
-		entity->transform.position, end, entity->id, trace);
+		entity->transform.position, end, filter, trace);
 }
 
 static void handle_blocked(func_door_t *door, const collision_trace_t *trace) {

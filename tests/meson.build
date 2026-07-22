@@ -123,6 +123,16 @@ player_test = executable(
     install : false,
 )
 
+trigger_test = executable(
+    'trigger-test',
+    [
+        'common.c',
+        'trigger_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -176,4 +186,9 @@ test(
 test(
     'player',
     player_test
+)
+
+test(
+    'trigger',
+    trigger_test
 )

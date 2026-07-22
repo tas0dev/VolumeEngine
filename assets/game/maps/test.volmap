@@ -5,6 +5,14 @@ world
 
 entity
 {
+	"classname" "info_player_start"
+	"targetname" "player_start"
+	"origin" "0 -0.9 2"
+	"angles" "0 -90 0"
+}
+
+entity
+{
 	"classname" "prop_dynamic"
 	"targetname" "rotating_box"
 	"model" "models/test_cube.obj"

@@ -8,6 +8,7 @@
 #include "asset/manager.h"
 #include "core/log.h"
 #include "core/path.h"
+#include "entity/info_player_start.h"
 #include "entity/light_environment.h"
 #include "entity/player.h"
 #include "entity/world.h"
@@ -85,6 +86,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
 	entity_t *light_entity;
 	entity_t *player_entity;
+	entity_t *player_start;
 	entity_properties_t player_properties;
 	entity_spawn_context_t player_context;
 	char *asset_root;
@@ -151,9 +153,17 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
+	player_start =
+		world_find_by_classname(game_state->world, "info_player_start");
+	if (player_start == NULL) {
+		log_error("Map has no info_player_start entity");
+		destroy_game_resources(game_state);
+		return false;
+	}
+
 	player_properties = entity_properties_create();
 	player_properties.targetname = "player";
-	player_properties.transform.position = vec3_create(0.0f, -0.9f, 2.0f);
+	player_properties.transform.position = player_start->transform.position;
 	player_context = (entity_spawn_context_t){0};
 	player_context.properties = &player_properties;
 	player_context.error = error;
@@ -173,8 +183,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->camera = camera_create(
 		vec3_add(player_get_position(game_state->player),
 			 vec3_create(0.0f, player_eye_height, 0.0f)));
-	game_state->yaw = -PI * 0.5f;
-	game_state->pitch = 0.0f;
+	game_state->yaw = player_start->transform.rotation.y;
+	game_state->pitch = -player_start->transform.rotation.x;
 	log_info("Look at an entity and press E to use it");
 
 	return true;

@@ -143,6 +143,16 @@ func_button_test = executable(
     install : false,
 )
 
+info_player_start_test = executable(
+    'info-player-start-test',
+    [
+        'common.c',
+        'info_player_start_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -206,4 +216,9 @@ test(
 test(
     'func-button',
     func_button_test
+)
+
+test(
+    'info-player-start',
+    info_player_start_test
 )

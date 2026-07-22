@@ -87,5 +87,22 @@ entity
 	"targetname" "door_trigger"
 	"origin" "0 0 -0.5"
 	"size" "3 2 1.5"
-	"OnTrigger" "example_door,Open,,0,1"
+	"OnTrigger" "example_button,Enable,,0,1"
+}
+
+entity
+{
+	"classname" "func_button"
+	"targetname" "example_button"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "-1.35 0.4 -1.7"
+	"angles" "0 0 0"
+	"scale" "0.35 0.35 0.15"
+	"casts_shadow" "1"
+	"collision" "box"
+	"collision_size" "0.35 0.35 0.15"
+	"starts_disabled" "1"
+	"wait" "1"
+	"OnPressed" "example_door,Open,,0,-1"
 }

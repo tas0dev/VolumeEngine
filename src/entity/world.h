@@ -39,6 +39,12 @@ size_t world_send_input(world_t *world,
 			const char *parameter,
 			entity_t *activator,
 			entity_t *caller);
+bool world_send_input_to_entity(world_t *world,
+				entity_t *target,
+				const char *input_name,
+				const char *parameter,
+				entity_t *activator,
+				entity_t *caller);
 bool world_fire_output(world_t *world,
 		       entity_t *caller,
 		       const char *output_name,

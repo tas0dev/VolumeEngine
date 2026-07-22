@@ -121,6 +121,11 @@ bool collision_world_trace_aabb_filtered(const collision_world_t *world,
 					 vec3_t end,
 					 collision_filter_t filter,
 					 collision_trace_t *trace);
+bool collision_world_trace_ray_filtered(const collision_world_t *world,
+					vec3_t start,
+					vec3_t end,
+					collision_filter_t filter,
+					collision_trace_t *trace);
 size_t collision_world_query_aabb(const collision_world_t *world,
 				  aabb_t bounds,
 				  collision_filter_t filter,

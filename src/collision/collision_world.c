@@ -566,6 +566,19 @@ size_t collision_world_query_aabb(const collision_world_t *world,
 	return count;
 }
 
+bool collision_world_trace_ray_filtered(const collision_world_t *world,
+					const vec3_t start,
+					const vec3_t end,
+					const collision_filter_t filter,
+					collision_trace_t *trace) {
+	aabb_t point_bounds;
+
+	point_bounds = aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+				   vec3_create(0.0f, 0.0f, 0.0f));
+	return collision_world_trace_aabb_filtered(world, point_bounds, start,
+						   end, filter, trace);
+}
+
 static aabb_t create_swept_bounds(const aabb_t local_bounds,
 				  const vec3_t start,
 				  const vec3_t end) {

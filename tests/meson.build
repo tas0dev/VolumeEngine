@@ -133,6 +133,16 @@ trigger_test = executable(
     install : false,
 )
 
+func_button_test = executable(
+    'func-button-test',
+    [
+        'common.c',
+        'func_button_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -191,4 +201,9 @@ test(
 test(
     'trigger',
     trigger_test
+)
+
+test(
+    'func-button',
+    func_button_test
 )

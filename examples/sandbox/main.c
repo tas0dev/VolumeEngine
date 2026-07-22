@@ -47,6 +47,7 @@ static void render(engine_t *engine, void *user_data);
 static void shutdown(engine_t *engine, void *user_data);
 static void destroy_game_resources(game_state_t *game_state);
 static void fixed_update(engine_t *engine, float delta_time, void *user_data);
+static void use_look_target(game_state_t *game_state);
 
 static game_state_t state;
 
@@ -174,7 +175,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 			 vec3_create(0.0f, player_eye_height, 0.0f)));
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
-	log_info("Press E to toggle the example door");
+	log_info("Look at an entity and press E to use it");
 
 	return true;
 }
@@ -268,10 +269,39 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	if (input_key_pressed(input, INPUT_KEY_E)) {
-		world_send_input(game_state->world, "example_door", "Toggle",
-				 "", player_get_entity(game_state->player),
-				 player_get_entity(game_state->player));
+		use_look_target(game_state);
 	}
+}
+
+static void use_look_target(game_state_t *game_state) {
+	const float use_distance = 6.0f;
+	collision_filter_t filter;
+	collision_trace_t trace;
+	entity_t *player_entity;
+	entity_t *target;
+	vec3_t end;
+
+	if (game_state == NULL || game_state->world == NULL ||
+	    game_state->player == NULL) {
+		return;
+	}
+
+	player_entity = player_get_entity(game_state->player);
+	filter.layer = COLLISION_LAYER_PLAYER;
+	filter.mask = COLLISION_LAYER_WORLD_STATIC | COLLISION_LAYER_DYNAMIC;
+	filter.ignored_entity_id = player_entity->id;
+	end = vec3_add(game_state->camera.position,
+		       vec3_scale(game_state->camera.forward, use_distance));
+
+	if (!collision_world_trace_ray_filtered(
+		    world_get_const_collision_world(game_state->world),
+		    game_state->camera.position, end, filter, &trace)) {
+		return;
+	}
+
+	target = world_find_entity(game_state->world, trace.entity_id);
+	world_send_input_to_entity(game_state->world, target, "Use", "",
+				   player_entity, player_entity);
 }
 
 static void

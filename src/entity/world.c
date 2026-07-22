@@ -404,6 +404,27 @@ size_t world_send_input(world_t *world,
 	return accepted;
 }
 
+bool world_send_input_to_entity(world_t *world,
+				entity_t *target,
+				const char *input_name,
+				const char *parameter,
+				entity_t *activator,
+				entity_t *caller) {
+	entity_input_context_t context;
+
+	if (world == NULL || target == NULL || input_name == NULL ||
+	    input_name[0] == '\0' || target->pending_destroy ||
+	    world_find_entity(world, target->id) != target) {
+		return false;
+	}
+
+	context.world = world;
+	context.activator = activator;
+	context.caller = caller;
+	context.parameter = parameter == NULL ? "" : parameter;
+	return entity_accept_input(target, input_name, &context);
+}
+
 bool world_fire_output(world_t *world,
 		       entity_t *caller,
 		       const char *output_name,

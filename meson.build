@@ -33,6 +33,7 @@ volume_sources = files(
         'src/core/path.c',
         'src/entity/entity.c',
         'src/entity/func_door.c',
+        'src/entity/func_button.c',
         'src/entity/io.c',
         'src/entity/logic_relay.c',
         'src/entity/player.c',

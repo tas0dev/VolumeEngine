@@ -252,6 +252,39 @@ static bool test_collision_layers_filter_queries(void) {
 	return true;
 }
 
+static bool test_ray_trace_uses_layers_and_nearest_hit(void) {
+	collision_filter_t filter;
+	collision_trace_t trace;
+	collision_world_t *world;
+	collider_t collider;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+	collider = collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				       vec3_create(0.5f, 0.5f, 0.5f));
+	CHECK(collision_world_add_collider_filtered(
+		world, 1, collider, vec3_create(0.0f, 0.0f, -0.5f),
+		COLLISION_LAYER_TRIGGER, COLLISION_LAYER_PLAYER));
+	CHECK(collision_world_add_collider_filtered(
+		world, 2, collider, vec3_create(0.0f, 0.0f, -2.0f),
+		COLLISION_LAYER_DYNAMIC, COLLISION_LAYER_ALL));
+	CHECK(collision_world_add_collider_filtered(
+		world, 3, collider, vec3_create(0.0f, 0.0f, -4.0f),
+		COLLISION_LAYER_WORLD_STATIC, COLLISION_LAYER_ALL));
+
+	filter.layer = COLLISION_LAYER_PLAYER;
+	filter.mask = COLLISION_LAYER_WORLD_STATIC | COLLISION_LAYER_DYNAMIC;
+	filter.ignored_entity_id = 0;
+	CHECK(collision_world_trace_ray_filtered(
+		world, vec3_create(0.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 0.0f, -6.0f), filter, &trace));
+	CHECK(trace.entity_id == 2);
+	CHECK(trace.fraction > 0.24f && trace.fraction < 0.26f);
+
+	collision_world_destroy(world);
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"add and remove collider",	    test_add_and_remove       },
@@ -264,6 +297,8 @@ int main(void) {
 		{"resolve ignores an entity",	      test_resolve_ignores_entity},
 		{"collision layers filter queries",
 		 test_collision_layers_filter_queries			     },
+		{"ray trace uses layers and nearest hit",
+		 test_ray_trace_uses_layers_and_nearest_hit			   },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

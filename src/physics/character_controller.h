@@ -32,6 +32,7 @@ typedef struct character_controller {
 	float gravity;
 	float jump_speed;
 	float ground_stick_speed;
+	float step_height;
 	float minimum_ground_normal_y;
 	bool grounded;
 } character_controller_t;

@@ -74,12 +74,48 @@ static bool test_air_strafe_exceeds_ground_speed(void) {
 	return true;
 }
 
+static bool test_ground_move_steps_over_small_ledge(void) {
+	character_controller_t controller;
+	character_move_input_t input;
+	collision_world_t *world;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider(
+		world, 1,
+		collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(5.0f, 0.5f, 2.0f)),
+		vec3_create(0.0f, -0.5f, 0.0f)));
+	CHECK(collision_world_add_collider(
+		world, 2,
+		collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.4f, 0.15f, 1.0f)),
+		vec3_create(1.0f, 0.15f, 0.0f)));
+
+	controller = character_controller_create(vec3_create(0.0f, 0.0f, 0.0f),
+						 0.35f, 1.7f);
+	controller.grounded = true;
+	input.wish_direction = vec3_create(1.0f, 0.0f, 0.0f);
+	input.wish_speed = controller.maximum_speed;
+	input.jump = false;
+	character_controller_move(&controller, world, &input, 0.3f);
+
+	CHECK(controller.position.x > 0.8f);
+	CHECK(controller.position.y > 0.29f && controller.position.y < 0.31f);
+	CHECK(controller.grounded);
+
+	collision_world_destroy(world);
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"player moves without hitting itself",
 		 test_player_moves_without_hitting_itself},
 		{"air strafe exceeds ground speed",
 		 test_air_strafe_exceeds_ground_speed    },
+		{"ground move steps over a small ledge",
+		 test_ground_move_steps_over_small_ledge },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

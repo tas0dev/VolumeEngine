@@ -31,6 +31,7 @@ void entity_initialize(entity_t *entity,
 	entity->transform = transform_create();
 	entity->active = true;
 	entity->has_collider = false;
+	entity->collider_follows_transform = false;
 	entity->collider = collider_create_none();
 }
 

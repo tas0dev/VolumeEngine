@@ -47,6 +47,7 @@ struct entity {
 	transform_t transform;
 	bool active;
 	bool has_collider;
+	bool collider_follows_transform;
 	collider_t collider;
 };
 

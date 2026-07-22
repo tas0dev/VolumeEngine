@@ -8,25 +8,10 @@
 #ifndef VOLUME_ENTITY_PROP_STATIC_H
 #define VOLUME_ENTITY_PROP_STATIC_H
 
-#include "entity/entity.h"
-#include "renderer/material.h"
-#include "renderer/mesh.h"
+#include "entity/prop.h"
 
-typedef struct prop_static_properties {
-	entity_properties_t entity;
-	const mesh_t *mesh;
-	const material_t *material;
-	bool casts_shadow;
-	bool has_collider;
-	collider_t collider;
-} prop_static_properties_t;
-
-typedef struct prop_static {
-	entity_t entity;
-	const mesh_t *mesh;
-	const material_t *material;
-	bool casts_shadow;
-} prop_static_t;
+typedef prop_properties_t prop_static_properties_t;
+typedef prop_t prop_static_t;
 
 prop_static_properties_t prop_static_properties_create(void);
 prop_static_t *prop_static_create(entity_id_t id,

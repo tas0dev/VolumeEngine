@@ -122,6 +122,30 @@ bool collision_world_add_collider(collision_world_t *world,
 	return true;
 }
 
+bool collision_world_update_collider(collision_world_t *world,
+				     const entity_id_t entity_id,
+				     const collider_t collider,
+				     const vec3_t position) {
+	size_t index;
+
+	if (world == NULL || entity_id == 0) { return false; }
+
+	if (collider.type == COLLIDER_TYPE_NONE) {
+		return collision_world_remove(world, entity_id);
+	}
+
+	for (index = 0; index < world->count; index++) {
+		if (world->entries[index].entity_id != entity_id) { continue; }
+
+		world->entries[index].collider = collider;
+		world->entries[index].position = position;
+		return true;
+	}
+
+	return collision_world_add_collider(world, entity_id, collider,
+					    position);
+}
+
 size_t collision_world_get_count(const collision_world_t *world) {
 	if (world == NULL) { return 0; }
 

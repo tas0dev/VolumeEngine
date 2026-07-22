@@ -216,7 +216,15 @@ void world_update(world_t *world, const float delta_time) {
 	if (world == NULL) { return; }
 
 	for (index = 0; index < world->count; index++) {
-		entity_update(world->entities[index], delta_time);
+		entity_t *entity = world->entities[index];
+
+		entity_update(entity, delta_time);
+
+		if (entity->collider_follows_transform) {
+			collision_world_update_collider(
+				world->collision_world, entity->id,
+				entity->collider, entity->transform.position);
+		}
 	}
 }
 

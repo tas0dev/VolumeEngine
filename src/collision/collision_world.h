@@ -56,6 +56,10 @@ bool collision_world_add_collider(collision_world_t *world,
 				  entity_id_t entity_id,
 				  collider_t collider,
 				  vec3_t position);
+bool collision_world_update_collider(collision_world_t *world,
+				     entity_id_t entity_id,
+				     collider_t collider,
+				     vec3_t position);
 bool collision_world_remove(collision_world_t *world, entity_id_t entity_id);
 size_t collision_world_get_count(const collision_world_t *world);
 bool collision_world_resolve_aabb(const collision_world_t *world,

@@ -6,10 +6,8 @@
  */
 
 #include "entity/func_door.h"
-#include "entity/player.h"
 #include "entity/prop_internal.h"
 #include "entity/world.h"
-#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,20 +19,10 @@ static void update_entity(entity_t *entity, float delta_time);
 static bool accept_input(entity_t *entity,
 			 const char *input_name,
 			 const entity_input_context_t *context);
-static void
-set_error(const entity_spawn_context_t *context, const char *format, ...);
 static void begin_open(func_door_t *door, entity_t *activator);
 static void begin_close(func_door_t *door, entity_t *activator);
-static bool move_towards(vec3_t *position, vec3_t target, float distance);
-static entity_t *get_activator(func_door_t *door);
-static bool
-trace_movement(func_door_t *door, vec3_t end, collision_trace_t *trace);
-static bool trace_hit_rider(const func_door_t *door,
-			    const collision_trace_t *trace);
-static bool
-move_riders(func_door_t *door, vec3_t displacement, entity_id_t *blocker_id);
-static void handle_blocked(func_door_t *door, const collision_trace_t *trace);
-static void handle_unblocked(func_door_t *door);
+static void
+set_error(const entity_spawn_context_t *context, const char *format, ...);
 
 static const entity_class_t func_door_class = {
 	.classname = "func_door",
@@ -49,6 +37,7 @@ static const entity_class_t func_door_class = {
 static entity_t *create_entity(const entity_id_t id,
 			       const entity_spawn_context_t *context) {
 	func_door_t *door;
+	mover_config_t mover_config = {0};
 	const char *text;
 	vec3_t move_offset;
 	bool starts_open;
@@ -60,7 +49,6 @@ static entity_t *create_entity(const entity_id_t id,
 
 	door = calloc(1, sizeof(*door));
 	if (door == NULL) { return NULL; }
-
 	if (!prop_internal_initialize(&door->prop, id, &func_door_class,
 				      context)) {
 		free(door);
@@ -68,9 +56,17 @@ static entity_t *create_entity(const entity_id_t id,
 	}
 
 	move_offset = vec3_create(0.0f, 2.0f, 0.0f);
-	door->speed = 1.0f;
-	door->wait = -1.0f;
-	door->locked = false;
+	mover_config.speed = 1.0f;
+	mover_config.wait = -1.0f;
+	mover_config.block_policy = MOVER_BLOCK_STOP;
+	mover_config.sweep_collider = true;
+	mover_config.move_riders = true;
+	mover_config.outputs.on_move_to_end = "OnOpen";
+	mover_config.outputs.on_reached_end = "OnFullyOpen";
+	mover_config.outputs.on_move_to_start = "OnClose";
+	mover_config.outputs.on_reached_start = "OnFullyClosed";
+	mover_config.outputs.on_blocked = "OnBlocked";
+	mover_config.outputs.on_unblocked = "OnUnblocked";
 	starts_open = false;
 
 	text = entity_property_get(context->source, "move_offset");
@@ -81,7 +77,6 @@ static entity_t *create_entity(const entity_id_t id,
 		entity_destroy(&door->prop.entity);
 		return NULL;
 	}
-
 	if (vec3_length(move_offset) <= 0.000001f) {
 		set_error(context, "func_door move_offset cannot be zero");
 		entity_destroy(&door->prop.entity);
@@ -89,22 +84,50 @@ static entity_t *create_entity(const entity_id_t id,
 	}
 
 	text = entity_property_get(context->source, "speed");
-	if (text != NULL && !entity_property_parse_float(text, &door->speed)) {
-		set_error(context, "invalid float property \"speed\": \"%s\"",
+	if (text != NULL &&
+	    (!entity_property_parse_float(text, &mover_config.speed) ||
+	     mover_config.speed <= 0.0f)) {
+		set_error(context, "invalid positive func_door speed: \"%s\"",
 			  text);
 		entity_destroy(&door->prop.entity);
 		return NULL;
 	}
 
-	if (door->speed <= 0.0f) {
-		set_error(context, "func_door speed must be positive");
+	text = entity_property_get(context->source, "acceleration");
+	if (text != NULL &&
+	    (!entity_property_parse_float(text, &mover_config.acceleration) ||
+	     mover_config.acceleration < 0.0f)) {
+		set_error(context,
+			  "invalid non-negative func_door acceleration: \"%s\"",
+			  text);
+		entity_destroy(&door->prop.entity);
+		return NULL;
+	}
+
+	text = entity_property_get(context->source, "deceleration");
+	if (text != NULL &&
+	    (!entity_property_parse_float(text, &mover_config.deceleration) ||
+	     mover_config.deceleration < 0.0f)) {
+		set_error(context,
+			  "invalid non-negative func_door deceleration: \"%s\"",
+			  text);
 		entity_destroy(&door->prop.entity);
 		return NULL;
 	}
 
 	text = entity_property_get(context->source, "wait");
-	if (text != NULL && !entity_property_parse_float(text, &door->wait)) {
-		set_error(context, "invalid float property \"wait\": \"%s\"",
+	if (text != NULL &&
+	    (!entity_property_parse_float(text, &mover_config.wait) ||
+	     (mover_config.wait < 0.0f && mover_config.wait != -1.0f))) {
+		set_error(context, "invalid func_door wait: \"%s\"", text);
+		entity_destroy(&door->prop.entity);
+		return NULL;
+	}
+
+	text = entity_property_get(context->source, "block_policy");
+	if (text != NULL &&
+	    !mover_parse_block_policy(text, &mover_config.block_policy)) {
+		set_error(context, "invalid func_door block_policy: \"%s\"",
 			  text);
 		entity_destroy(&door->prop.entity);
 		return NULL;
@@ -127,101 +150,30 @@ static entity_t *create_entity(const entity_id_t id,
 		return NULL;
 	}
 
-	door->closed_position = door->prop.entity.transform.position;
-	door->open_position = vec3_add(door->closed_position, move_offset);
-	door->state = starts_open ? FUNC_DOOR_OPEN : FUNC_DOOR_CLOSED;
-	door->wait_remaining = door->wait;
-	door->prop.entity.collider_follows_transform = true;
+	mover_config.start_transform = door->prop.entity.transform;
+	mover_config.end_transform = mover_config.start_transform;
+	mover_config.end_transform.position =
+		vec3_add(mover_config.start_transform.position, move_offset);
+	mover_config.starts_at_end = starts_open;
 	entity_set_collision_filter(&door->prop.entity, COLLISION_LAYER_DYNAMIC,
 				    COLLISION_LAYER_WORLD_STATIC |
 					    COLLISION_LAYER_DYNAMIC |
 					    COLLISION_LAYER_PLAYER);
-
-	if (starts_open) {
-		door->prop.entity.transform.position = door->open_position;
+	if (!mover_initialize(&door->mover, &door->prop.entity,
+			      &mover_config)) {
+		set_error(context, "failed to initialize func_door mover");
+		entity_destroy(&door->prop.entity);
+		return NULL;
 	}
-
 	return &door->prop.entity;
 }
 
 static void update_entity(entity_t *entity, const float delta_time) {
 	func_door_t *door;
-	collision_trace_t trace;
-	collision_trace_t rider_trace = {0};
-	vec3_t displacement;
-	vec3_t next_position;
-	entity_id_t rider_blocker_id;
-	bool initially_hit;
-	bool reached;
 
 	if (entity == NULL || delta_time < 0.0f) { return; }
-
 	door = (func_door_t *)entity;
-
-	if (door->state == FUNC_DOOR_OPEN) {
-		if (door->wait < 0.0f) { return; }
-
-		door->wait_remaining -= delta_time;
-		if (door->wait_remaining <= 0.0f) {
-			begin_close(door, get_activator(door));
-		}
-		return;
-	}
-
-	if (door->state != FUNC_DOOR_OPENING &&
-	    door->state != FUNC_DOOR_CLOSING) {
-		return;
-	}
-	if (delta_time <= 0.0f) { return; }
-
-	next_position = entity->transform.position;
-	reached = move_towards(&next_position,
-			       door->state == FUNC_DOOR_OPENING
-				       ? door->open_position
-				       : door->closed_position,
-			       door->speed * delta_time);
-	displacement = vec3_subtract(next_position, entity->transform.position);
-	initially_hit = trace_movement(door, next_position, &trace);
-
-	if (initially_hit && !trace_hit_rider(door, &trace)) {
-		entity->transform.position = trace.position;
-		handle_blocked(door, &trace);
-		return;
-	}
-
-	if (!move_riders(door, displacement, &rider_blocker_id)) {
-		rider_trace.entity_id = rider_blocker_id;
-		handle_blocked(door, &rider_trace);
-		return;
-	}
-
-	if (trace_movement(door, next_position, &trace) &&
-	    !(trace_hit_rider(door, &trace) && trace.fraction >= 0.999999f)) {
-		(void)move_riders(door, vec3_scale(displacement, -1.0f), NULL);
-		entity->transform.position = trace.position;
-		handle_blocked(door, &trace);
-		return;
-	}
-
-	handle_unblocked(door);
-	entity->transform.position = next_position;
-
-	if (!reached) { return; }
-
-	if (door->state == FUNC_DOOR_OPENING) {
-		door->blocked = false;
-		door->blocker_id = 0;
-		door->state = FUNC_DOOR_OPEN;
-		door->wait_remaining = door->wait;
-		world_fire_output(entity->world, entity, "OnFullyOpen",
-				  get_activator(door));
-	} else {
-		door->blocked = false;
-		door->blocker_id = 0;
-		door->state = FUNC_DOOR_CLOSED;
-		world_fire_output(entity->world, entity, "OnFullyClosed",
-				  get_activator(door));
-	}
+	mover_update(&door->mover, delta_time);
 }
 
 static bool accept_input(entity_t *entity,
@@ -229,238 +181,52 @@ static bool accept_input(entity_t *entity,
 			 const entity_input_context_t *context) {
 	func_door_t *door;
 	entity_t *activator;
+	mover_state_t state;
 
 	door = func_door_from_entity(entity);
-	if (door == NULL) { return false; }
-
+	if (door == NULL || input_name == NULL) { return false; }
 	activator = context == NULL ? NULL : context->activator;
 
 	if (strcmp(input_name, "Lock") == 0) {
 		door->locked = true;
 		return true;
 	}
-
 	if (strcmp(input_name, "Unlock") == 0) {
 		door->locked = false;
 		return true;
 	}
-
 	if (strcmp(input_name, "Close") == 0) {
 		begin_close(door, activator);
 		return true;
 	}
-
 	if (strcmp(input_name, "Open") != 0 &&
 	    strcmp(input_name, "Toggle") != 0) {
 		return false;
 	}
-
 	if (door->locked) {
-		world_fire_output(entity->world, entity, "OnLockedUse",
-				  activator);
+		(void)world_fire_output(entity->world, entity, "OnLockedUse",
+					activator);
 		return true;
 	}
 
-	if (strcmp(input_name, "Open") == 0 ||
-	    door->state == FUNC_DOOR_CLOSED ||
-	    door->state == FUNC_DOOR_CLOSING) {
+	state = mover_get_state(&door->mover);
+	if (strcmp(input_name, "Open") == 0 || state == MOVER_AT_START ||
+	    state == MOVER_MOVING_TO_START) {
 		begin_open(door, activator);
 	} else {
 		begin_close(door, activator);
 	}
-
 	return true;
 }
 
 static void begin_open(func_door_t *door, entity_t *activator) {
-	if (door == NULL || door->state == FUNC_DOOR_OPEN ||
-	    door->state == FUNC_DOOR_OPENING) {
-		return;
-	}
-
-	door->state = FUNC_DOOR_OPENING;
-	door->activator_id = activator == NULL ? 0 : activator->id;
-	world_fire_output(door->prop.entity.world, &door->prop.entity, "OnOpen",
-			  activator);
+	if (door == NULL) { return; }
+	(void)mover_move_to_end(&door->mover, activator);
 }
 
 static void begin_close(func_door_t *door, entity_t *activator) {
-	if (door == NULL || door->state == FUNC_DOOR_CLOSED ||
-	    door->state == FUNC_DOOR_CLOSING) {
-		return;
-	}
-
-	door->state = FUNC_DOOR_CLOSING;
-	door->activator_id = activator == NULL ? 0 : activator->id;
-	world_fire_output(door->prop.entity.world, &door->prop.entity,
-			  "OnClose", activator);
-}
-
-static bool
-move_towards(vec3_t *position, const vec3_t target, const float distance) {
-	vec3_t delta;
-	float length;
-
-	delta = vec3_subtract(target, *position);
-	length = vec3_length(delta);
-
-	if (length <= distance || length <= 0.000001f) {
-		*position = target;
-		return true;
-	}
-
-	*position = vec3_add(*position, vec3_scale(delta, distance / length));
-	return false;
-}
-
-static entity_t *get_activator(func_door_t *door) {
-	if (door == NULL || door->prop.entity.world == NULL ||
-	    door->activator_id == 0) {
-		return NULL;
-	}
-
-	return world_find_entity(door->prop.entity.world, door->activator_id);
-}
-
-static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_t *trace) {
-	const float skin = 0.001f;
-	collision_filter_t filter;
-	entity_t *entity;
-	aabb_t world_bounds;
-	aabb_t local_bounds;
-	vec3_t center;
-	vec3_t half_extents;
-
-	if (door == NULL || trace == NULL) { return false; }
-
-	entity = &door->prop.entity;
-	if (entity->world == NULL || !entity->has_collider ||
-	    vec3_length(vec3_subtract(end, entity->transform.position)) <=
-		    0.000001f ||
-	    !collider_get_aabb(&entity->collider, entity->transform.position,
-			       &world_bounds)) {
-		return false;
-	}
-
-	center = vec3_subtract(aabb_get_center(world_bounds),
-			       entity->transform.position);
-	half_extents = aabb_get_half_extents(world_bounds);
-	half_extents.x = fmaxf(0.0f, half_extents.x - skin);
-	half_extents.y = fmaxf(0.0f, half_extents.y - skin);
-	half_extents.z = fmaxf(0.0f, half_extents.z - skin);
-	local_bounds = aabb_create(center, half_extents);
-
-	filter.layer = entity->collision_layer;
-	filter.mask = entity->collision_mask;
-	filter.ignored_entity_id = entity->id;
-	return collision_world_trace_aabb_filtered(
-		world_get_const_collision_world(entity->world), local_bounds,
-		entity->transform.position, end, filter, trace);
-}
-
-static bool trace_hit_rider(const func_door_t *door,
-			    const collision_trace_t *trace) {
-	entity_t *entity;
-	player_t *player;
-
-	if (door == NULL || trace == NULL || trace->entity_id == 0 ||
-	    door->prop.entity.world == NULL) {
-		return false;
-	}
-
-	entity = world_find_entity(door->prop.entity.world, trace->entity_id);
-	player = player_from_entity(entity);
-	return player_is_grounded_on(player, door->prop.entity.id);
-}
-
-static bool move_riders(func_door_t *door,
-			const vec3_t displacement,
-			entity_id_t *blocker_id) {
-	entity_t *entity;
-	player_t **riders;
-	player_t *player;
-	size_t rider_count;
-	size_t entity_count;
-	size_t index;
-	size_t moved;
-
-	if (blocker_id != NULL) { *blocker_id = 0; }
-	if (door == NULL || door->prop.entity.world == NULL ||
-	    vec3_length(displacement) <= 0.000001f) {
-		return true;
-	}
-
-	entity_count = world_get_entity_count(door->prop.entity.world);
-	riders = malloc(entity_count * sizeof(*riders));
-	if (riders == NULL && entity_count > 0) { return false; }
-
-	rider_count = 0;
-	for (index = 0; index < entity_count; index++) {
-		entity = world_get_entity(door->prop.entity.world, index);
-		player = player_from_entity(entity);
-		if (!player_is_grounded_on(player, door->prop.entity.id)) {
-			continue;
-		}
-
-		riders[rider_count] = player;
-		rider_count++;
-	}
-
-	for (index = 0; index < rider_count; index++) {
-		if (player_can_move_with_platform(riders[index],
-						  door->prop.entity.id,
-						  displacement)) {
-			continue;
-		}
-		if (blocker_id != NULL) {
-			*blocker_id = player_get_entity(riders[index])->id;
-		}
-		free(riders);
-		return false;
-	}
-
-	for (moved = 0; moved < rider_count; moved++) {
-		if (player_move_with_platform(riders[moved],
-					      door->prop.entity.id,
-					      displacement)) {
-			continue;
-		}
-		while (moved > 0) {
-			moved--;
-			(void)player_move_with_platform(
-				riders[moved], door->prop.entity.id,
-				vec3_scale(displacement, -1.0f));
-		}
-		free(riders);
-		return false;
-	}
-
-	free(riders);
-	return true;
-}
-
-static void handle_blocked(func_door_t *door, const collision_trace_t *trace) {
-	entity_t *blocker;
-
-	if (door == NULL || trace == NULL) { return; }
-	if (door->blocked && door->blocker_id == trace->entity_id) { return; }
-
-	blocker = world_find_entity(door->prop.entity.world, trace->entity_id);
-	door->blocked = true;
-	door->blocker_id = trace->entity_id;
-	world_fire_output(door->prop.entity.world, &door->prop.entity,
-			  "OnBlocked", blocker);
-}
-
-static void handle_unblocked(func_door_t *door) {
-	entity_t *blocker;
-
-	if (door == NULL || !door->blocked) { return; }
-	blocker = world_find_entity(door->prop.entity.world, door->blocker_id);
-	door->blocked = false;
-	door->blocker_id = 0;
-	world_fire_output(door->prop.entity.world, &door->prop.entity,
-			  "OnUnblocked", blocker);
+	if (door == NULL) { return; }
+	(void)mover_move_to_start(&door->mover, activator);
 }
 
 static void
@@ -471,7 +237,6 @@ set_error(const entity_spawn_context_t *context, const char *format, ...) {
 	    context->error_size == 0) {
 		return;
 	}
-
 	va_start(arguments, format);
 	vsnprintf(context->error, context->error_size, format, arguments);
 	va_end(arguments);
@@ -492,11 +257,12 @@ const func_door_t *func_door_from_const_entity(const entity_t *entity) {
 }
 
 func_door_state_t func_door_get_state(const func_door_t *door) {
-	return door == NULL ? FUNC_DOOR_CLOSED : door->state;
+	return door == NULL ? FUNC_DOOR_CLOSED
+			    : (func_door_state_t)mover_get_state(&door->mover);
 }
 
 bool func_door_is_blocked(const func_door_t *door) {
-	return door != NULL && door->blocked;
+	return door != NULL && mover_is_blocked(&door->mover);
 }
 
 bool func_door_register(void) {

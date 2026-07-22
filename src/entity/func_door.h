@@ -8,27 +8,20 @@
 #ifndef VOLUME_ENTITY_FUNC_DOOR_H
 #define VOLUME_ENTITY_FUNC_DOOR_H
 
+#include "entity/mover.h"
 #include "entity/prop.h"
 
 typedef enum func_door_state {
-	FUNC_DOOR_CLOSED,
-	FUNC_DOOR_OPENING,
-	FUNC_DOOR_OPEN,
-	FUNC_DOOR_CLOSING,
+	FUNC_DOOR_CLOSED = MOVER_AT_START,
+	FUNC_DOOR_OPENING = MOVER_MOVING_TO_END,
+	FUNC_DOOR_OPEN = MOVER_AT_END,
+	FUNC_DOOR_CLOSING = MOVER_MOVING_TO_START,
 } func_door_state_t;
 
 typedef struct func_door {
 	prop_t prop;
-	vec3_t closed_position;
-	vec3_t open_position;
-	float speed;
-	float wait;
-	float wait_remaining;
-	entity_id_t activator_id;
-	entity_id_t blocker_id;
-	func_door_state_t state;
+	mover_t mover;
 	bool locked;
-	bool blocked;
 } func_door_t;
 
 /// エンティティを`func_door`として取得する。

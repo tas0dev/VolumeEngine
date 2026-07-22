@@ -8,24 +8,19 @@
 #ifndef VOLUME_ENTITY_FUNC_BUTTON_H
 #define VOLUME_ENTITY_FUNC_BUTTON_H
 
+#include "entity/mover.h"
 #include "entity/prop.h"
 
 typedef enum func_button_state {
-	FUNC_BUTTON_IDLE,
-	FUNC_BUTTON_PRESSING,
-	FUNC_BUTTON_PRESSED,
-	FUNC_BUTTON_RELEASING,
+	FUNC_BUTTON_IDLE = MOVER_AT_START,
+	FUNC_BUTTON_PRESSING = MOVER_MOVING_TO_END,
+	FUNC_BUTTON_PRESSED = MOVER_AT_END,
+	FUNC_BUTTON_RELEASING = MOVER_MOVING_TO_START,
 } func_button_state_t;
 
 typedef struct func_button {
 	prop_t prop;
-	vec3_t released_position;
-	vec3_t pressed_position;
-	float speed;
-	float wait;
-	float wait_remaining;
-	entity_id_t activator_id;
-	func_button_state_t state;
+	mover_t mover;
 	bool locked;
 	bool enabled;
 } func_button_t;

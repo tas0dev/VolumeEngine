@@ -93,6 +93,16 @@ prop_static_collision_test = executable(
     install : false,
 )
 
+mover_test = executable(
+    'mover-test',
+    [
+        'common.c',
+        'mover_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 entity_io_test = executable(
     'entity-io-test',
     [
@@ -186,6 +196,11 @@ test(
 test(
     'collision-world',
     collision_world_test,
+)
+
+test(
+    'mover',
+    mover_test,
 )
 
 test(

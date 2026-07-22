@@ -11,6 +11,12 @@
 static vec3_t character_controller_project_on_plane(vec3_t vector,
 						    vec3_t normal);
 static void
+character_controller_update_crouch(character_controller_t *controller,
+				   const collision_world_t *world,
+				   collision_filter_t filter,
+				   bool wants_crouch,
+				   float delta_time);
+static void
 character_controller_apply_friction(character_controller_t *controller,
 				    float delta_time);
 static void character_controller_accelerate(character_controller_t *controller,
@@ -59,6 +65,11 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.bounds =
 		aabb_create(vec3_create(0.0f, half_height, 0.0f),
 			    vec3_create(radius, half_height, radius));
+	controller.standing_bounds = controller.bounds;
+	half_height = height * 0.3f;
+	controller.crouched_bounds =
+		aabb_create(vec3_create(0.0f, half_height, 0.0f),
+			    vec3_create(radius, half_height, radius));
 	controller.position = position;
 	controller.velocity = vec3_create(0.0f, 0.0f, 0.0f);
 	controller.ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
@@ -72,8 +83,14 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.jump_speed = 7.0f;
 	controller.ground_stick_speed = 0.5f;
 	controller.step_height = 0.35f;
+	controller.standing_view_height = height - 0.15f;
+	controller.crouched_view_height = height * 0.6f - 0.15f;
+	controller.view_height = controller.standing_view_height;
+	controller.crouch_transition_speed = 4.0f;
+	controller.crouched_speed_multiplier = 0.34f;
 	controller.minimum_ground_normal_y = 0.7f;
 	controller.grounded = false;
+	controller.crouched = false;
 
 	return controller;
 }
@@ -119,19 +136,25 @@ void character_controller_move_filtered(character_controller_t *controller,
 	float wish_speed;
 	float direction_length;
 	bool allow_step;
+	bool wants_crouch;
 
 	if (controller == NULL || delta_time <= 0.0f) { return; }
 
 	wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
 	wish_speed = 0.0f;
+	wants_crouch = false;
 
 	if (input != NULL) {
 		wish_direction = input->wish_direction;
 		wish_direction.y = 0.0f;
 		wish_speed = input->wish_speed;
+		wants_crouch = input->crouch;
 
 		if (input->jump) { character_controller_jump(controller); }
 	}
+
+	character_controller_update_crouch(controller, world, filter,
+					   wants_crouch, delta_time);
 
 	direction_length = vec3_length(wish_direction);
 
@@ -145,6 +168,10 @@ void character_controller_move_filtered(character_controller_t *controller,
 	} else {
 		wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
 		wish_speed = 0.0f;
+	}
+
+	if (controller->crouched) {
+		wish_speed *= controller->crouched_speed_multiplier;
 	}
 
 	allow_step = controller->grounded;
@@ -193,6 +220,47 @@ void character_controller_move_filtered(character_controller_t *controller,
 	} else {
 		character_controller_clip_velocity(controller,
 						   controller->ground_normal);
+	}
+}
+
+static void
+character_controller_update_crouch(character_controller_t *controller,
+				   const collision_world_t *world,
+				   const collision_filter_t filter,
+				   const bool wants_crouch,
+				   const float delta_time) {
+	vec3_t test_position;
+	float target_height;
+	float change;
+
+	if (controller == NULL) { return; }
+
+	if (wants_crouch && !controller->crouched) {
+		controller->bounds = controller->crouched_bounds;
+		controller->crouched = true;
+	} else if (!wants_crouch && controller->crouched) {
+		test_position = controller->position;
+		if (world == NULL || !collision_world_resolve_aabb_filtered(
+					     world, controller->standing_bounds,
+					     &test_position, filter, NULL)) {
+			controller->bounds = controller->standing_bounds;
+			controller->crouched = false;
+		}
+	}
+
+	target_height = controller->crouched ? controller->crouched_view_height
+					     : controller->standing_view_height;
+	change = controller->crouch_transition_speed * delta_time;
+	if (controller->view_height < target_height) {
+		controller->view_height += change;
+		if (controller->view_height > target_height) {
+			controller->view_height = target_height;
+		}
+	} else if (controller->view_height > target_height) {
+		controller->view_height -= change;
+		if (controller->view_height < target_height) {
+			controller->view_height = target_height;
+		}
 	}
 }
 

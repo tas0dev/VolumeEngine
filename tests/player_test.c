@@ -34,6 +34,7 @@ static bool test_player_moves_without_hitting_itself(void) {
 	input.wish_direction = vec3_create(1.0f, 0.0f, 0.0f);
 	input.wish_speed = 4.0f;
 	input.jump = false;
+	input.crouch = false;
 	player_move(player, &input, 0.1f);
 
 	position = player_get_position(player);
@@ -59,6 +60,7 @@ static bool test_air_strafe_exceeds_ground_speed(void) {
 	controller.grounded = false;
 	input.wish_speed = controller.maximum_speed;
 	input.jump = false;
+	input.crouch = false;
 
 	for (tick = 0; tick < 60; tick++) {
 		perpendicular = vec3_create(-controller.velocity.z, 0.0f,
@@ -98,11 +100,55 @@ static bool test_ground_move_steps_over_small_ledge(void) {
 	input.wish_direction = vec3_create(1.0f, 0.0f, 0.0f);
 	input.wish_speed = controller.maximum_speed;
 	input.jump = false;
+	input.crouch = false;
 	character_controller_move(&controller, world, &input, 0.3f);
 
 	CHECK(controller.position.x > 0.8f);
 	CHECK(controller.position.y > 0.29f && controller.position.y < 0.31f);
 	CHECK(controller.grounded);
+
+	collision_world_destroy(world);
+	return true;
+}
+
+static bool test_crouch_waits_for_standing_clearance(void) {
+	character_controller_t controller;
+	character_move_input_t input;
+	collision_world_t *world;
+	float crouched_view_height;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider(
+		world, 1,
+		collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(1.0f, 0.1f, 1.0f)),
+		vec3_create(0.0f, 1.3f, 0.0f)));
+
+	controller = character_controller_create(vec3_create(0.0f, 0.0f, 0.0f),
+						 0.35f, 1.7f);
+	controller.gravity = 0.0f;
+	input.wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
+	input.wish_speed = 0.0f;
+	input.jump = false;
+	input.crouch = true;
+	character_controller_move(&controller, world, &input, 0.1f);
+	CHECK(controller.crouched);
+	CHECK(aabb_get_half_extents(controller.bounds).y <
+	      aabb_get_half_extents(controller.standing_bounds).y);
+	CHECK(controller.view_height < controller.standing_view_height);
+	crouched_view_height = controller.view_height;
+
+	input.crouch = false;
+	character_controller_move(&controller, world, &input, 0.1f);
+	CHECK(controller.crouched);
+	CHECK(controller.view_height <= crouched_view_height);
+
+	CHECK(collision_world_remove(world, 1));
+	character_controller_move(&controller, world, &input, 0.1f);
+	CHECK(!controller.crouched);
+	CHECK(aabb_get_half_extents(controller.bounds).y > 0.8f);
+	CHECK(controller.view_height > crouched_view_height);
 
 	collision_world_destroy(world);
 	return true;
@@ -116,6 +162,8 @@ int main(void) {
 		 test_air_strafe_exceeds_ground_speed    },
 		{"ground move steps over a small ledge",
 		 test_ground_move_steps_over_small_ledge },
+		{"crouch waits for standing clearance",
+		 test_crouch_waits_for_standing_clearance},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

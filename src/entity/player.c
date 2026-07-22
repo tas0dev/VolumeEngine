@@ -53,6 +53,17 @@ vec3_t player_get_position(const player_t *player) {
 	return player->controller.position;
 }
 
+vec3_t player_get_view_position(const player_t *player) {
+	if (player == NULL) { return vec3_create(0.0f, 0.0f, 0.0f); }
+	return vec3_add(
+		player->controller.position,
+		vec3_create(0.0f, player->controller.view_height, 0.0f));
+}
+
+bool player_is_crouched(const player_t *player) {
+	return player != NULL && player->controller.crouched;
+}
+
 void player_move(player_t *player,
 		 const character_move_input_t *input,
 		 const float delta_time) {
@@ -72,6 +83,9 @@ void player_move(player_t *player,
 	character_controller_move_filtered(&player->controller, collision_world,
 					   filter, input, delta_time);
 	player->entity.transform.position = player->controller.position;
+	player->entity.collider = collider_create_box(
+		aabb_get_center(player->controller.bounds),
+		aabb_get_half_extents(player->controller.bounds));
 
 	if (player->entity.world != NULL) {
 		collision_world_update_collider_filtered(

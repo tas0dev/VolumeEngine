@@ -40,7 +40,6 @@ typedef struct game_state {
 } game_state_t;
 
 static const float player_move_speed = 4.0f;
-static const float player_eye_height = 1.55f;
 
 static bool initialize(engine_t *engine, void *user_data);
 static void update(engine_t *engine, float delta_time, void *user_data);
@@ -180,9 +179,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
 	game_state->jump_requested = false;
 
-	game_state->camera = camera_create(
-		vec3_add(player_get_position(game_state->player),
-			 vec3_create(0.0f, player_eye_height, 0.0f)));
+	game_state->camera =
+		camera_create(player_get_view_position(game_state->player));
 	game_state->yaw = player_start->transform.rotation.y;
 	game_state->pitch = -player_start->transform.rotation.x;
 	log_info("Look at an entity and press E to use it");
@@ -324,8 +322,6 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	character_move_input_t move_input;
 	float wish_speed;
 
-	(void)engine;
-
 	game_state = user_data;
 
 	if (game_state == NULL || game_state->world == NULL) { return; }
@@ -335,14 +331,15 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	move_input.wish_direction = game_state->movement_input;
 	move_input.wish_speed = wish_speed;
 	move_input.jump = game_state->jump_requested;
+	move_input.crouch =
+		input_key_down(engine_get_input(engine), INPUT_KEY_CONTROL);
 
 	player_move(game_state->player, &move_input, delta_time);
 
 	game_state->jump_requested = false;
 
 	game_state->camera.position =
-		vec3_add(player_get_position(game_state->player),
-			 vec3_create(0.0f, player_eye_height, 0.0f));
+		player_get_view_position(game_state->player);
 
 	if (game_state->mesh_entity != NULL) {
 		game_state->mesh_entity->transform.rotation.x +=

@@ -19,6 +19,8 @@ const player_t *player_from_const_entity(const entity_t *entity);
 entity_t *player_get_entity(player_t *player);
 const entity_t *player_get_const_entity(const player_t *player);
 vec3_t player_get_position(const player_t *player);
+vec3_t player_get_view_position(const player_t *player);
+bool player_is_crouched(const player_t *player);
 void player_move(player_t *player,
 		 const character_move_input_t *input,
 		 float delta_time);

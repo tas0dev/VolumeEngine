@@ -16,10 +16,13 @@ typedef struct character_move_input {
 	vec3_t wish_direction;
 	float wish_speed;
 	bool jump;
+	bool crouch;
 } character_move_input_t;
 
 typedef struct character_controller {
 	aabb_t bounds;
+	aabb_t standing_bounds;
+	aabb_t crouched_bounds;
 	vec3_t position;
 	vec3_t velocity;
 	vec3_t ground_normal;
@@ -33,8 +36,14 @@ typedef struct character_controller {
 	float jump_speed;
 	float ground_stick_speed;
 	float step_height;
+	float standing_view_height;
+	float crouched_view_height;
+	float view_height;
+	float crouch_transition_speed;
+	float crouched_speed_multiplier;
 	float minimum_ground_normal_y;
 	bool grounded;
+	bool crouched;
 } character_controller_t;
 
 character_controller_t

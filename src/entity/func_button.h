@@ -17,11 +17,13 @@ typedef struct func_button {
 	entity_id_t activator_id;
 	bool pressed;
 	bool locked;
+	bool enabled;
 } func_button_t;
 
 bool func_button_register(void);
 func_button_t *func_button_from_entity(entity_t *entity);
 const func_button_t *func_button_from_const_entity(const entity_t *entity);
 bool func_button_is_pressed(const func_button_t *button);
+bool func_button_is_enabled(const func_button_t *button);
 
 #endif

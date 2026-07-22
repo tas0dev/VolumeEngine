@@ -28,6 +28,7 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 		"\t\"origin\" \"0 0 -2\"\n"
 		"\t\"collision\" \"box\"\n"
 		"\t\"collision_size\" \"1 1 1\"\n"
+		"\t\"starts_disabled\" \"1\"\n"
 		"\t\"wait\" \"1\"\n"
 		"\t\"OnPressed\" \"player,Disable,,0,-1\"\n}\n";
 	asset_manager_t *assets;
@@ -59,6 +60,8 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 	button_entity = world_find_by_targetname(world, "button");
 	button = func_button_from_entity(button_entity);
 	CHECK(player != NULL && button != NULL);
+	CHECK(entity_is_active(button_entity));
+	CHECK(!func_button_is_enabled(button));
 
 	filter.layer = COLLISION_LAYER_PLAYER;
 	filter.mask = COLLISION_LAYER_WORLD_STATIC | COLLISION_LAYER_DYNAMIC;
@@ -68,6 +71,11 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(0.0f, 0.0f, -3.0f),
 		filter, &trace));
 	CHECK(trace.entity_id == button_entity->id);
+	CHECK(!world_send_input_to_entity(world, button_entity, "Use", "",
+					  player, player));
+	CHECK(world_send_input_to_entity(world, button_entity, "Enable", "",
+					 player, player));
+	CHECK(func_button_is_enabled(button));
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",
 					 player, player));
 	CHECK(func_button_is_pressed(button));

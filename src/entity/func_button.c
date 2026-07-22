@@ -55,6 +55,10 @@ bool func_button_is_pressed(const func_button_t *button) {
 	return button != NULL && button->pressed;
 }
 
+bool func_button_is_enabled(const func_button_t *button) {
+	return button != NULL && button->enabled;
+}
+
 static entity_t *create_entity(const entity_id_t id,
 			       const entity_spawn_context_t *context) {
 	const char *text;
@@ -106,7 +110,7 @@ static entity_t *create_entity(const entity_id_t id,
 	entity_set_collision_filter(&button->prop.entity,
 				    COLLISION_LAYER_WORLD_STATIC,
 				    COLLISION_LAYER_ALL);
-	button->prop.entity.active = !starts_disabled;
+	button->enabled = !starts_disabled;
 	return &button->prop.entity;
 }
 
@@ -131,6 +135,26 @@ static bool accept_input(entity_t *entity,
 	button = (func_button_t *)entity;
 	activator = context == NULL ? NULL : context->activator;
 
+	if (strcmp(input_name, "Enable") == 0) {
+		button->enabled = true;
+		return true;
+	}
+	if (strcmp(input_name, "Disable") == 0) {
+		button->enabled = false;
+		button->pressed = false;
+		button->wait_remaining = 0.0f;
+		button->activator_id = 0;
+		return true;
+	}
+	if (strcmp(input_name, "Toggle") == 0) {
+		button->enabled = !button->enabled;
+		if (!button->enabled) {
+			button->pressed = false;
+			button->wait_remaining = 0.0f;
+			button->activator_id = 0;
+		}
+		return true;
+	}
 	if (strcmp(input_name, "Lock") == 0) {
 		button->locked = true;
 		return true;
@@ -147,7 +171,7 @@ static bool accept_input(entity_t *entity,
 	    strcmp(input_name, "Press") != 0) {
 		return false;
 	}
-	if (!entity_is_active(entity)) { return false; }
+	if (!button->enabled) { return false; }
 	if (button->locked) {
 		world_fire_output(entity->world, entity, "OnLockedUse",
 				  activator);

@@ -22,6 +22,7 @@ vec3_t player_get_position(const player_t *player);
 vec3_t player_get_velocity(const player_t *player);
 vec3_t player_get_view_position(const player_t *player);
 bool player_is_crouched(const player_t *player);
+bool player_is_surfing(const player_t *player);
 entity_id_t player_get_ground_entity_id(const player_t *player);
 bool player_is_grounded_on(const player_t *player, entity_id_t entity_id);
 bool player_can_move_with_platform(const player_t *player,

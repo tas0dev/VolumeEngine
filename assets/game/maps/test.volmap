@@ -40,6 +40,19 @@ entity
 entity
 {
 	"classname" "prop_static"
+	"targetname" "surf_ramp"
+	"model" "models/test_floor.obj"
+	"material" "materials/floor.volmat"
+	"origin" "10 3.33 0"
+	"angles" "0 0 60"
+	"scale" "0.05 0.05 0.05"
+	"casts_shadow" "0"
+	"collision" "model"
+}
+
+entity
+{
+	"classname" "prop_static"
 	"targetname" "floor"
 	"model" "models/test_floor.obj"
 	"material" "materials/floor.volmat"

@@ -32,6 +32,9 @@ character_controller_air_accelerate(character_controller_t *controller,
 static void
 character_controller_clip_velocity(character_controller_t *controller,
 				   vec3_t normal);
+static void
+character_controller_record_surf_surface(character_controller_t *controller,
+					 vec3_t normal);
 static bool
 character_controller_find_ground(const character_controller_t *controller,
 				 const collision_result_t *collision,
@@ -91,7 +94,9 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.crouched_speed_multiplier = 0.34f;
 	controller.minimum_ground_normal_y = 0.7f;
 	controller.ground_entity_id = 0;
+	controller.surf_normal = vec3_create(0.0f, 0.0f, 0.0f);
 	controller.grounded = false;
+	controller.surfing = false;
 	controller.crouched = false;
 
 	return controller;
@@ -214,6 +219,8 @@ void character_controller_move_filtered(character_controller_t *controller,
 	controller->grounded = false;
 	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
 	controller->ground_entity_id = 0;
+	controller->surfing = false;
+	controller->surf_normal = vec3_create(0.0f, 0.0f, 0.0f);
 
 	character_controller_slide_move(controller, world, filter, allow_step,
 					delta_time);
@@ -223,7 +230,8 @@ void character_controller_move_filtered(character_controller_t *controller,
 			controller->gravity * delta_time * 0.5f;
 	} else {
 		character_controller_clip_velocity(controller,
-						   controller->ground_normal);
+					   controller->ground_normal);
+		controller->surfing = false;
 	}
 }
 
@@ -385,6 +393,20 @@ character_controller_clip_velocity(character_controller_t *controller,
 					     vec3_scale(normal, into_surface));
 }
 
+static void
+character_controller_record_surf_surface(character_controller_t *controller,
+					 const vec3_t normal) {
+	if (controller == NULL || normal.y <= 0.0001f ||
+	    normal.y >= controller->minimum_ground_normal_y) {
+		return;
+	}
+
+	if (!controller->surfing || normal.y > controller->surf_normal.y) {
+		controller->surf_normal = normal;
+	}
+	controller->surfing = true;
+}
+
 static bool
 character_controller_find_ground(const character_controller_t *controller,
 				 const collision_result_t *collision,
@@ -431,6 +453,8 @@ character_controller_resolve_contacts(character_controller_t *controller,
 	if (controller == NULL || collision == NULL) { return; }
 
 	for (index = 0; index < collision->contact_count; index++) {
+		character_controller_record_surf_surface(
+			controller, collision->contacts[index].normal);
 		character_controller_clip_velocity(
 			controller, collision->contacts[index].normal);
 	}
@@ -604,6 +628,8 @@ character_controller_slide_move_core(character_controller_t *controller,
 
 		controller->position =
 			vec3_add(start, vec3_scale(movement, backed_fraction));
+		character_controller_record_surf_surface(controller,
+							 trace.normal);
 
 		if (trace.normal.y >= controller->minimum_ground_normal_y) {
 			controller->grounded = true;

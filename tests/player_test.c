@@ -6,9 +6,24 @@
  */
 
 #include "common.h"
+#include "collision/triangle.h"
+#include "collision/triangle_mesh_collider.h"
 #include "entity/player.h"
 #include "entity/world.h"
+#include "math/mat4.h"
 #include <math.h>
+
+static triangle_mesh_collider_t *create_ramp(const float slope) {
+	triangle_t triangles[2];
+
+	triangles[0] = triangle_create(vec3_create(-5.0f, -5.0f * slope, -5.0f),
+				       vec3_create(-5.0f, -5.0f * slope, 5.0f),
+				       vec3_create(5.0f, 5.0f * slope, 5.0f));
+	triangles[1] = triangle_create(vec3_create(-5.0f, -5.0f * slope, -5.0f),
+				       vec3_create(5.0f, 5.0f * slope, 5.0f),
+				       vec3_create(5.0f, 5.0f * slope, -5.0f));
+	return triangle_mesh_collider_create(triangles, 2);
+}
 
 static bool test_player_moves_without_hitting_itself(void) {
 	character_move_input_t input;
@@ -154,6 +169,80 @@ static bool test_crouch_waits_for_standing_clearance(void) {
 	return true;
 }
 
+static bool test_walkable_ramp_becomes_ground(void) {
+	character_controller_t controller;
+	character_move_input_t input;
+	triangle_mesh_collider_t *ramp;
+	collision_world_t *world;
+	size_t tick;
+
+	ramp = create_ramp(0.5f);
+	CHECK(ramp != NULL);
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider(
+		world, 10, collider_create_triangle_mesh(ramp, mat4_identity()),
+		vec3_create(0.0f, 0.0f, 0.0f)));
+
+	controller = character_controller_create(vec3_create(0.0f, 2.0f, 0.0f),
+						 0.35f, 1.7f);
+	input.wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
+	input.wish_speed = 0.0f;
+	input.jump = false;
+	input.crouch = false;
+	for (tick = 0; tick < 90; tick++) {
+		character_controller_move(&controller, world, &input,
+					  1.0f / 60.0f);
+	}
+
+	CHECK(controller.grounded);
+	CHECK(controller.ground_entity_id == 10);
+	CHECK(controller.ground_normal.y > controller.minimum_ground_normal_y);
+
+	collision_world_destroy(world);
+	triangle_mesh_collider_destroy(ramp);
+	return true;
+}
+
+static bool test_steep_ramp_surfs_without_grounding(void) {
+	character_controller_t controller;
+	character_move_input_t input;
+	triangle_mesh_collider_t *ramp;
+	collision_world_t *world;
+	size_t tick;
+
+	ramp = create_ramp(2.0f);
+	CHECK(ramp != NULL);
+	world = collision_world_create();
+	CHECK(world != NULL);
+	CHECK(collision_world_add_collider(
+		world, 11, collider_create_triangle_mesh(ramp, mat4_identity()),
+		vec3_create(0.0f, 0.0f, 0.0f)));
+
+	controller = character_controller_create(vec3_create(0.0f, 2.0f, 0.0f),
+						 0.35f, 1.7f);
+	input.wish_direction = vec3_create(0.0f, 0.0f, 1.0f);
+	input.wish_speed = controller.maximum_speed;
+	input.jump = false;
+	input.crouch = false;
+	for (tick = 0; tick < 45; tick++) {
+		character_controller_move(&controller, world, &input,
+					  1.0f / 60.0f);
+	}
+
+	CHECK(!controller.grounded);
+	CHECK(controller.surfing);
+	CHECK(controller.surf_normal.y > 0.0f);
+	CHECK(controller.surf_normal.y < controller.minimum_ground_normal_y);
+	CHECK(controller.position.x < -0.1f);
+	CHECK(controller.position.z > 0.2f);
+	CHECK(controller.velocity.x < -0.1f);
+
+	collision_world_destroy(world);
+	triangle_mesh_collider_destroy(ramp);
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"player moves without hitting itself",
@@ -164,6 +253,10 @@ int main(void) {
 		 test_ground_move_steps_over_small_ledge },
 		{"crouch waits for standing clearance",
 		 test_crouch_waits_for_standing_clearance},
+		{"walkable ramp becomes ground",
+		 test_walkable_ramp_becomes_ground	  },
+		{"steep ramp surfs without grounding",
+		 test_steep_ramp_surfs_without_grounding },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

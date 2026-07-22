@@ -43,7 +43,9 @@ typedef struct character_controller {
 	float crouched_speed_multiplier;
 	float minimum_ground_normal_y;
 	entity_id_t ground_entity_id;
+	vec3_t surf_normal;
 	bool grounded;
+	bool surfing;
 	bool crouched;
 } character_controller_t;
 

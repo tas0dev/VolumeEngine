@@ -70,6 +70,10 @@ bool player_is_crouched(const player_t *player) {
 	return player != NULL && player->controller.crouched;
 }
 
+bool player_is_surfing(const player_t *player) {
+	return player != NULL && player->controller.surfing;
+}
+
 entity_id_t player_get_ground_entity_id(const player_t *player) {
 	if (player == NULL || !player->controller.grounded) { return 0; }
 	return player->controller.ground_entity_id;

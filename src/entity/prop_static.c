@@ -195,6 +195,23 @@ entity_t *prop_static_get_entity(prop_static_t *prop) {
 	return (entity_t *)prop;
 }
 
+bool prop_internal_initialize(prop_t *prop,
+			      const entity_id_t id,
+			      const entity_class_t *class,
+			      const entity_spawn_context_t *context) {
+	entity_t *temporary;
+
+	if (prop == NULL || class == NULL) { return false; }
+
+	temporary = prop_internal_create_static(id, context);
+	if (temporary == NULL) { return false; }
+
+	*prop = *(prop_t *)temporary;
+	prop->entity.class = class;
+	free(temporary);
+	return true;
+}
+
 const entity_t *prop_static_get_const_entity(const prop_static_t *prop) {
 	if (prop == NULL) { return NULL; }
 
@@ -271,8 +288,7 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 
 	model_path = entity_property_get(context->source, "model");
 
-	if (model_path == NULL ||
-	    model_path[0] == '\0') {
+	if (model_path == NULL || model_path[0] == '\0') {
 		set_error(context, "prop_static requires a model");
 		return NULL;
 	}
@@ -285,35 +301,28 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 	}
 
 	if (context->assets == NULL) {
-		set_error(
-			context,
-			"prop_static assets require an asset manager");
+		set_error(context,
+			  "prop_static assets require an asset manager");
 		return NULL;
 	}
 
 	properties.mesh =
-		asset_manager_load_mesh(
-		context->assets, model_path,
+		asset_manager_load_mesh(context->assets, model_path,
 					context->error, context->error_size);
 
 	if (properties.mesh == NULL) { return NULL; }
 
 	properties.material = asset_manager_load_material(
-		context->assets,
-		material_path,
-		context->error,
+		context->assets, material_path, context->error,
 		context->error_size);
 
-	if (properties.material == NULL) {
-		return NULL;
-	}
+	if (properties.material == NULL) { return NULL; }
 
 	casts_shadow = entity_property_get(context->source, "casts_shadow");
 
 	if (casts_shadow != NULL &&
-	    !entity_property_parse_bool(
-		    casts_shadow,
-		    &properties.casts_shadow)) {
+	    !entity_property_parse_bool(casts_shadow,
+					&properties.casts_shadow)) {
 		set_error(context,
 			  "invalid boolean property "
 			  "\"casts_shadow\": \"%s\"",
@@ -321,8 +330,7 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 		return NULL;
 	}
 
-	collision_type = entity_property_get(context->source,
-		"collision");
+	collision_type = entity_property_get(context->source, "collision");
 
 	if (collision_type != NULL && strcmp(collision_type, "none") != 0) {
 		if (strcmp(collision_type, "model") == 0) {
@@ -347,13 +355,12 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 
 			properties.has_collider = true;
 		} else if (strcmp(collision_type, "box") == 0) {
-			collision_size = entity_property_get(
-				context->source,
-				"collision_size");
+			collision_size = entity_property_get(context->source,
+							     "collision_size");
 
 			if (collision_size == NULL ||
 			    !entity_property_parse_vec3(collision_size,
-				    &size)) {
+							&size)) {
 				set_error(context, "prop_static box collision "
 						   "requires a valid "
 						   "collision_size");
@@ -362,8 +369,7 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 
 			if (size.x <= 0.0f || size.y <= 0.0f ||
 			    size.z <= 0.0f) {
-				set_error(
-					context,
+				set_error(context,
 					  "collision_size must be positive");
 				return NULL;
 			}
@@ -376,9 +382,8 @@ entity_t *prop_internal_create_static(const entity_id_t id,
 			if (collision_center != NULL &&
 			    !entity_property_parse_vec3(collision_center,
 							&center)) {
-				set_error(
-					context,
-					"invalid collision_center: \"%s\"",
+				set_error(context,
+					  "invalid collision_center: \"%s\"",
 					  collision_center);
 				return NULL;
 			}

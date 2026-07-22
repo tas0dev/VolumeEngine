@@ -28,6 +28,7 @@ void entity_initialize(entity_t *entity,
 
 	entity->id = id;
 	entity->class = class;
+	entity->world = NULL;
 	entity->targetname = NULL;
 	entity->transform = transform_create();
 	entity->active = true;

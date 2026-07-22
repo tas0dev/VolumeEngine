@@ -45,9 +45,7 @@ static void update(engine_t *engine, float delta_time, void *user_data);
 static void render(engine_t *engine, void *user_data);
 static void shutdown(engine_t *engine, void *user_data);
 static void destroy_game_resources(game_state_t *game_state);
-static void fixed_update(engine_t *engine,
-			 float delta_time,
-			 void *user_data);
+static void fixed_update(engine_t *engine, float delta_time, void *user_data);
 
 static game_state_t state;
 
@@ -137,7 +135,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
-	light_entity = world_find_by_classname(game_state->world, "light_environment");
+	light_entity =
+		world_find_by_classname(game_state->world, "light_environment");
 	game_state->environment_light =
 		light_environment_from_entity(light_entity);
 
@@ -157,12 +156,12 @@ static bool initialize(engine_t *engine, void *user_data) {
 			 vec3_create(0.0f, player_eye_height, 0.0f)));
 	game_state->yaw = -PI * 0.5f;
 	game_state->pitch = 0.0f;
+	log_info("Press E to toggle the example door");
 
 	return true;
 }
 
-static void update(engine_t *engine,
-		   const float delta_time, void *user_data) {
+static void update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	input_t *input;
 	vec3_t movement;
@@ -185,9 +184,7 @@ static void update(engine_t *engine,
 	}
 
 	if (!engine_is_mouse_captured(engine) &&
-	    input_mouse_button_pressed(
-		    input,
-		    INPUT_MOUSE_BUTTON_LEFT)) {
+	    input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
 		engine_set_mouse_captured(engine, true);
 	}
 
@@ -197,8 +194,7 @@ static void update(engine_t *engine,
 	if (engine_is_mouse_captured(engine)) {
 		input_get_mouse_delta(input, &mouse_x, &mouse_y);
 
-		game_state->yaw +=
-			mouse_x * mouse_sensitivity;
+		game_state->yaw += mouse_x * mouse_sensitivity;
 		game_state->pitch -= mouse_y * mouse_sensitivity;
 	}
 
@@ -213,17 +209,14 @@ static void update(engine_t *engine,
 	}
 
 	game_state->camera.forward = vec3_normalize(
-		vec3_create(
-			cosf(game_state->pitch) *
-				cosf(game_state->yaw),
-			sinf(game_state->pitch),
+		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
+			    sinf(game_state->pitch),
 			    cosf(game_state->pitch) * sinf(game_state->yaw)));
 
 	forward = game_state->camera.forward;
 	forward.y = 0.0f;
 
-	if (vec3_length(forward) > 0.0f) {
-		forward = vec3_normalize(forward); }
+	if (vec3_length(forward) > 0.0f) { forward = vec3_normalize(forward); }
 
 	right = vec3_normalize(vec3_cross(forward, game_state->camera.up));
 
@@ -246,9 +239,8 @@ static void update(engine_t *engine,
 	}
 
 	if (vec3_length(movement) > 0.0f) {
-		movement = vec3_scale(
-			vec3_normalize(movement),
-			player_move_speed);
+		movement =
+			vec3_scale(vec3_normalize(movement), player_move_speed);
 	}
 
 	game_state->movement_input = movement;
@@ -256,9 +248,15 @@ static void update(engine_t *engine,
 	if (input_key_pressed(input, INPUT_KEY_SPACE)) {
 		game_state->jump_requested = true;
 	}
+
+	if (input_key_pressed(input, INPUT_KEY_E)) {
+		world_send_input(game_state->world, "example_door", "Toggle",
+				 "", NULL, NULL);
+	}
 }
 
-static void fixed_update(engine_t *engine, const float delta_time, void *user_data) {
+static void
+fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	character_move_input_t move_input;
 	const collision_world_t *collision_world;
@@ -268,8 +266,7 @@ static void fixed_update(engine_t *engine, const float delta_time, void *user_da
 
 	game_state = user_data;
 
-	if (game_state == NULL ||
-	    game_state->world == NULL) { return; }
+	if (game_state == NULL || game_state->world == NULL) { return; }
 
 	collision_world = world_get_const_collision_world(game_state->world);
 
@@ -289,11 +286,9 @@ static void fixed_update(engine_t *engine, const float delta_time, void *user_da
 			 vec3_create(0.0f, player_eye_height, 0.0f));
 
 	if (game_state->mesh_entity != NULL) {
-		game_state->mesh_entity->
-			transform.rotation.x +=
+		game_state->mesh_entity->transform.rotation.x +=
 			delta_time * 0.7f;
-		game_state->mesh_entity->transform.rotation.y +=
-			delta_time;
+		game_state->mesh_entity->transform.rotation.y += delta_time;
 	}
 
 	world_update(game_state->world, delta_time);

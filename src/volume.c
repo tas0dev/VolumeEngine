@@ -34,7 +34,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	    config->game == NULL) {
 		log_error("Invalid engine configuration");
 		return NULL;
-	    }
+	}
 
 	if (!entity_register_builtin_classes()) {
 		log_error("Failed to register built-in entity classes");
@@ -90,7 +90,7 @@ engine_t *engine_create(const engine_config_t *config) {
 		entity_registry_shutdown();
 		free(engine);
 		return NULL;
-	    }
+	}
 
 	engine->initialized = true;
 	engine->running = true;
@@ -161,19 +161,18 @@ bool engine_run(engine_t *engine) {
 		       fixed_steps < maximum_fixed_steps) {
 			if (engine->game->fixed_update != NULL) {
 				engine->game->fixed_update(
-					engine,
-					engine->fixed_delta_time,
+					engine, engine->fixed_delta_time,
 					engine->game->user_data);
 			}
 
 			engine->accumulator -= engine->fixed_delta_time;
 			fixed_steps++;
-		       }
+		}
 
 		if (fixed_steps == maximum_fixed_steps &&
 		    engine->accumulator >= engine->fixed_delta_time) {
 			engine->accumulator = 0.0;
-		    }
+		}
 
 		renderer_begin_frame(engine->renderer);
 

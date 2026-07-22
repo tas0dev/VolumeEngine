@@ -221,7 +221,7 @@ static bool test_invalid_typed_properties(void) {
 int main(void) {
 	static const test_case_t tests[] = {
 		{"valid map",		      test_valid_map		    },
-		{"missing world", test_missing_world},
+		{"missing world",		  test_missing_world	    },
 		{"duplicate world",	    test_duplicate_world		},
 		{"missing entity classname", test_missing_entity_classname},
 		{"nested entity block",	test_nested_entity_block	},

@@ -204,7 +204,7 @@ int main(void) {
 		{"floor collision",		    test_floor_collision	},
 		{"wall collision",			   test_wall_collision	      },
 		{"floor and wall corner",		  test_floor_and_wall_corner},
-		{"invalid collision world arguments", test_invalid_arguments},
+		{"invalid collision world arguments", test_invalid_arguments    },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

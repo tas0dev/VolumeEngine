@@ -317,13 +317,13 @@ static bool test_prop_dynamic_collision_follows_transform(void) {
 
 int main(void) {
 	static const test_case_t tests[] = {
-		{"prop_static box collider",	     test_prop_static_box_collider},
+		{"prop_static box collider",		     test_prop_static_box_collider},
 		{"prop_static without collider",
-		 test_prop_static_without_collider				  },
+		 test_prop_static_without_collider					  },
 		{"invalid prop_static collision type",
-		 test_invalid_collision_type					    },
+		 test_invalid_collision_type					      },
 		{"invalid prop_static collision size",
-		 test_invalid_collision_size					    },
+		 test_invalid_collision_size					      },
 		{"prop_dynamic collision follows transform",
 		 test_prop_dynamic_collision_follows_transform			      },
 	};

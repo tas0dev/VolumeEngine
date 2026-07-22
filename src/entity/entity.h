@@ -10,8 +10,8 @@
 
 #include "collision/collider.h"
 #include "core/types.h"
-#include "entity/properties.h"
 #include "entity/io.h"
+#include "entity/properties.h"
 #include "renderer/view.h"
 #include "scene/transform.h"
 #include <stdbool.h>
@@ -46,6 +46,7 @@ struct entity_class {
 struct entity {
 	entity_id_t id;
 	const entity_class_t *class;
+	world_t *world;
 	char *targetname;
 	transform_t transform;
 	bool active;

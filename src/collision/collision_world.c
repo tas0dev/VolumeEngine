@@ -96,12 +96,12 @@ bool collision_world_add_collider(collision_world_t *world,
 	if (world == NULL || entity_id == 0 ||
 	    collider.type == COLLIDER_TYPE_NONE) {
 		return false;
-	    }
+	}
 
 	for (index = 0; index < world->count; index++) {
-		    if (world->entries[index].entity_id == entity_id) {
+		if (world->entries[index].entity_id == entity_id) {
 			return false;
-		    }
+		}
 	}
 
 	if (world->count == world->capacity) {
@@ -110,12 +110,11 @@ bool collision_world_add_collider(collision_world_t *world,
 		if (capacity < world->capacity ||
 		    !collision_world_reserve(world, capacity)) {
 			return false;
-			    }
+		}
 	}
 
 	world->entries[world->count].entity_id = entity_id;
-	world->entries[world->count].collider =
-		collider;
+	world->entries[world->count].collider = collider;
 	world->entries[world->count].position = position;
 	world->count++;
 
@@ -155,7 +154,7 @@ size_t collision_world_get_count(const collision_world_t *world) {
 bool collision_world_resolve_aabb(const collision_world_t *world,
 				  const aabb_t local_bounds,
 				  vec3_t *position,
-	collision_result_t *result) {
+				  collision_result_t *result) {
 	const unsigned int maximum_iterations = 8;
 	bool entry_collided;
 	bool iteration_collided;
@@ -163,8 +162,7 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 	unsigned int iteration;
 	size_t index;
 
-	if (world == NULL || position == NULL) {
-		return false; }
+	if (world == NULL || position == NULL) { return false; }
 
 	collision_result_reset(result);
 	collided = false;
@@ -172,16 +170,14 @@ bool collision_world_resolve_aabb(const collision_world_t *world,
 	for (iteration = 0; iteration < maximum_iterations; iteration++) {
 		iteration_collided = false;
 
-		for (index = 0; index < world->count;
-		     index++) {
+		for (index = 0; index < world->count; index++) {
 			entry_collided = false;
 
 			switch (world->entries[index].collider.type) {
 			case COLLIDER_TYPE_BOX:
 				entry_collided = resolve_box_entry(
 					&world->entries[index], local_bounds,
-					position,
-						result);
+					position, result);
 				break;
 
 			case COLLIDER_TYPE_TRIANGLE_MESH:
@@ -265,52 +261,36 @@ bool collision_world_remove(collision_world_t *world,
 	return false;
 }
 
-static bool resolve_box_entry(
-	const collision_entry_t *entry,
-	const aabb_t local_bounds,
-	vec3_t *position,
-	collision_result_t *result) {
+static bool resolve_box_entry(const collision_entry_t *entry,
+			      const aabb_t local_bounds,
+			      vec3_t *position,
+			      collision_result_t *result) {
 	aabb_collision_t collision;
 	aabb_t moving_bounds;
 	aabb_t static_bounds;
 	vec3_t correction;
 
-	moving_bounds = aabb_translate(
-		local_bounds,
-		*position);
+	moving_bounds = aabb_translate(local_bounds, *position);
 
-	if (!collider_get_aabb(
-		    &entry->collider,
-		    entry->position,
-		    &static_bounds) ||
-	    !aabb_get_collision(
-		    moving_bounds,
-		    static_bounds,
-		    &collision)) {
+	if (!collider_get_aabb(&entry->collider, entry->position,
+			       &static_bounds) ||
+	    !aabb_get_collision(moving_bounds, static_bounds, &collision)) {
 		return false;
-		    }
+	}
 
-	correction = vec3_scale(
-		collision.normal,
-		collision.depth);
-	*position = vec3_add(
-		*position,
-		correction);
+	correction = vec3_scale(collision.normal, collision.depth);
+	*position = vec3_add(*position, correction);
 
-	collision_result_record(
-		result,
-		entry->entity_id,
-		collision.normal,
-		collision.depth);
+	collision_result_record(result, entry->entity_id, collision.normal,
+				collision.depth);
 
 	return true;
 }
 
-static bool resolve_triangle_mesh_entry(
-	const collision_entry_t *entry,
-	const aabb_t local_bounds,
-	vec3_t *position,
-	collision_result_t *result) {
+static bool resolve_triangle_mesh_entry(const collision_entry_t *entry,
+					const aabb_t local_bounds,
+					vec3_t *position,
+					collision_result_t *result) {
 	const triangle_mesh_collider_instance_t *instance;
 	aabb_collision_t collision;
 	aabb_t moving_bounds;
@@ -326,85 +306,51 @@ static bool resolve_triangle_mesh_entry(
 	size_t index;
 	bool collided;
 
-	instance =
-		&entry->collider.shape.triangle_mesh;
+	instance = &entry->collider.shape.triangle_mesh;
 
-	moving_bounds = aabb_translate(
-		local_bounds,
-		*position);
-	mesh_bounds = aabb_translate(
-		instance->bounds,
-		entry->position);
+	moving_bounds = aabb_translate(local_bounds, *position);
+	mesh_bounds = aabb_translate(instance->bounds, entry->position);
 
-	if (!aabb_intersects(
-		    moving_bounds,
-		    mesh_bounds)) {
-		return false;
-	}
+	if (!aabb_intersects(moving_bounds, mesh_bounds)) { return false; }
 
 	triangle_count =
-		triangle_mesh_collider_get_triangle_count(
-			instance->mesh);
+		triangle_mesh_collider_get_triangle_count(instance->mesh);
 	collided = false;
 
-	for (index = 0;
-	     index < triangle_count;
-	     index++) {
-		if (!triangle_mesh_collider_get_triangle(
-			    instance->mesh,
-			    index,
-			    &local_triangle)) {
+	for (index = 0; index < triangle_count; index++) {
+		if (!triangle_mesh_collider_get_triangle(instance->mesh, index,
+							 &local_triangle)) {
 			continue;
 		}
 
 		first = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[0]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[0]),
 			entry->position);
 		second = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[1]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[1]),
 			entry->position);
 		third = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[2]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[2]),
 			entry->position);
 
-		triangle = triangle_create(
-			first,
-			second,
-			third);
-		triangle_bounds =
-			triangle_get_bounds(triangle);
-		moving_bounds = aabb_translate(
-			local_bounds,
-			*position);
+		triangle = triangle_create(first, second, third);
+		triangle_bounds = triangle_get_bounds(triangle);
+		moving_bounds = aabb_translate(local_bounds, *position);
 
-		if (!aabb_intersects(
-			    moving_bounds,
-			    triangle_bounds) ||
-		    !aabb_get_triangle_collision(
-			    moving_bounds,
-			    triangle,
-			    &collision)) {
+		if (!aabb_intersects(moving_bounds, triangle_bounds) ||
+		    !aabb_get_triangle_collision(moving_bounds, triangle,
+						 &collision)) {
 			continue;
 		}
 
-		correction = vec3_scale(
-			collision.normal,
-			collision.depth);
-		*position = vec3_add(
-			*position,
-			correction);
+		correction = vec3_scale(collision.normal, collision.depth);
+		*position = vec3_add(*position, correction);
 
-		collision_result_record(
-			result,
-			entry->entity_id,
-			collision.normal,
-			collision.depth);
+		collision_result_record(result, entry->entity_id,
+					collision.normal, collision.depth);
 
 		collided = true;
 	}
@@ -412,50 +358,37 @@ static bool resolve_triangle_mesh_entry(
 	return collided;
 }
 
-static void collision_result_record(
-	collision_result_t *result,
-	const entity_id_t entity_id,
-	const vec3_t normal,
-	const float depth) {
+static void collision_result_record(collision_result_t *result,
+				    const entity_id_t entity_id,
+				    const vec3_t normal,
+				    const float depth) {
 	collision_contact_t *contact;
 
-	if (result == NULL) {
-		return;
-	}
+	if (result == NULL) { return; }
 
-	result->correction = vec3_add(
-		result->correction,
-		vec3_scale(normal, depth));
-	result->sides |=
-		collision_side_from_normal(normal);
+	result->correction =
+		vec3_add(result->correction, vec3_scale(normal, depth));
+	result->sides |= collision_side_from_normal(normal);
 
-	if (result->contact_count >=
-	    COLLISION_RESULT_MAX_CONTACTS) {
-		return;
-	    }
+	if (result->contact_count >= COLLISION_RESULT_MAX_CONTACTS) { return; }
 
-	contact =
-		&result->contacts[
-			result->contact_count];
+	contact = &result->contacts[result->contact_count];
 	contact->normal = normal;
 	contact->depth = depth;
 	contact->entity_id = entity_id;
 	result->contact_count++;
 }
 
-bool collision_world_trace_aabb(
-	const collision_world_t *world,
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end,
-	collision_trace_t *trace) {
+bool collision_world_trace_aabb(const collision_world_t *world,
+				const aabb_t local_bounds,
+				const vec3_t start,
+				const vec3_t end,
+				collision_trace_t *trace) {
 	collision_trace_t candidate;
 	aabb_t static_bounds;
 	size_t index;
 
-	if (trace == NULL) {
-		return false;
-	}
+	if (trace == NULL) { return false; }
 
 	trace->hit = false;
 	trace->started_inside = false;
@@ -464,50 +397,38 @@ bool collision_world_trace_aabb(
 	trace->normal = vec3_create(0.0f, 0.0f, 0.0f);
 	trace->entity_id = 0;
 
-	if (world == NULL) {
-		return false;
-	}
+	if (world == NULL) { return false; }
 
 	for (index = 0; index < world->count; index++) {
 		candidate.hit = false;
 		candidate.started_inside = false;
 		candidate.fraction = 1.0f;
 		candidate.position = end;
-		candidate.normal =
-			vec3_create(0.0f, 0.0f, 0.0f);
-		candidate.entity_id =
-			world->entries[index].entity_id;
+		candidate.normal = vec3_create(0.0f, 0.0f, 0.0f);
+		candidate.entity_id = world->entries[index].entity_id;
 
 		switch (world->entries[index].collider.type) {
 		case COLLIDER_TYPE_BOX:
-			if (!collider_get_aabb(
-				    &world->entries[index].collider,
-				    world->entries[index].position,
-				    &static_bounds) ||
-			    !trace_aabb_against_aabb(
-				    local_bounds,
-				    start,
-				    end,
-				    static_bounds,
-				    &candidate)) {
+			if (!collider_get_aabb(&world->entries[index].collider,
+					       world->entries[index].position,
+					       &static_bounds) ||
+			    !trace_aabb_against_aabb(local_bounds, start, end,
+						     static_bounds,
+						     &candidate)) {
 				continue;
-				    }
+			}
 			break;
 
 		case COLLIDER_TYPE_TRIANGLE_MESH:
-			if (!trace_triangle_mesh_entry(
-				    &world->entries[index],
-				    local_bounds,
-				    start,
-				    end,
-				    &candidate)) {
+			if (!trace_triangle_mesh_entry(&world->entries[index],
+						       local_bounds, start, end,
+						       &candidate)) {
 				continue;
-				    }
+			}
 			break;
 
 		case COLLIDER_TYPE_NONE:
-		default:
-			continue;
+		default: continue;
 		}
 
 		if (candidate.started_inside) {
@@ -515,19 +436,17 @@ bool collision_world_trace_aabb(
 			return true;
 		}
 
-		if (!trace->hit ||
-		    candidate.fraction < trace->fraction) {
+		if (!trace->hit || candidate.fraction < trace->fraction) {
 			*trace = candidate;
-		    }
+		}
 	}
 
 	return trace->hit;
 }
 
-static aabb_t create_swept_bounds(
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end) {
+static aabb_t create_swept_bounds(const aabb_t local_bounds,
+				  const vec3_t start,
+				  const vec3_t end) {
 	aabb_t start_bounds;
 	aabb_t end_bounds;
 	vec3_t minimum;
@@ -539,36 +458,25 @@ static aabb_t create_swept_bounds(
 	end_bounds = aabb_translate(local_bounds, end);
 
 	minimum = vec3_create(
-		fminf(start_bounds.minimum.x,
-		      end_bounds.minimum.x),
-		fminf(start_bounds.minimum.y,
-		      end_bounds.minimum.y),
-		fminf(start_bounds.minimum.z,
-		      end_bounds.minimum.z));
+		fminf(start_bounds.minimum.x, end_bounds.minimum.x),
+		fminf(start_bounds.minimum.y, end_bounds.minimum.y),
+		fminf(start_bounds.minimum.z, end_bounds.minimum.z));
 	maximum = vec3_create(
-		fmaxf(start_bounds.maximum.x,
-		      end_bounds.maximum.x),
-		fmaxf(start_bounds.maximum.y,
-		      end_bounds.maximum.y),
-		fmaxf(start_bounds.maximum.z,
-		      end_bounds.maximum.z));
+		fmaxf(start_bounds.maximum.x, end_bounds.maximum.x),
+		fmaxf(start_bounds.maximum.y, end_bounds.maximum.y),
+		fmaxf(start_bounds.maximum.z, end_bounds.maximum.z));
 
-	center = vec3_scale(
-		vec3_add(minimum, maximum),
-		0.5f);
-	half_extents = vec3_scale(
-		vec3_subtract(maximum, minimum),
-		0.5f);
+	center = vec3_scale(vec3_add(minimum, maximum), 0.5f);
+	half_extents = vec3_scale(vec3_subtract(maximum, minimum), 0.5f);
 
 	return aabb_create(center, half_extents);
 }
 
-static bool trace_aabb_against_aabb(
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end,
-	const aabb_t static_bounds,
-	collision_trace_t *trace) {
+static bool trace_aabb_against_aabb(const aabb_t local_bounds,
+				    const vec3_t start,
+				    const vec3_t end,
+				    const aabb_t static_bounds,
+				    collision_trace_t *trace) {
 	aabb_collision_t overlap;
 	aabb_t start_bounds;
 	vec3_t movement;
@@ -578,79 +486,56 @@ static bool trace_aabb_against_aabb(
 
 	start_bounds = aabb_translate(local_bounds, start);
 
-	if (aabb_get_collision(
-		    start_bounds,
-		    static_bounds,
-		    &overlap)) {
+	if (aabb_get_collision(start_bounds, static_bounds, &overlap)) {
 		trace->hit = true;
 		trace->started_inside = true;
 		trace->fraction = 0.0f;
 		trace->position = start;
 		trace->normal = overlap.normal;
 		return true;
-		    }
+	}
 
 	movement = vec3_subtract(end, start);
 	entry_time = 0.0f;
 	exit_time = 1.0f;
 	normal = vec3_create(0.0f, 0.0f, 0.0f);
 
-	if (!update_sweep_axis(
-		    start_bounds.minimum.x,
-		    start_bounds.maximum.x,
-		    movement.x,
-		    static_bounds.minimum.x,
-		    static_bounds.maximum.x,
-		    vec3_create(1.0f, 0.0f, 0.0f),
-		    &entry_time,
-		    &exit_time,
-		    &normal) ||
-	    !update_sweep_axis(
-		    start_bounds.minimum.y,
-		    start_bounds.maximum.y,
-		    movement.y,
-		    static_bounds.minimum.y,
-		    static_bounds.maximum.y,
-		    vec3_create(0.0f, 1.0f, 0.0f),
-		    &entry_time,
-		    &exit_time,
-		    &normal) ||
-	    !update_sweep_axis(
-		    start_bounds.minimum.z,
-		    start_bounds.maximum.z,
-		    movement.z,
-		    static_bounds.minimum.z,
-		    static_bounds.maximum.z,
-		    vec3_create(0.0f, 0.0f, 1.0f),
-		    &entry_time,
-		    &exit_time,
-		    &normal)) {
+	if (!update_sweep_axis(start_bounds.minimum.x, start_bounds.maximum.x,
+			       movement.x, static_bounds.minimum.x,
+			       static_bounds.maximum.x,
+			       vec3_create(1.0f, 0.0f, 0.0f), &entry_time,
+			       &exit_time, &normal) ||
+	    !update_sweep_axis(start_bounds.minimum.y, start_bounds.maximum.y,
+			       movement.y, static_bounds.minimum.y,
+			       static_bounds.maximum.y,
+			       vec3_create(0.0f, 1.0f, 0.0f), &entry_time,
+			       &exit_time, &normal) ||
+	    !update_sweep_axis(start_bounds.minimum.z, start_bounds.maximum.z,
+			       movement.z, static_bounds.minimum.z,
+			       static_bounds.maximum.z,
+			       vec3_create(0.0f, 0.0f, 1.0f), &entry_time,
+			       &exit_time, &normal)) {
 		return false;
-		    }
+	}
 
-	if (entry_time < 0.0f ||
-	    entry_time > 1.0f ||
-	    entry_time > exit_time) {
+	if (entry_time < 0.0f || entry_time > 1.0f || entry_time > exit_time) {
 		return false;
-	    }
+	}
 
 	trace->hit = true;
 	trace->started_inside = false;
 	trace->fraction = entry_time;
-	trace->position = vec3_add(
-		start,
-		vec3_scale(movement, entry_time));
+	trace->position = vec3_add(start, vec3_scale(movement, entry_time));
 	trace->normal = normal;
 
 	return true;
 }
 
-static bool trace_aabb_against_triangle(
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end,
-	const triangle_t triangle,
-	collision_trace_t *trace) {
+static bool trace_aabb_against_triangle(const aabb_t local_bounds,
+					const vec3_t start,
+					const vec3_t end,
+					const triangle_t triangle,
+					collision_trace_t *trace) {
 	aabb_collision_t overlap;
 	aabb_t start_bounds;
 	vec3_t box_axes[3];
@@ -667,10 +552,7 @@ static bool trace_aabb_against_triangle(
 
 	start_bounds = aabb_translate(local_bounds, start);
 
-	if (aabb_get_triangle_collision(
-		    start_bounds,
-		    triangle,
-		    &overlap)) {
+	if (aabb_get_triangle_collision(start_bounds, triangle, &overlap)) {
 		trace->hit = true;
 		trace->started_inside = true;
 		trace->fraction = 0.0f;
@@ -687,15 +569,9 @@ static bool trace_aabb_against_triangle(
 	vertices[1] = triangle.vertices[1];
 	vertices[2] = triangle.vertices[2];
 
-	edges[0] = vec3_subtract(
-		vertices[1],
-		vertices[0]);
-	edges[1] = vec3_subtract(
-		vertices[2],
-		vertices[1]);
-	edges[2] = vec3_subtract(
-		vertices[0],
-		vertices[2]);
+	edges[0] = vec3_subtract(vertices[1], vertices[0]);
+	edges[1] = vec3_subtract(vertices[2], vertices[1]);
+	edges[2] = vec3_subtract(vertices[0], vertices[2]);
 
 	box_axes[0] = vec3_create(1.0f, 0.0f, 0.0f);
 	box_axes[1] = vec3_create(0.0f, 1.0f, 0.0f);
@@ -705,79 +581,52 @@ static bool trace_aabb_against_triangle(
 	exit_time = 1.0f;
 	normal = vec3_create(0.0f, 0.0f, 0.0f);
 
-	for (axis_index = 0;
-	     axis_index < 3;
-	     axis_index++) {
-		if (!update_triangle_sweep_axis(
-			    box_axes[axis_index],
-			    vertices,
-			    half_extents,
-			    start_center,
-			    movement,
-			    &entry_time,
-			    &exit_time,
-			    &normal)) {
+	for (axis_index = 0; axis_index < 3; axis_index++) {
+		if (!update_triangle_sweep_axis(box_axes[axis_index], vertices,
+						half_extents, start_center,
+						movement, &entry_time,
+						&exit_time, &normal)) {
 			return false;
 		}
 	}
 
-	if (!update_triangle_sweep_axis(
-		    triangle.normal,
-		    vertices,
-		    half_extents,
-		    start_center,
-		    movement,
-		    &entry_time,
-		    &exit_time,
-		    &normal)) {
+	if (!update_triangle_sweep_axis(triangle.normal, vertices, half_extents,
+					start_center, movement, &entry_time,
+					&exit_time, &normal)) {
 		return false;
 	}
 
-	for (edge_index = 0;
-	     edge_index < 3;
-	     edge_index++) {
-		for (axis_index = 0;
-		     axis_index < 3;
-		     axis_index++) {
+	for (edge_index = 0; edge_index < 3; edge_index++) {
+		for (axis_index = 0; axis_index < 3; axis_index++) {
 			if (!update_triangle_sweep_axis(
-				    vec3_cross(
-					    edges[edge_index],
-					    box_axes[axis_index]),
-				    vertices,
-				    half_extents,
-				    start_center,
-				    movement,
-				    &entry_time,
-				    &exit_time,
+				    vec3_cross(edges[edge_index],
+					       box_axes[axis_index]),
+				    vertices, half_extents, start_center,
+				    movement, &entry_time, &exit_time,
 				    &normal)) {
 				return false;
 			}
 		}
 	}
 
-	if (entry_time < 0.0f ||
-	    entry_time > 1.0f ||
-	    entry_time > exit_time) {
+	if (entry_time < 0.0f || entry_time > 1.0f || entry_time > exit_time) {
 		return false;
 	}
 
 	trace->hit = true;
 	trace->started_inside = false;
 	trace->fraction = entry_time;
-	trace->position = vec3_add(
-		start,
-		vec3_scale(movement, entry_time));
+	trace->position = vec3_add(start, vec3_scale(movement, entry_time));
 	trace->normal = normal;
 
 	return true;
 }
 
-static bool trace_triangle_mesh_entry(
-	const collision_entry_t *entry,
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end,
-	collision_trace_t *trace) {
+static bool trace_triangle_mesh_entry(const collision_entry_t *entry,
+				      const aabb_t local_bounds,
+				      const vec3_t start,
+				      const vec3_t end,
+				      collision_trace_t *trace) {
 	const triangle_mesh_collider_instance_t *instance;
 	collision_trace_t candidate;
 	aabb_t swept_bounds;
@@ -792,64 +641,40 @@ static bool trace_triangle_mesh_entry(
 	size_t index;
 	bool hit;
 
-	instance =
-		&entry->collider.shape.triangle_mesh;
+	instance = &entry->collider.shape.triangle_mesh;
 
-	swept_bounds = create_swept_bounds(
-		local_bounds,
-		start,
-		end);
-	mesh_bounds = aabb_translate(
-		instance->bounds,
-		entry->position);
+	swept_bounds = create_swept_bounds(local_bounds, start, end);
+	mesh_bounds = aabb_translate(instance->bounds, entry->position);
 
-	if (!aabb_intersects(
-		    swept_bounds,
-		    mesh_bounds)) {
-		return false;
-	}
+	if (!aabb_intersects(swept_bounds, mesh_bounds)) { return false; }
 
 	hit = false;
 	triangle_count =
-		triangle_mesh_collider_get_triangle_count(
-			instance->mesh);
+		triangle_mesh_collider_get_triangle_count(instance->mesh);
 
-	for (index = 0;
-	     index < triangle_count;
-	     index++) {
-		if (!triangle_mesh_collider_get_triangle(
-			    instance->mesh,
-			    index,
-			    &local_triangle)) {
+	for (index = 0; index < triangle_count; index++) {
+		if (!triangle_mesh_collider_get_triangle(instance->mesh, index,
+							 &local_triangle)) {
 			continue;
 		}
 
 		first = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[0]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[0]),
 			entry->position);
 		second = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[1]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[1]),
 			entry->position);
 		third = vec3_add(
-			mat4_transform_point(
-				instance->transform,
-				local_triangle.vertices[2]),
+			mat4_transform_point(instance->transform,
+					     local_triangle.vertices[2]),
 			entry->position);
 
-		triangle = triangle_create(
-			first,
-			second,
-			third);
-		triangle_bounds =
-			triangle_get_bounds(triangle);
+		triangle = triangle_create(first, second, third);
+		triangle_bounds = triangle_get_bounds(triangle);
 
-		if (!aabb_intersects(
-			    swept_bounds,
-			    triangle_bounds)) {
+		if (!aabb_intersects(swept_bounds, triangle_bounds)) {
 			continue;
 		}
 
@@ -857,17 +682,11 @@ static bool trace_triangle_mesh_entry(
 		candidate.started_inside = false;
 		candidate.fraction = 1.0f;
 		candidate.position = end;
-		candidate.normal =
-			vec3_create(0.0f, 0.0f, 0.0f);
-		candidate.entity_id =
-			entry->entity_id;
+		candidate.normal = vec3_create(0.0f, 0.0f, 0.0f);
+		candidate.entity_id = entry->entity_id;
 
-		if (!trace_aabb_against_triangle(
-			    local_bounds,
-			    start,
-			    end,
-			    triangle,
-			    &candidate)) {
+		if (!trace_aabb_against_triangle(local_bounds, start, end,
+						 triangle, &candidate)) {
 			continue;
 		}
 
@@ -876,8 +695,7 @@ static bool trace_triangle_mesh_entry(
 			return true;
 		}
 
-		if (!hit ||
-		    candidate.fraction < trace->fraction) {
+		if (!hit || candidate.fraction < trace->fraction) {
 			*trace = candidate;
 			hit = true;
 		}
@@ -886,16 +704,15 @@ static bool trace_triangle_mesh_entry(
 	return hit;
 }
 
-static bool update_sweep_axis(
-	const float moving_minimum,
-	const float moving_maximum,
-	const float movement,
-	const float static_minimum,
-	const float static_maximum,
-	const vec3_t axis,
-	float *entry_time,
-	float *exit_time,
-	vec3_t *normal) {
+static bool update_sweep_axis(const float moving_minimum,
+			      const float moving_maximum,
+			      const float movement,
+			      const float static_minimum,
+			      const float static_maximum,
+			      const vec3_t axis,
+			      float *entry_time,
+			      float *exit_time,
+			      vec3_t *normal) {
 	float first_time;
 	float second_time;
 	float axis_entry;
@@ -906,41 +723,30 @@ static bool update_sweep_axis(
 		       moving_minimum <= static_maximum;
 	}
 
-	first_time =
-		(static_minimum - moving_maximum) /
-		movement;
-	second_time =
-		(static_maximum - moving_minimum) /
-		movement;
+	first_time = (static_minimum - moving_maximum) / movement;
+	second_time = (static_maximum - moving_minimum) / movement;
 
-	axis_entry =
-		fminf(first_time, second_time);
-	axis_exit =
-		fmaxf(first_time, second_time);
+	axis_entry = fminf(first_time, second_time);
+	axis_exit = fmaxf(first_time, second_time);
 
 	if (axis_entry > *entry_time) {
 		*entry_time = axis_entry;
-		*normal = movement > 0.0f
-				  ? vec3_scale(axis, -1.0f)
-				  : axis;
+		*normal = movement > 0.0f ? vec3_scale(axis, -1.0f) : axis;
 	}
 
-	if (axis_exit < *exit_time) {
-		*exit_time = axis_exit;
-	}
+	if (axis_exit < *exit_time) { *exit_time = axis_exit; }
 
 	return *entry_time <= *exit_time;
 }
 
-static bool update_triangle_sweep_axis(
-	vec3_t axis,
-	const vec3_t *vertices,
-	const vec3_t half_extents,
-	const vec3_t start_center,
-	const vec3_t movement,
-	float *entry_time,
-	float *exit_time,
-	vec3_t *normal) {
+static bool update_triangle_sweep_axis(vec3_t axis,
+				       const vec3_t *vertices,
+				       const vec3_t half_extents,
+				       const vec3_t start_center,
+				       const vec3_t movement,
+				       float *entry_time,
+				       float *exit_time,
+				       vec3_t *normal) {
 	float axis_length;
 	float triangle_first;
 	float triangle_second;
@@ -959,38 +765,23 @@ static bool update_triangle_sweep_axis(
 
 	axis_length = vec3_length(axis);
 
-	if (axis_length <= 0.000001f) {
-		return true;
-	}
+	if (axis_length <= 0.000001f) { return true; }
 
-	axis = vec3_scale(
-		axis,
-		1.0f / axis_length);
+	axis = vec3_scale(axis, 1.0f / axis_length);
 
-	triangle_first =
-		vec3_dot(vertices[0], axis);
-	triangle_second =
-		vec3_dot(vertices[1], axis);
-	triangle_third =
-		vec3_dot(vertices[2], axis);
+	triangle_first = vec3_dot(vertices[0], axis);
+	triangle_second = vec3_dot(vertices[1], axis);
+	triangle_third = vec3_dot(vertices[2], axis);
 
-	triangle_minimum = fminf(
-		triangle_first,
-		fminf(
-			triangle_second,
-			triangle_third));
-	triangle_maximum = fmaxf(
-		triangle_first,
-		fmaxf(
-			triangle_second,
-			triangle_third));
+	triangle_minimum =
+		fminf(triangle_first, fminf(triangle_second, triangle_third));
+	triangle_maximum =
+		fmaxf(triangle_first, fmaxf(triangle_second, triangle_third));
 
-	box_center =
-		vec3_dot(start_center, axis);
-	box_radius =
-		half_extents.x * fabsf(axis.x) +
-		half_extents.y * fabsf(axis.y) +
-		half_extents.z * fabsf(axis.z);
+	box_center = vec3_dot(start_center, axis);
+	box_radius = half_extents.x * fabsf(axis.x) +
+		     half_extents.y * fabsf(axis.y) +
+		     half_extents.z * fabsf(axis.z);
 
 	moving_minimum = box_center - box_radius;
 	moving_maximum = box_center + box_radius;
@@ -1001,28 +792,18 @@ static bool update_triangle_sweep_axis(
 		       moving_minimum <= triangle_maximum;
 	}
 
-	first_time =
-		(triangle_minimum - moving_maximum) /
-		axis_movement;
-	second_time =
-		(triangle_maximum - moving_minimum) /
-		axis_movement;
+	first_time = (triangle_minimum - moving_maximum) / axis_movement;
+	second_time = (triangle_maximum - moving_minimum) / axis_movement;
 
-	axis_entry =
-		fminf(first_time, second_time);
-	axis_exit =
-		fmaxf(first_time, second_time);
+	axis_entry = fminf(first_time, second_time);
+	axis_exit = fmaxf(first_time, second_time);
 
 	if (axis_entry > *entry_time) {
 		*entry_time = axis_entry;
-		*normal = axis_movement > 0.0f
-				  ? vec3_scale(axis, -1.0f)
-				  : axis;
+		*normal = axis_movement > 0.0f ? vec3_scale(axis, -1.0f) : axis;
 	}
 
-	if (axis_exit < *exit_time) {
-		*exit_time = axis_exit;
-	}
+	if (axis_exit < *exit_time) { *exit_time = axis_exit; }
 
 	return *entry_time <= *exit_time;
 }

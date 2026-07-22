@@ -12,6 +12,10 @@
 
 entity_t *prop_internal_create_static(entity_id_t id,
 				      const entity_spawn_context_t *context);
+bool prop_internal_initialize(prop_t *prop,
+			      entity_id_t id,
+			      const entity_class_t *class,
+			      const entity_spawn_context_t *context);
 void prop_internal_draw_shadow(entity_t *entity, renderer_t *renderer);
 void prop_internal_draw(entity_t *entity,
 			renderer_t *renderer,

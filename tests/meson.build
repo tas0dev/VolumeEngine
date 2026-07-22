@@ -103,6 +103,16 @@ entity_io_test = executable(
     install : false,
 )
 
+func_door_test = executable(
+    'func-door-test',
+    [
+        'common.c',
+        'func_door_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -146,4 +156,9 @@ test(
 test(
     'entity-io',
     entity_io_test
+)
+
+test(
+    'func-door',
+    func_door_test
 )

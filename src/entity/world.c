@@ -188,6 +188,7 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 	}
 
 	world->entities[world->count] = entity;
+	entity->world = world;
 	world->count++;
 
 	return true;
@@ -202,6 +203,7 @@ bool world_remove_entity(world_t *world, const entity_id_t id) {
 		if (world->entities[index]->id != id) { continue; }
 
 		collision_world_remove(world->collision_world, id);
+		world->entities[index]->world = NULL;
 		entity_destroy(world->entities[index]);
 
 		if (index + 1 < world->count) {

@@ -193,7 +193,7 @@ int main(void) {
 		{"escaped string",	   test_escaped_string	      },
 		{"unclosed block",	   test_unclosed_block	      },
 		{"unexpected closing brace", test_unexpected_closing_brace},
-		{"load file", test_load_file},
+		{"load file",		      test_load_file		    },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

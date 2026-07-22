@@ -63,3 +63,20 @@ entity
 	"color" "1.0 0.95 0.85"
 	"intensity" "1.0"
 }
+
+entity
+{
+	"classname" "func_door"
+	"targetname" "example_door"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "0 0.5 -2"
+	"angles" "0 0 0"
+	"scale" "2 3 0.3"
+	"casts_shadow" "1"
+	"collision" "model"
+	"move_offset" "0 3.5 0"
+	"speed" "2"
+	"wait" "-1"
+	"OnFullyOpen" "!self,Close,,2,-1"
+}

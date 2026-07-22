@@ -192,6 +192,11 @@ bool entity_accept_input(entity_t *entity,
 		return false;
 	}
 
+	if (entity->class != NULL && entity->class->accept_input != NULL &&
+	    entity->class->accept_input(entity, input_name, context)) {
+		return true;
+	}
+
 	if (strcmp(input_name, "Enable") == 0) {
 		entity_set_active(entity, true);
 		return true;
@@ -212,11 +217,7 @@ bool entity_accept_input(entity_t *entity,
 		return true;
 	}
 
-	if (entity->class == NULL || entity->class->accept_input == NULL) {
-		return false;
-	}
-
-	return entity->class->accept_input(entity, input_name, context);
+	return false;
 }
 
 void entity_io_destroy(entity_t *entity) {

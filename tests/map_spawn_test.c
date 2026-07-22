@@ -45,8 +45,7 @@ static entity_t *create_test_entity(const entity_id_t id,
 	const char *material_path;
 	const char *casts_shadow;
 
-	if (context == NULL || context->properties == NULL) { return NULL;
-	}
+	if (context == NULL || context->properties == NULL) { return NULL; }
 
 	entity = calloc(1, sizeof(*entity));
 	if (entity == NULL) { return NULL; }

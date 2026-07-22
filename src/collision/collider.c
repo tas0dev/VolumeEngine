@@ -75,17 +75,14 @@ collider_t collider_create_box(const vec3_t center, const vec3_t half_extents) {
 	return collider;
 }
 
-bool collider_get_aabb(
-	const collider_t *collider,
-	const vec3_t position,
+bool collider_get_aabb(const collider_t *collider,
+		       const vec3_t position,
 		       aabb_t *aabb) {
 	if (collider == NULL || aabb == NULL) { return false; }
 
 	switch (collider->type) {
 	case COLLIDER_TYPE_BOX:
-		*aabb = box_collider_get_aabb(
-			collider->shape.box,
-			position);
+		*aabb = box_collider_get_aabb(collider->shape.box, position);
 		return true;
 
 	case COLLIDER_TYPE_TRIANGLE_MESH:
@@ -99,24 +96,20 @@ bool collider_get_aabb(
 }
 
 collider_t collider_create_triangle_mesh(const triangle_mesh_collider_t *mesh,
-	const mat4_t transform) {
+					 const mat4_t transform) {
 	collider_t collider;
 	aabb_t bounds;
 
 	collider = collider_create_none();
 
-	if (mesh == NULL ||
-	    !triangle_mesh_collider_get_bounds(
-		    mesh,
-		    &bounds)) {
+	if (mesh == NULL || !triangle_mesh_collider_get_bounds(mesh, &bounds)) {
 		return collider;
-		    }
+	}
 
 	collider.type = COLLIDER_TYPE_TRIANGLE_MESH;
 	collider.shape.triangle_mesh.mesh = mesh;
 	collider.shape.triangle_mesh.transform = transform;
-	collider.shape.triangle_mesh.bounds =
-		transform_aabb(bounds, transform);
+	collider.shape.triangle_mesh.bounds = transform_aabb(bounds, transform);
 
 	return collider;
 }

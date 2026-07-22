@@ -153,34 +153,20 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 			      (const void *)offsetof(mesh_vertex_t, normal));
 	glEnableVertexAttribArray(1);
 
-	glVertexAttribPointer(
-		2,
-		3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 			      (const void *)offsetof(mesh_vertex_t, color));
 	glEnableVertexAttribArray(2);
 
 	glVertexAttribPointer(
-		3,
-		2,
-		GL_FLOAT,
-		GL_FALSE,
-		sizeof(mesh_vertex_t),
+		3, 2, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 		(const void *)offsetof(mesh_vertex_t, texture_coordinate));
 	glEnableVertexAttribArray(3);
 
-	glVertexAttribPointer(
-		4,
-		3,
-		GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 			      (const void *)offsetof(mesh_vertex_t, tangent));
 	glEnableVertexAttribArray(4);
 
-	glVertexAttribPointer(
-		5,
-		3,
-		GL_FLOAT,
-		GL_FALSE,
-		sizeof(mesh_vertex_t),
+	glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
 			      (const void *)offsetof(mesh_vertex_t, bitangent));
 	glEnableVertexAttribArray(5);
 
@@ -191,28 +177,20 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 }
 
 void mesh_destroy(mesh_t *mesh) {
-	if (mesh == NULL) {
-		return;
-	}
+	if (mesh == NULL) { return; }
 
 	triangle_mesh_collider_destroy(mesh->collision_mesh);
 
 	if (mesh->index_buffer != 0) {
-		glDeleteBuffers(
-			1,
-			&mesh->index_buffer);
+		glDeleteBuffers(1, &mesh->index_buffer);
 	}
 
 	if (mesh->vertex_buffer != 0) {
-		glDeleteBuffers(
-			1,
-			&mesh->vertex_buffer);
+		glDeleteBuffers(1, &mesh->vertex_buffer);
 	}
 
 	if (mesh->vertex_array != 0) {
-		glDeleteVertexArrays(
-			1,
-			&mesh->vertex_array);
+		glDeleteVertexArrays(1, &mesh->vertex_array);
 	}
 
 	free(mesh);
@@ -227,20 +205,15 @@ void mesh_draw(const mesh_t *mesh) {
 }
 
 bool mesh_get_bounds(const mesh_t *mesh, aabb_t *bounds) {
-	if (mesh == NULL || bounds == NULL) {
-		return false;
-	}
+	if (mesh == NULL || bounds == NULL) { return false; }
 
 	*bounds = mesh->bounds;
 
 	return true;
 }
 
-const triangle_mesh_collider_t *mesh_get_collision_mesh(
-	const mesh_t *mesh) {
-	if (mesh == NULL) {
-		return NULL;
-	}
+const triangle_mesh_collider_t *mesh_get_collision_mesh(const mesh_t *mesh) {
+	if (mesh == NULL) { return NULL; }
 
 	return mesh->collision_mesh;
 }

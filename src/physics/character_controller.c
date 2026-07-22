@@ -35,7 +35,8 @@ character_controller_clip_velocity(character_controller_t *controller,
 static bool
 character_controller_find_ground(const character_controller_t *controller,
 				 const collision_result_t *collision,
-				 vec3_t *ground_normal);
+				 vec3_t *ground_normal,
+				 entity_id_t *ground_entity_id);
 static void
 character_controller_resolve_contacts(character_controller_t *controller,
 				      const collision_result_t *collision);
@@ -89,6 +90,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.crouch_transition_speed = 4.0f;
 	controller.crouched_speed_multiplier = 0.34f;
 	controller.minimum_ground_normal_y = 0.7f;
+	controller.ground_entity_id = 0;
 	controller.grounded = false;
 	controller.crouched = false;
 
@@ -100,6 +102,7 @@ bool character_controller_jump(character_controller_t *controller) {
 
 	controller->velocity.y = controller->jump_speed;
 	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
+	controller->ground_entity_id = 0;
 	controller->grounded = false;
 
 	return true;
@@ -210,6 +213,7 @@ void character_controller_move_filtered(character_controller_t *controller,
 
 	controller->grounded = false;
 	controller->ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
+	controller->ground_entity_id = 0;
 
 	character_controller_slide_move(controller, world, filter, allow_step,
 					delta_time);
@@ -384,17 +388,20 @@ character_controller_clip_velocity(character_controller_t *controller,
 static bool
 character_controller_find_ground(const character_controller_t *controller,
 				 const collision_result_t *collision,
-				 vec3_t *ground_normal) {
+				 vec3_t *ground_normal,
+				 entity_id_t *ground_entity_id) {
 	vec3_t normal;
 	bool found;
 	size_t index;
 
-	if (controller == NULL || collision == NULL || ground_normal == NULL) {
+	if (controller == NULL || collision == NULL || ground_normal == NULL ||
+	    ground_entity_id == NULL) {
 		return false;
 	}
 
 	found = false;
 	*ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
+	*ground_entity_id = 0;
 
 	for (index = 0; index < collision->contact_count; index++) {
 		normal = collision->contacts[index].normal;
@@ -405,6 +412,8 @@ character_controller_find_ground(const character_controller_t *controller,
 
 		if (!found || normal.y > ground_normal->y) {
 			*ground_normal = normal;
+			*ground_entity_id =
+				collision->contacts[index].entity_id;
 			found = true;
 		}
 	}
@@ -416,6 +425,7 @@ static void
 character_controller_resolve_contacts(character_controller_t *controller,
 				      const collision_result_t *collision) {
 	vec3_t ground_normal;
+	entity_id_t ground_entity_id;
 	size_t index;
 
 	if (controller == NULL || collision == NULL) { return; }
@@ -426,11 +436,12 @@ character_controller_resolve_contacts(character_controller_t *controller,
 	}
 
 	if (!character_controller_find_ground(controller, collision,
-					      &ground_normal)) {
+					      &ground_normal, &ground_entity_id)) {
 		return;
 	}
 
 	controller->ground_normal = ground_normal;
+	controller->ground_entity_id = ground_entity_id;
 	controller->grounded = true;
 
 	character_controller_clip_velocity(controller,
@@ -494,6 +505,7 @@ static void character_controller_slide_move(character_controller_t *controller,
 	controller->position = trace.position;
 	controller->grounded = true;
 	controller->ground_normal = trace.normal;
+	controller->ground_entity_id = trace.entity_id;
 	character_controller_clip_velocity(controller, trace.normal);
 	step_result = *controller;
 
@@ -596,6 +608,7 @@ character_controller_slide_move_core(character_controller_t *controller,
 		if (trace.normal.y >= controller->minimum_ground_normal_y) {
 			controller->grounded = true;
 			controller->ground_normal = trace.normal;
+			controller->ground_entity_id = trace.entity_id;
 		}
 
 		if (plane_count < maximum_planes) {

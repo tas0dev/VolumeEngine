@@ -31,6 +31,7 @@ void entity_initialize(entity_t *entity,
 	entity->world = NULL;
 	entity->targetname = NULL;
 	entity->transform = transform_create();
+	entity->linear_velocity = vec3_create(0.0f, 0.0f, 0.0f);
 	entity->active = true;
 	entity->has_collider = false;
 	entity->collider_follows_transform = false;

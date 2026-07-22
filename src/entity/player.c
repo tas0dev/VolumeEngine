@@ -19,6 +19,7 @@ struct player {
 static entity_t *create_entity(entity_id_t id,
 			       const entity_spawn_context_t *context);
 static void destroy_entity(entity_t *entity);
+static void sync_player_transform_and_collider(player_t *player);
 static void
 set_error(const entity_spawn_context_t *context, const char *format, ...);
 
@@ -53,6 +54,11 @@ vec3_t player_get_position(const player_t *player) {
 	return player->controller.position;
 }
 
+vec3_t player_get_velocity(const player_t *player) {
+	if (player == NULL) { return vec3_create(0.0f, 0.0f, 0.0f); }
+	return player->controller.velocity;
+}
+
 vec3_t player_get_view_position(const player_t *player) {
 	if (player == NULL) { return vec3_create(0.0f, 0.0f, 0.0f); }
 	return vec3_add(
@@ -64,11 +70,66 @@ bool player_is_crouched(const player_t *player) {
 	return player != NULL && player->controller.crouched;
 }
 
+entity_id_t player_get_ground_entity_id(const player_t *player) {
+	if (player == NULL || !player->controller.grounded) { return 0; }
+	return player->controller.ground_entity_id;
+}
+
+bool player_is_grounded_on(const player_t *player,
+			   const entity_id_t entity_id) {
+	return entity_id != 0 &&
+	       player_get_ground_entity_id(player) == entity_id;
+}
+
+bool player_can_move_with_platform(const player_t *player,
+				   const entity_id_t platform_id,
+				   const vec3_t displacement) {
+	collision_filter_t filter;
+	collision_trace_t trace;
+	vec3_t end;
+
+	if (player == NULL || player->entity.world == NULL ||
+	    platform_id == 0) {
+		return false;
+	}
+	if (vec3_length(displacement) <= 0.000001f) { return true; }
+
+	filter.layer = player->entity.collision_layer;
+	filter.mask = player->entity.collision_mask;
+	filter.ignored_entity_id = player->entity.id;
+	end = vec3_add(player->controller.position, displacement);
+	if (!collision_world_trace_aabb_filtered_ignoring(
+		    world_get_const_collision_world(player->entity.world),
+		    player->controller.bounds, player->controller.position, end,
+		    filter, platform_id, &trace)) {
+		return true;
+	}
+
+	return !trace.started_inside && trace.fraction >= 0.999999f;
+}
+
+bool player_move_with_platform(player_t *player,
+			       const entity_id_t platform_id,
+			       const vec3_t displacement) {
+	if (!player_can_move_with_platform(player, platform_id, displacement)) {
+		return false;
+	}
+
+	player->controller.position =
+		vec3_add(player->controller.position, displacement);
+	sync_player_transform_and_collider(player);
+	return true;
+}
+
 void player_move(player_t *player,
 		 const character_move_input_t *input,
 		 const float delta_time) {
 	const collision_world_t *collision_world;
 	collision_filter_t filter;
+	character_move_input_t adjusted_input;
+	const character_move_input_t *movement_input;
+	entity_t *ground_entity;
+	vec3_t base_velocity;
 
 	if (player == NULL) { return; }
 
@@ -80,8 +141,33 @@ void player_move(player_t *player,
 	filter.layer = player->entity.collision_layer;
 	filter.mask = player->entity.collision_mask;
 	filter.ignored_entity_id = player->entity.id;
+	movement_input = input;
+	if (input != NULL && input->jump && player->controller.grounded) {
+		ground_entity =
+			player->entity.world == NULL
+				? NULL
+				: world_find_entity(
+					  player->entity.world,
+					  player->controller.ground_entity_id);
+		base_velocity = ground_entity == NULL
+					? vec3_create(0.0f, 0.0f, 0.0f)
+					: ground_entity->linear_velocity;
+		if (character_controller_jump(&player->controller)) {
+			player->controller.velocity = vec3_add(
+				player->controller.velocity, base_velocity);
+			adjusted_input = *input;
+			adjusted_input.jump = false;
+			movement_input = &adjusted_input;
+		}
+	}
 	character_controller_move_filtered(&player->controller, collision_world,
-					   filter, input, delta_time);
+					   filter, movement_input, delta_time);
+	sync_player_transform_and_collider(player);
+}
+
+static void sync_player_transform_and_collider(player_t *player) {
+	if (player == NULL) { return; }
+
 	player->entity.transform.position = player->controller.position;
 	player->entity.collider = collider_create_box(
 		aabb_get_center(player->controller.bounds),

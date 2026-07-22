@@ -6,6 +6,7 @@
  */
 
 #include "entity/func_door.h"
+#include "entity/player.h"
 #include "entity/prop_internal.h"
 #include "entity/world.h"
 #include <math.h>
@@ -28,6 +29,10 @@ static bool move_towards(vec3_t *position, vec3_t target, float distance);
 static entity_t *get_activator(func_door_t *door);
 static bool
 trace_movement(func_door_t *door, vec3_t end, collision_trace_t *trace);
+static bool trace_hit_rider(const func_door_t *door,
+			    const collision_trace_t *trace);
+static bool
+move_riders(func_door_t *door, vec3_t displacement, entity_id_t *blocker_id);
 static void handle_blocked(func_door_t *door, const collision_trace_t *trace);
 static void handle_unblocked(func_door_t *door);
 
@@ -142,7 +147,11 @@ static entity_t *create_entity(const entity_id_t id,
 static void update_entity(entity_t *entity, const float delta_time) {
 	func_door_t *door;
 	collision_trace_t trace;
+	collision_trace_t rider_trace = {0};
+	vec3_t displacement;
 	vec3_t next_position;
+	entity_id_t rider_blocker_id;
+	bool initially_hit;
 	bool reached;
 
 	if (entity == NULL || delta_time < 0.0f) { return; }
@@ -171,8 +180,24 @@ static void update_entity(entity_t *entity, const float delta_time) {
 				       ? door->open_position
 				       : door->closed_position,
 			       door->speed * delta_time);
+	displacement = vec3_subtract(next_position, entity->transform.position);
+	initially_hit = trace_movement(door, next_position, &trace);
 
-	if (trace_movement(door, next_position, &trace)) {
+	if (initially_hit && !trace_hit_rider(door, &trace)) {
+		entity->transform.position = trace.position;
+		handle_blocked(door, &trace);
+		return;
+	}
+
+	if (!move_riders(door, displacement, &rider_blocker_id)) {
+		rider_trace.entity_id = rider_blocker_id;
+		handle_blocked(door, &rider_trace);
+		return;
+	}
+
+	if (trace_movement(door, next_position, &trace) &&
+	    !(trace_hit_rider(door, &trace) && trace.fraction >= 0.999999f)) {
+		(void)move_riders(door, vec3_scale(displacement, -1.0f), NULL);
 		entity->transform.position = trace.position;
 		handle_blocked(door, &trace);
 		return;
@@ -331,6 +356,87 @@ static bool trace_movement(func_door_t *door, const vec3_t end, collision_trace_
 	return collision_world_trace_aabb_filtered(
 		world_get_const_collision_world(entity->world), local_bounds,
 		entity->transform.position, end, filter, trace);
+}
+
+static bool trace_hit_rider(const func_door_t *door,
+			    const collision_trace_t *trace) {
+	entity_t *entity;
+	player_t *player;
+
+	if (door == NULL || trace == NULL || trace->entity_id == 0 ||
+	    door->prop.entity.world == NULL) {
+		return false;
+	}
+
+	entity = world_find_entity(door->prop.entity.world, trace->entity_id);
+	player = player_from_entity(entity);
+	return player_is_grounded_on(player, door->prop.entity.id);
+}
+
+static bool move_riders(func_door_t *door,
+			const vec3_t displacement,
+			entity_id_t *blocker_id) {
+	entity_t *entity;
+	player_t **riders;
+	player_t *player;
+	size_t rider_count;
+	size_t entity_count;
+	size_t index;
+	size_t moved;
+
+	if (blocker_id != NULL) { *blocker_id = 0; }
+	if (door == NULL || door->prop.entity.world == NULL ||
+	    vec3_length(displacement) <= 0.000001f) {
+		return true;
+	}
+
+	entity_count = world_get_entity_count(door->prop.entity.world);
+	riders = malloc(entity_count * sizeof(*riders));
+	if (riders == NULL && entity_count > 0) { return false; }
+
+	rider_count = 0;
+	for (index = 0; index < entity_count; index++) {
+		entity = world_get_entity(door->prop.entity.world, index);
+		player = player_from_entity(entity);
+		if (!player_is_grounded_on(player, door->prop.entity.id)) {
+			continue;
+		}
+
+		riders[rider_count] = player;
+		rider_count++;
+	}
+
+	for (index = 0; index < rider_count; index++) {
+		if (player_can_move_with_platform(riders[index],
+						  door->prop.entity.id,
+						  displacement)) {
+			continue;
+		}
+		if (blocker_id != NULL) {
+			*blocker_id = player_get_entity(riders[index])->id;
+		}
+		free(riders);
+		return false;
+	}
+
+	for (moved = 0; moved < rider_count; moved++) {
+		if (player_move_with_platform(riders[moved],
+					      door->prop.entity.id,
+					      displacement)) {
+			continue;
+		}
+		while (moved > 0) {
+			moved--;
+			(void)player_move_with_platform(
+				riders[moved], door->prop.entity.id,
+				vec3_scale(displacement, -1.0f));
+		}
+		free(riders);
+		return false;
+	}
+
+	free(riders);
+	return true;
 }
 
 static void handle_blocked(func_door_t *door, const collision_trace_t *trace) {

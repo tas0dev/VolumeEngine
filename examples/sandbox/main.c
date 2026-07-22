@@ -338,9 +338,6 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 
 	game_state->jump_requested = false;
 
-	game_state->camera.position =
-		player_get_view_position(game_state->player);
-
 	if (game_state->mesh_entity != NULL) {
 		game_state->mesh_entity->transform.rotation.x +=
 			delta_time * 0.7f;
@@ -348,6 +345,9 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	world_update(game_state->world, delta_time);
+
+	game_state->camera.position =
+		player_get_view_position(game_state->player);
 }
 
 static void render(engine_t *engine, void *user_data) {

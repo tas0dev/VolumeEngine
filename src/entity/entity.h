@@ -49,6 +49,7 @@ struct entity {
 	world_t *world;
 	char *targetname;
 	transform_t transform;
+	vec3_t linear_velocity;
 	bool active;
 	bool has_collider;
 	bool collider_follows_transform;

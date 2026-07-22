@@ -278,9 +278,18 @@ void world_update(world_t *world, const float delta_time) {
 
 	for (index = 0; index < world->count; index++) {
 		entity_t *entity = world->entities[index];
+		vec3_t previous_position;
 		if (entity->pending_destroy) { continue; }
 
+		previous_position = entity->transform.position;
 		entity_update(entity, delta_time);
+		entity->linear_velocity =
+			delta_time > 0.0f
+				? vec3_scale(vec3_subtract(
+						     entity->transform.position,
+						     previous_position),
+					     1.0f / delta_time)
+				: vec3_create(0.0f, 0.0f, 0.0f);
 
 		if (entity->collider_follows_transform) {
 			collision_world_update_collider_filtered(

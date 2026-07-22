@@ -231,8 +231,83 @@ static bool test_door_is_blocked_by_player(void) {
 	return true;
 }
 
+static bool test_door_carries_rider_and_passes_velocity_to_jump(void) {
+	static const char source[] =
+		"world\n"
+		"{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"func_door\"\n"
+		"\t\"targetname\" \"platform\"\n"
+		"\t\"model\" \"models/door\"\n"
+		"\t\"material\" \"materials/door\"\n"
+		"\t\"collision\" \"box\"\n"
+		"\t\"collision_size\" \"4 0.5 4\"\n"
+		"\t\"move_offset\" \"0 2 0\"\n"
+		"\t\"speed\" \"1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"player\"\n"
+		"\t\"targetname\" \"rider\"\n"
+		"\t\"origin\" \"0 0.25 0\"\n"
+		"\t\"height\" \"1.7\"\n"
+		"\t\"radius\" \"0.35\"\n}\n";
+	asset_manager_t *assets;
+	character_move_input_t input;
+	entity_t *platform_entity;
+	func_door_t *door;
+	material_t material = {0};
+	mesh_t *mesh;
+	player_t *player;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	CHECK(func_door_register());
+	CHECK(player_register());
+	assets = asset_manager_create();
+	CHECK(assets != NULL);
+	mesh = (mesh_t *)(void *)&mesh_marker;
+	CHECK(asset_manager_register_mesh(assets, "models/door", mesh));
+	CHECK(asset_manager_register_material(assets, "materials/door",
+					      &material));
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, assets, error, sizeof(error)));
+	platform_entity = world_find_by_targetname(world, "platform");
+	door = func_door_from_entity(platform_entity);
+	player = player_from_entity(world_find_by_targetname(world, "rider"));
+	CHECK(door != NULL);
+	CHECK(player != NULL);
+
+	input.wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
+	input.wish_speed = 0.0f;
+	input.jump = false;
+	input.crouch = false;
+	player_move(player, &input, 0.05f);
+	CHECK(player_is_grounded_on(player, platform_entity->id));
+
+	CHECK(world_send_input(world, "platform", "Open", "", NULL, NULL) == 1);
+	world_update(world, 0.5f);
+	CHECK(!func_door_is_blocked(door));
+	CHECK(platform_entity->transform.position.y > 0.49f);
+	CHECK(player_get_position(player).y > 0.74f);
+	CHECK(player_is_grounded_on(player, platform_entity->id));
+
+	input.jump = true;
+	player_move(player, &input, 0.01f);
+	CHECK(!player_is_grounded_on(player, platform_entity->id));
+	CHECK(player_get_velocity(player).y > 7.5f);
+
+	world_destroy(world);
+	map_destroy(map);
+	asset_manager_destroy(assets);
+	entity_registry_shutdown();
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
+		{"door carries rider and passes velocity to jump",
+		 test_door_carries_rider_and_passes_velocity_to_jump				    },
 		{"door motion, inputs, and collision",
 		 test_door_motion_inputs_and_collision},
 		{"door stops and resumes after OnBlocked",

@@ -467,6 +467,18 @@ bool collision_world_trace_aabb_filtered(const collision_world_t *world,
 					 const vec3_t end,
 					 const collision_filter_t filter,
 					 collision_trace_t *trace) {
+	return collision_world_trace_aabb_filtered_ignoring(
+		world, local_bounds, start, end, filter, 0, trace);
+}
+
+bool collision_world_trace_aabb_filtered_ignoring(
+	const collision_world_t *world,
+	const aabb_t local_bounds,
+	const vec3_t start,
+	const vec3_t end,
+	const collision_filter_t filter,
+	const entity_id_t additional_ignored_entity_id,
+	collision_trace_t *trace) {
 	collision_trace_t candidate;
 	aabb_t static_bounds;
 	size_t index;
@@ -485,6 +497,8 @@ bool collision_world_trace_aabb_filtered(const collision_world_t *world,
 	for (index = 0; index < world->count; index++) {
 		if (world->entries[index].entity_id ==
 			    filter.ignored_entity_id ||
+		    world->entries[index].entity_id ==
+			    additional_ignored_entity_id ||
 		    (filter.mask & world->entries[index].layer) == 0 ||
 		    (world->entries[index].mask & filter.layer) == 0) {
 			continue;

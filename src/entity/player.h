@@ -19,8 +19,17 @@ const player_t *player_from_const_entity(const entity_t *entity);
 entity_t *player_get_entity(player_t *player);
 const entity_t *player_get_const_entity(const player_t *player);
 vec3_t player_get_position(const player_t *player);
+vec3_t player_get_velocity(const player_t *player);
 vec3_t player_get_view_position(const player_t *player);
 bool player_is_crouched(const player_t *player);
+entity_id_t player_get_ground_entity_id(const player_t *player);
+bool player_is_grounded_on(const player_t *player, entity_id_t entity_id);
+bool player_can_move_with_platform(const player_t *player,
+				   entity_id_t platform_id,
+				   vec3_t displacement);
+bool player_move_with_platform(player_t *player,
+			       entity_id_t platform_id,
+			       vec3_t displacement);
 void player_move(player_t *player,
 		 const character_move_input_t *input,
 		 float delta_time);

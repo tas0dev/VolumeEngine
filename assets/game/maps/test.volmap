@@ -116,3 +116,38 @@ entity
 	"wait" "1"
 	"OnPressed" "example_door,Open,,0,-1"
 }
+
+entity
+{
+	"classname" "func_door"
+	"targetname" "example_elevator"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "-3 -0.75 2"
+	"angles" "0 0 0"
+	"scale" "2 0.25 2"
+	"casts_shadow" "1"
+	"collision" "box"
+	"collision_size" "2 0.25 2"
+	"move_offset" "0 3 0"
+	"speed" "1"
+	"wait" "2"
+}
+
+entity
+{
+	"classname" "func_button"
+	"targetname" "elevator_button"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "-1.65 -0.55 2"
+	"angles" "0 0 0"
+	"scale" "0.3 0.3 0.15"
+	"casts_shadow" "1"
+	"collision" "box"
+	"collision_size" "0.3 0.3 0.15"
+	"move_offset" "0 0 -0.1"
+	"speed" "0.5"
+	"wait" "1"
+	"OnPressed" "example_elevator,Open,,0,-1"
+}

@@ -8,8 +8,25 @@
 #ifndef VOLUME_ENGINE_H
 #define VOLUME_ENGINE_H
 
+// ReSharper disable CppUnusedIncludeDirective
+#include "asset/manager.h"
+#include "core/log.h"
+#include "core/path.h"
 #include "core/types.h"
+#include "entity/info_player_start.h"
+#include "entity/light_environment.h"
+#include "entity/player.h"
+#include "entity/world.h"
 #include "game/game.h"
+#include "input/input.h"
+#include "map/spawn.h"
+#include "math/mat4.h"
+#include "math/math.h"
+#include "math/vec3.h"
+#include "physics/character_controller.h"
+#include "renderer/renderer.h"
+#include "scene/camera.h"
+#include "scene/transform.h"
 #include <stdbool.h>
 
 typedef struct engine_config {

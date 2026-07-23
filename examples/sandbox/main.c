@@ -399,10 +399,14 @@ static void render(engine_t *engine, void *user_data) {
 	world_draw(game_state->world, renderer, &render_view);
 
 	if (debug_hud_is_visible(&game_state->debug_hud)) {
+		renderer_begin_debug_lines(renderer);
+
 		debug_draw_colliders(
 			renderer,
-			world_get_const_collision_world(game_state->world),
-			&render_view);
+			world_get_const_collision_world(
+						       game_state->world));
+
+		renderer_flush_debug_lines(renderer, &render_view);
 	}
 
 	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,

@@ -85,7 +85,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.ground_normal = vec3_create(0.0f, 1.0f, 0.0f);
 	controller.maximum_speed = 4.0f;
 	controller.ground_acceleration = 10.0f;
-	controller.air_acceleration = 12.0f;
+	controller.air_acceleration = 20.0f;
 	controller.air_speed_cap = 0.8f;
 	controller.friction = 4.0f;
 	controller.stop_speed = 1.25f;

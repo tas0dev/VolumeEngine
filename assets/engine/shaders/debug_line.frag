@@ -1,10 +1,9 @@
 #version 330 core
 
-uniform vec3 color;
-uniform float alpha;
+in vec4 line_color;
 
 out vec4 fragment_color;
 
 void main() {
-	fragment_color = vec4(color, alpha);
+	fragment_color = line_color;
 }

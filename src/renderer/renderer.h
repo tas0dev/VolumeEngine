@@ -108,18 +108,36 @@ void renderer_draw_text(const renderer_t *renderer,
 			const char *text);
 /// 現在のフレームの描画統計を取得する。
 renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer);
-/// ワールド空間上へデバッグ用の線分を描画する。
+/// デバッグ線分の収集を開始する。
+///
+/// 以前に追加された線分は破棄される。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+void renderer_begin_debug_lines(renderer_t *renderer);
+/// ワールド空間上のデバッグ線分を描画キューへ追加する。
 ///
 /// ### Args
 /// - `renderer_t *renderer`: 対象のレンダラー。
 /// - `vec3_t start`: 線分の開始座標。
 /// - `vec3_t end`: 線分の終了座標。
 /// - `renderer_color_t color`: 線分の色。
+///
+/// ### Returns
+/// - `true`: 線分を追加した。
+/// - `false`: 引数が不正、またはメモリ確保に失敗した。
+bool renderer_add_debug_line(renderer_t *renderer,
+			     vec3_t start,
+			     vec3_t end,
+			     renderer_color_t color);
+/// 描画キューに追加されたデバッグ線分を一括描画する。
+///
+/// 描画後、キューは空になる。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
 /// - `const render_view_t *view`: 描画に使用するビュー情報。
-void renderer_draw_debug_line(renderer_t *renderer,
-			      vec3_t start,
-			      vec3_t end,
-			      renderer_color_t color,
-			      const render_view_t *view);
+void renderer_flush_debug_lines(renderer_t *renderer,
+				const render_view_t *view);
 
 #endif

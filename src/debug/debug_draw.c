@@ -12,18 +12,15 @@
 
 static void draw_aabb(renderer_t *renderer,
 		      aabb_t bounds,
-		      renderer_color_t color,
-		      const render_view_t *view);
+		      renderer_color_t color);
 static void
 draw_triangle_mesh(renderer_t *renderer,
 		   const triangle_mesh_collider_instance_t *instance,
-		   renderer_color_t color,
-		   const render_view_t *view);
+		   renderer_color_t color);
 static renderer_color_t get_collider_color(collision_layer_t layer);
 
 void debug_draw_colliders(renderer_t *renderer,
-			  const collision_world_t *collision_world,
-			  const render_view_t *view) {
+			  const collision_world_t *collision_world) {
 	collider_t collider;
 	collision_layer_t layer;
 	renderer_color_t color;
@@ -32,8 +29,7 @@ void debug_draw_colliders(renderer_t *renderer,
 	size_t count;
 	size_t index;
 
-	if (renderer == NULL || collision_world == NULL || view == NULL) {
-		return;
+	if (renderer == NULL || collision_world == NULL) { return;
 	}
 
 	count = collision_world_get_count(collision_world);
@@ -50,14 +46,13 @@ void debug_draw_colliders(renderer_t *renderer,
 		switch (collider.type) {
 		case COLLIDER_TYPE_BOX:
 			if (collider_get_aabb(&collider, position, &bounds)) {
-				draw_aabb(renderer, bounds, color, view);
+				draw_aabb(renderer, bounds, color);
 			}
 			break;
 
 		case COLLIDER_TYPE_TRIANGLE_MESH:
 			draw_triangle_mesh(renderer,
-					   &collider.shape.triangle_mesh, color,
-					   view);
+					   &collider.shape.triangle_mesh, color);
 			break;
 
 		default: break;
@@ -67,8 +62,7 @@ void debug_draw_colliders(renderer_t *renderer,
 
 static void draw_aabb(renderer_t *renderer,
 		      const aabb_t bounds,
-		      const renderer_color_t color,
-		      const render_view_t *view) {
+		      const renderer_color_t color) {
 	const vec3_t corners[8] = {
 		{bounds.minimum.x, bounds.minimum.y, bounds.minimum.z},
 		{bounds.maximum.x, bounds.minimum.y, bounds.minimum.z},
@@ -96,16 +90,15 @@ static void draw_aabb(renderer_t *renderer,
 	size_t index;
 
 	for (index = 0; index < 12; index++) {
-		renderer_draw_debug_line(renderer, corners[edges[index][0]],
-					 corners[edges[index][1]], color, view);
+		renderer_add_debug_line(renderer, corners[edges[index][0]],
+					corners[edges[index][1]], color);
 	}
 }
 
 static void
 draw_triangle_mesh(renderer_t *renderer,
 		   const triangle_mesh_collider_instance_t *instance,
-		   const renderer_color_t color,
-		   const render_view_t *view) {
+		   const renderer_color_t color) {
 	triangle_t triangle;
 	vec3_t first;
 	vec3_t second;
@@ -113,8 +106,7 @@ draw_triangle_mesh(renderer_t *renderer,
 	size_t triangle_count;
 	size_t index;
 
-	if (renderer == NULL || instance == NULL || instance->mesh == NULL ||
-	    view == NULL) {
+	if (renderer == NULL || instance == NULL || instance->mesh == NULL) {
 		return;
 	}
 
@@ -134,9 +126,9 @@ draw_triangle_mesh(renderer_t *renderer,
 		third = mat4_transform_point(instance->transform,
 					     triangle.vertices[2]);
 
-		renderer_draw_debug_line(renderer, first, second, color, view);
-		renderer_draw_debug_line(renderer, second, third, color, view);
-		renderer_draw_debug_line(renderer, third, first, color, view);
+		renderer_add_debug_line(renderer, first, second, color);
+		renderer_add_debug_line(renderer, second, third, color);
+		renderer_add_debug_line(renderer, third, first, color);
 	}
 }
 

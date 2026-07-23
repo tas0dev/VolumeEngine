@@ -329,6 +329,7 @@ size_t collision_world_query_aabb(const collision_world_t *world,
 /// - `entity_id_t *entity_id`: 所有者IDの格納先。不要な場合は`NULL`。
 /// - `collider_t *collider`: コライダーの格納先。不要な場合は`NULL`。
 /// - `vec3_t *position`: 所有者のワールド座標の格納先。不要な場合は`NULL`。
+/// - `collision_layer_t *layer`: 衝突レイヤーの格納先。不要な場合は`NULL`。
 ///
 /// ### Returns
 /// - `true`: コライダー情報を取得した。
@@ -337,6 +338,7 @@ bool collision_world_get_collider(const collision_world_t *world,
 				  size_t index,
 				  entity_id_t *entity_id,
 				  collider_t *collider,
-				  vec3_t *position);
+				  vec3_t *position,
+				  collision_layer_t *layer);
 
 #endif

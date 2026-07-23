@@ -961,7 +961,8 @@ bool collision_world_get_collider(const collision_world_t *world,
 				  const size_t index,
 				  entity_id_t *entity_id,
 				  collider_t *collider,
-				  vec3_t *position) {
+				  vec3_t *position,
+				  collision_layer_t *layer) {
 	const collision_entry_t *entry;
 
 	if (world == NULL || index >= world->count) { return false; }
@@ -973,6 +974,8 @@ bool collision_world_get_collider(const collision_world_t *world,
 	if (collider != NULL) { *collider = entry->collider; }
 
 	if (position != NULL) { *position = entry->position; }
+
+	if (layer != NULL) { *layer = entry->layer; }
 
 	return true;
 }

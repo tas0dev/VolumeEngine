@@ -6,17 +6,27 @@
  */
 
 #include "debug/debug_draw.h"
+#include "collision/triangle.h"
+#include "collision/triangle_mesh_collider.h"
+#include "math/mat4.h"
 
 static void draw_aabb(renderer_t *renderer,
 		      aabb_t bounds,
 		      renderer_color_t color,
 		      const render_view_t *view);
+static void
+draw_triangle_mesh(renderer_t *renderer,
+		   const triangle_mesh_collider_instance_t *instance,
+		   renderer_color_t color,
+		   const render_view_t *view);
+static renderer_color_t get_collider_color(collision_layer_t layer);
 
 void debug_draw_colliders(renderer_t *renderer,
 			  const collision_world_t *collision_world,
 			  const render_view_t *view) {
-	const renderer_color_t color = {0.15f, 1.0f, 0.25f, 1.0f};
 	collider_t collider;
+	collision_layer_t layer;
+	renderer_color_t color;
 	vec3_t position;
 	aabb_t bounds;
 	size_t count;
@@ -30,15 +40,28 @@ void debug_draw_colliders(renderer_t *renderer,
 
 	for (index = 0; index < count; index++) {
 		if (!collision_world_get_collider(collision_world, index, NULL,
-						  &collider, &position)) {
+						  &collider, &position,
+						  &layer)) {
 			continue;
 		}
 
-		if (!collider_get_aabb(&collider, position, &bounds)) {
-			continue;
-		}
+		color = get_collider_color(layer);
 
-		draw_aabb(renderer, bounds, color, view);
+		switch (collider.type) {
+		case COLLIDER_TYPE_BOX:
+			if (collider_get_aabb(&collider, position, &bounds)) {
+				draw_aabb(renderer, bounds, color, view);
+			}
+			break;
+
+		case COLLIDER_TYPE_TRIANGLE_MESH:
+			draw_triangle_mesh(renderer,
+					   &collider.shape.triangle_mesh, color,
+					   view);
+			break;
+
+		default: break;
+		}
 	}
 }
 
@@ -76,4 +99,59 @@ static void draw_aabb(renderer_t *renderer,
 		renderer_draw_debug_line(renderer, corners[edges[index][0]],
 					 corners[edges[index][1]], color, view);
 	}
+}
+
+static void
+draw_triangle_mesh(renderer_t *renderer,
+		   const triangle_mesh_collider_instance_t *instance,
+		   const renderer_color_t color,
+		   const render_view_t *view) {
+	triangle_t triangle;
+	vec3_t first;
+	vec3_t second;
+	vec3_t third;
+	size_t triangle_count;
+	size_t index;
+
+	if (renderer == NULL || instance == NULL || instance->mesh == NULL ||
+	    view == NULL) {
+		return;
+	}
+
+	triangle_count =
+		triangle_mesh_collider_get_triangle_count(instance->mesh);
+
+	for (index = 0; index < triangle_count; index++) {
+		if (!triangle_mesh_collider_get_triangle(instance->mesh, index,
+							 &triangle)) {
+			continue;
+		}
+
+		first = mat4_transform_point(instance->transform,
+					     triangle.vertices[0]);
+		second = mat4_transform_point(instance->transform,
+					      triangle.vertices[1]);
+		third = mat4_transform_point(instance->transform,
+					     triangle.vertices[2]);
+
+		renderer_draw_debug_line(renderer, first, second, color, view);
+		renderer_draw_debug_line(renderer, second, third, color, view);
+		renderer_draw_debug_line(renderer, third, first, color, view);
+	}
+}
+
+static renderer_color_t get_collider_color(const collision_layer_t layer) {
+	if ((layer & COLLISION_LAYER_PLAYER) != 0) {
+		return (renderer_color_t){0.2f, 0.8f, 1.0f, 1.0f};
+	}
+
+	if ((layer & COLLISION_LAYER_TRIGGER) != 0) {
+		return (renderer_color_t){0.85f, 0.3f, 1.0f, 1.0f};
+	}
+
+	if ((layer & COLLISION_LAYER_DYNAMIC) != 0) {
+		return (renderer_color_t){1.0f, 0.8f, 0.15f, 1.0f};
+	}
+
+	return (renderer_color_t){0.2f, 1.0f, 0.3f, 1.0f};
 }

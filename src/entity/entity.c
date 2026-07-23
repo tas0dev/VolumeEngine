@@ -20,6 +20,9 @@ static entity_registry_t registry;
 
 static bool registry_reserve(size_t capacity);
 static const entity_class_t *registry_find(const char *classname);
+static void entity_unlink_from_parent(entity_t *entity);
+static bool entity_is_ancestor(const entity_t *entity,
+			       const entity_t *possible_ancestor);
 
 void entity_initialize(entity_t *entity,
 		       const entity_id_t id,
@@ -31,6 +34,9 @@ void entity_initialize(entity_t *entity,
 	entity->world = NULL;
 	entity->targetname = NULL;
 	entity->transform = transform_create();
+	entity->parent = NULL;
+	entity->first_child = NULL;
+	entity->next_sibling = NULL;
 	entity->linear_velocity = vec3_create(0.0f, 0.0f, 0.0f);
 	entity->active = true;
 	entity->activated = false;
@@ -256,4 +262,114 @@ void entity_set_collision_filter(entity_t *entity,
 	if (entity == NULL) { return; }
 	entity->collision_layer = layer;
 	entity->collision_mask = mask;
+}
+
+static void entity_unlink_from_parent(entity_t *entity) {
+	entity_t **link;
+
+	if (entity == NULL || entity->parent == NULL) { return; }
+
+	link = &entity->parent->first_child;
+
+	while (*link != NULL) {
+		if (*link == entity) {
+			*link = entity->next_sibling;
+			break;
+		}
+
+		link = &(*link)->next_sibling;
+	}
+
+	entity->parent = NULL;
+	entity->next_sibling = NULL;
+}
+
+static bool entity_is_ancestor(const entity_t *entity,
+			       const entity_t *possible_ancestor) {
+	const entity_t *current;
+
+	if (entity == NULL || possible_ancestor == NULL) { return false; }
+
+	current = entity->parent;
+
+	while (current != NULL) {
+		if (current == possible_ancestor) { return true; }
+
+		current = current->parent;
+	}
+
+	return false;
+}
+
+bool entity_set_parent(entity_t *entity, entity_t *parent) {
+	if (entity == NULL || entity == parent) { return false; }
+
+	if (parent != NULL) {
+		if (entity_is_ancestor(parent, entity)) { return false; }
+
+		if (entity->world != NULL && parent->world != NULL &&
+		    entity->world != parent->world) {
+			return false;
+		}
+	}
+
+	if (entity->parent == parent) { return true; }
+
+	entity_unlink_from_parent(entity);
+
+	if (parent == NULL) { return true; }
+
+	entity->parent = parent;
+	entity->next_sibling = parent->first_child;
+	parent->first_child = entity;
+
+	return true;
+}
+
+void entity_clear_parent(entity_t *entity) {
+	if (entity == NULL) { return; }
+
+	entity_unlink_from_parent(entity);
+}
+
+entity_t *entity_get_parent(const entity_t *entity) {
+	if (entity == NULL) { return NULL; }
+
+	return entity->parent;
+}
+
+entity_t *entity_get_first_child(const entity_t *entity) {
+	if (entity == NULL) { return NULL; }
+
+	return entity->first_child;
+}
+
+entity_t *entity_get_next_sibling(const entity_t *entity) {
+	if (entity == NULL) { return NULL; }
+
+	return entity->next_sibling;
+}
+
+mat4_t entity_get_world_matrix(const entity_t *entity) {
+	mat4_t local_matrix;
+
+	if (entity == NULL) { return mat4_identity(); }
+
+	local_matrix = transform_get_matrix(&entity->transform);
+
+	if (entity->parent == NULL) { return local_matrix; }
+
+	return mat4_multiply(entity_get_world_matrix(entity->parent),
+			     local_matrix);
+}
+
+vec3_t entity_get_world_position(const entity_t *entity) {
+	mat4_t world_matrix;
+
+	if (entity == NULL) { return vec3_create(0.0f, 0.0f, 0.0f); }
+
+	world_matrix = entity_get_world_matrix(entity);
+
+	return mat4_transform_point(world_matrix,
+				    vec3_create(0.0f, 0.0f, 0.0f));
 }

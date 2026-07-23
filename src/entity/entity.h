@@ -92,6 +92,9 @@ struct entity {
 	world_t *world;
 	char *targetname;
 	transform_t transform;
+	entity_t *parent;
+	entity_t *first_child;
+	entity_t *next_sibling;
 	vec3_t linear_velocity;
 	bool active;
 	bool activated;
@@ -249,5 +252,64 @@ bool entity_get_collider(const entity_t *entity, collider_t *collider);
 void entity_set_collision_filter(entity_t *entity,
 				 collision_layer_t layer,
 				 collision_layer_t mask);
+/// エンティティの親を設定する。
+///
+/// 子のtransformは親から見たローカルtransformとして維持される。
+///
+/// ### Args
+/// - `entity_t *entity`: 子にするエンティティ。
+/// - `entity_t *parent`: 設定する親。親を解除する場合は`NULL`。
+///
+/// ### Returns
+/// - `true`: 親の設定に成功した。
+/// - `false`: 循環参照、異なるワールド、または無効な引数。
+bool entity_set_parent(entity_t *entity, entity_t *parent);
+/// エンティティの親を解除する。
+///
+/// ローカルtransformは維持される。
+///
+/// ### Args
+/// - `entity_t *entity`: 対象のエンティティ。
+void entity_clear_parent(entity_t *entity);
+/// エンティティの親を取得する。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `entity_t *`: 親。未設定の場合は`NULL`。
+entity_t *entity_get_parent(const entity_t *entity);
+/// エンティティの最初の子を取得する。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `entity_t *`: 最初の子。存在しない場合は`NULL`。
+entity_t *entity_get_first_child(const entity_t *entity);
+/// 同じ親を持つ次のエンティティを取得する。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `entity_t *`: 次のエンティティ。存在しない場合は`NULL`。
+entity_t *entity_get_next_sibling(const entity_t *entity);
+/// 親を含めたワールド変換行列を取得する。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `mat4_t`: ワールド変換行列。
+mat4_t entity_get_world_matrix(const entity_t *entity);
+/// 親を含めたワールド位置を取得する。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `vec3_t`: ワールド位置。
+vec3_t entity_get_world_position(const entity_t *entity);
 
 #endif

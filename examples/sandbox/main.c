@@ -67,6 +67,8 @@ int main(void) {
 
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
+	entity_t *door_entity;
+	entity_t *door_handle_entity;
 	entity_t *light_entity;
 	entity_t *player_entity;
 	entity_t *player_start;
@@ -100,6 +102,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 
 	game_state->world = world_create();
+
 	if (game_state->world == NULL) {
 		free(map_path);
 		destroy_game_resources(game_state);
@@ -125,6 +128,26 @@ static bool initialize(engine_t *engine, void *user_data) {
 		return false;
 	}
 
+	door_entity =
+		world_find_by_targetname(game_state->world, "example_door");
+	door_handle_entity = world_find_by_targetname(game_state->world,
+						      "example_door_handle");
+
+	if (door_entity == NULL || door_handle_entity == NULL) {
+		log_error("Door hierarchy entities were not found");
+		destroy_game_resources(game_state);
+		return false;
+	}
+
+	door_handle_entity->transform.position =
+		vec3_create(0.35f, 0.0f, -1.2f);
+
+	if (!entity_set_parent(door_handle_entity, door_entity)) {
+		log_error("Failed to parent door handle");
+		destroy_game_resources(game_state);
+		return false;
+	}
+
 	light_entity =
 		world_find_by_classname(game_state->world, "light_environment");
 	game_state->environment_light =
@@ -138,6 +161,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	player_start =
 		world_find_by_classname(game_state->world, "info_player_start");
+
 	if (player_start == NULL) {
 		log_error("Map has no info_player_start entity");
 		destroy_game_resources(game_state);
@@ -147,27 +171,34 @@ static bool initialize(engine_t *engine, void *user_data) {
 	player_properties = entity_properties_create();
 	player_properties.targetname = "player";
 	player_properties.transform.position = player_start->transform.position;
+
 	player_context = (entity_spawn_context_t){0};
 	player_context.properties = &player_properties;
 	player_context.error = error;
 	player_context.error_size = sizeof(error);
+
 	error[0] = '\0';
+
 	player_entity = world_spawn_entity(game_state->world, "player",
 					   &player_context);
 	game_state->player = player_from_entity(player_entity);
+
 	if (game_state->player == NULL) {
 		log_error("Failed to spawn player entity: %s", error);
 		destroy_game_resources(game_state);
 		return false;
 	}
+
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
 	game_state->jump_requested = false;
+
 	debug_hud_initialize(&game_state->debug_hud);
 
 	game_state->camera =
 		camera_create(player_get_view_position(game_state->player));
 	game_state->yaw = player_start->transform.rotation.y;
 	game_state->pitch = -player_start->transform.rotation.x;
+
 	log_info("Look at an entity and press E to use it");
 
 	return true;

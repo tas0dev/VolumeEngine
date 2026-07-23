@@ -177,6 +177,7 @@ entity_t *world_spawn_entity_deferred(world_t *world,
 
 bool world_add_entity(world_t *world, entity_t *entity) {
 	size_t capacity;
+	vec3_t world_position;
 
 	if (world == NULL || entity == NULL || entity->id == 0) {
 		return false;
@@ -184,19 +185,25 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 
 	if (world_find_entity(world, entity->id) != NULL) { return false; }
 
+	if (entity->parent != NULL && entity->parent->world != world) {
+		return false;
+	}
+
 	if (world->count == world->capacity) {
 		capacity = world->capacity == 0 ? 16 : world->capacity * 2;
 
 		if (!world_reserve(world, capacity)) { return false; }
 	}
 
+	world_position = entity_get_world_position(entity);
+
 	if (entity->has_collider &&
 	    !collision_world_add_collider_filtered(
 		    world->collision_world, entity->id, entity->collider,
-		    entity->transform.position, entity->collision_layer,
+		    world_position, entity->collision_layer,
 		    entity->collision_mask)) {
 		return false;
-	}
+		    }
 
 	world->entities[world->count] = entity;
 	entity->world = world;
@@ -287,24 +294,31 @@ void world_update(world_t *world, const float delta_time) {
 	world_process_events(world);
 
 	for (index = 0; index < world->count; index++) {
-		entity_t *entity = world->entities[index];
+		entity_t *entity;
 		vec3_t previous_position;
+		vec3_t current_position;
+
+		entity = world->entities[index];
+
 		if (entity->pending_destroy) { continue; }
 
-		previous_position = entity->transform.position;
+		previous_position = entity_get_world_position(entity);
+
 		entity_update(entity, delta_time);
+
+		current_position = entity_get_world_position(entity);
+
 		entity->linear_velocity =
 			delta_time > 0.0f
-				? vec3_scale(vec3_subtract(
-						     entity->transform.position,
-						     previous_position),
+				? vec3_scale(vec3_subtract(current_position,
+							   previous_position),
 					     1.0f / delta_time)
 				: vec3_create(0.0f, 0.0f, 0.0f);
 
 		if (entity->collider_follows_transform) {
 			collision_world_update_collider_filtered(
 				world->collision_world, entity->id,
-				entity->collider, entity->transform.position,
+				entity->collider, current_position,
 				entity->collision_layer,
 				entity->collision_mask);
 		}

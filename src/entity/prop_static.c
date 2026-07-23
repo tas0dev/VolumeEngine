@@ -244,7 +244,7 @@ void prop_internal_draw_shadow(entity_t *entity, renderer_t *renderer) {
 	prop = (prop_static_t *)entity;
 	if (prop == NULL || !prop->casts_shadow) { return; }
 
-	model = transform_get_matrix(&entity->transform);
+	model = entity_get_world_matrix(entity);
 	renderer_draw_shadow_mesh(renderer, prop->mesh, &model);
 }
 
@@ -257,7 +257,7 @@ void prop_internal_draw(entity_t *entity,
 	prop = (prop_static_t *)entity;
 	if (prop == NULL) { return; }
 
-	model = transform_get_matrix(&entity->transform);
+	model = entity_get_world_matrix(entity);
 
 	renderer_draw_mesh(renderer, prop->mesh, prop->material, &model, view);
 }

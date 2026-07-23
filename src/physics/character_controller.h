@@ -12,6 +12,21 @@
 #include "math/vec3.h"
 #include <stdbool.h>
 
+#define CHARACTER_DEBUG_MAXIMUM_CONTACTS 16
+
+typedef struct character_debug_contact {
+	vec3_t position;
+	vec3_t normal;
+	entity_id_t entity_id;
+} character_debug_contact_t;
+
+typedef struct character_debug_state {
+	character_debug_contact_t contacts[CHARACTER_DEBUG_MAXIMUM_CONTACTS];
+	size_t contact_count;
+	vec3_t correction;
+	bool valid;
+} character_debug_state_t;
+
 typedef struct character_move_input {
 	vec3_t wish_direction;
 	vec3_t look_direction;
@@ -46,6 +61,7 @@ typedef struct character_controller {
 	float crouch_transition_speed;
 	float crouched_speed_multiplier;
 	float minimum_ground_normal_y;
+	character_debug_state_t debug_state;
 	entity_id_t ground_entity_id;
 	vec3_t surf_normal;
 	bool grounded;
@@ -111,5 +127,17 @@ void character_controller_move_filtered(character_controller_t *controller,
 					collision_filter_t filter,
 					const character_move_input_t *input,
 					float delta_time);
+/// キャラクターコントローラーの直近の衝突デバッグ情報を取得する。
+///
+/// ### Args
+/// - `const character_controller_t *controller`: 対象のコントローラー。
+/// - `character_debug_state_t *state`: デバッグ情報の格納先。
+///
+/// ### Returns
+/// - `true`: 衝突デバッグ情報を取得した。
+/// - `false`: 情報がない、または引数が不正だった。
+bool character_controller_get_debug_state(
+	const character_controller_t *controller,
+	character_debug_state_t *state);
 
 #endif

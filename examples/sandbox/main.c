@@ -351,6 +351,7 @@ static void render(engine_t *engine, void *user_data) {
 	vec3_t light_position;
 	vec3_t light_target;
 	vec3_t light_up;
+	character_debug_state_t character_debug_state;
 	int width;
 	int height;
 	float aspect_ratio;
@@ -405,6 +406,14 @@ static void render(engine_t *engine, void *user_data) {
 			renderer,
 			world_get_const_collision_world(
 						       game_state->world));
+
+		if (player_get_collision_debug_state(game_state->player,
+						     &character_debug_state)) {
+			debug_draw_character_contacts(
+				renderer,
+				player_get_position(game_state->player),
+				&character_debug_state);
+		}
 
 		renderer_flush_debug_lines(renderer, &render_view);
 	}

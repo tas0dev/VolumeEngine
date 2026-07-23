@@ -8,7 +8,6 @@
 #ifndef VOLUME_ENTITY_PLAYER_H
 #define VOLUME_ENTITY_PLAYER_H
 
-#include "entity/entity.h"
 #include "physics/character_controller.h"
 
 typedef struct player player_t;
@@ -155,5 +154,16 @@ bool player_move_with_platform(player_t *player,
 void player_move(player_t *player,
 		 const character_move_input_t *input,
 		 float delta_time);
+/// プレイヤーの直近の衝突デバッグ情報を取得する。
+///
+/// ### Args
+/// - `const player_t *player`: 対象のプレイヤー。
+/// - `character_debug_state_t *state`: デバッグ情報の格納先。
+///
+/// ### Returns
+/// - `true`: 衝突デバッグ情報を取得した。
+/// - `false`: 情報がない、または引数が不正だった。
+bool player_get_collision_debug_state(const player_t *player,
+				      character_debug_state_t *state);
 
 #endif

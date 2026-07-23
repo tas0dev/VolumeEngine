@@ -349,3 +349,10 @@ set_error(const entity_spawn_context_t *context, const char *format, ...) {
 	vsnprintf(context->error, context->error_size, format, arguments);
 	va_end(arguments);
 }
+
+bool player_get_collision_debug_state(const player_t *player,
+				      character_debug_state_t *state) {
+	if (player == NULL) { return false; }
+
+	return character_controller_get_debug_state(&player->controller, state);
+}

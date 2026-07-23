@@ -63,6 +63,17 @@ static float horizontal_distance_squared(vec3_t first, vec3_t second);
 static vec3_t character_controller_clip_against_planes(vec3_t velocity,
 						       const vec3_t *planes,
 						       size_t plane_count);
+static void
+character_controller_reset_debug_state(character_controller_t *controller);
+static void
+character_controller_record_debug_contact(character_controller_t *controller,
+					  vec3_t position,
+					  vec3_t normal,
+					  entity_id_t entity_id);
+static void
+character_controller_record_debug_overlap(character_controller_t *controller,
+					  vec3_t position,
+					  const collision_result_t *collision);
 
 character_controller_t character_controller_create(const vec3_t position,
 						   const float radius,
@@ -86,7 +97,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.maximum_speed = 4.0f;
 	controller.ground_acceleration = 10.0f;
 	controller.air_acceleration = 20.0f;
-	controller.air_speed_cap = 0.8f;
+	controller.air_speed_cap = 2.0f;
 	controller.friction = 4.0f;
 	controller.stop_speed = 1.25f;
 	controller.gravity = -20.0f;
@@ -106,6 +117,7 @@ character_controller_t character_controller_create(const vec3_t position,
 	controller.surfing = false;
 	controller.on_ladder = false;
 	controller.crouched = false;
+	controller.debug_state = (character_debug_state_t){0};
 
 	return controller;
 }
@@ -156,6 +168,7 @@ void character_controller_move_filtered(character_controller_t *controller,
 
 	if (controller == NULL || delta_time <= 0.0f) { return; }
 
+	character_controller_reset_debug_state(controller);
 	wish_direction = vec3_create(0.0f, 0.0f, 0.0f);
 	wish_speed = 0.0f;
 	wants_crouch = false;
@@ -658,6 +671,8 @@ character_controller_slide_move_core(character_controller_t *controller,
 	if (collision_world_resolve_aabb_filtered(world, controller->bounds,
 						  &controller->position, filter,
 						  &overlap)) {
+		character_controller_record_debug_overlap(
+			controller, controller->position, &overlap);
 		character_controller_resolve_contacts(controller, &overlap);
 	}
 
@@ -690,6 +705,8 @@ character_controller_slide_move_core(character_controller_t *controller,
 				break;
 			}
 
+			character_controller_record_debug_overlap(
+				controller, controller->position, &overlap);
 			character_controller_resolve_contacts(controller,
 							      &overlap);
 
@@ -712,6 +729,11 @@ character_controller_slide_move_core(character_controller_t *controller,
 
 		controller->position =
 			vec3_add(start, vec3_scale(movement, backed_fraction));
+
+		character_controller_record_debug_contact(
+			controller, trace.position, trace.normal,
+			trace.entity_id);
+
 		character_controller_record_surf_surface(controller,
 							 trace.normal);
 
@@ -740,6 +762,8 @@ character_controller_slide_move_core(character_controller_t *controller,
 	if (collision_world_resolve_aabb_filtered(world, controller->bounds,
 						  &controller->position, filter,
 						  &overlap)) {
+		character_controller_record_debug_overlap(
+			controller, controller->position, &overlap);
 		character_controller_resolve_contacts(controller, &overlap);
 	}
 }
@@ -834,4 +858,68 @@ static vec3_t character_controller_clip_against_planes(
 	}
 
 	return vec3_create(0.0f, 0.0f, 0.0f);
+}
+
+bool character_controller_get_debug_state(
+	const character_controller_t *controller,
+	character_debug_state_t *state) {
+	if (controller == NULL || state == NULL ||
+	    !controller->debug_state.valid) {
+		return false;
+	}
+
+	*state = controller->debug_state;
+	return true;
+}
+
+static void
+character_controller_reset_debug_state(character_controller_t *controller) {
+	if (controller == NULL) { return; }
+
+	controller->debug_state = (character_debug_state_t){0};
+}
+
+static void
+character_controller_record_debug_contact(character_controller_t *controller,
+					  const vec3_t position,
+					  const vec3_t normal,
+					  const entity_id_t entity_id) {
+	character_debug_contact_t *contact;
+
+	if (controller == NULL || controller->debug_state.contact_count >=
+					  CHARACTER_DEBUG_MAXIMUM_CONTACTS) {
+		return;
+	}
+
+	contact = &controller->debug_state
+			   .contacts[controller->debug_state.contact_count];
+
+	contact->position = position;
+	contact->normal = normal;
+	contact->entity_id = entity_id;
+
+	controller->debug_state.contact_count++;
+	controller->debug_state.valid = true;
+}
+
+static void
+character_controller_record_debug_overlap(character_controller_t *controller,
+					  const vec3_t position,
+					  const collision_result_t *collision) {
+	size_t index;
+
+	if (controller == NULL || collision == NULL) { return; }
+
+	controller->debug_state.correction = vec3_add(
+		controller->debug_state.correction, collision->correction);
+
+	if (vec3_length(collision->correction) > 0.000001f) {
+		controller->debug_state.valid = true;
+	}
+
+	for (index = 0; index < collision->contact_count; index++) {
+		character_controller_record_debug_contact(
+			controller, position, collision->contacts[index].normal,
+			collision->contacts[index].entity_id);
+	}
 }

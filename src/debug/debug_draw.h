@@ -9,6 +9,7 @@
 #define VOLUME_DEBUG_DEBUG_DRAW_H
 
 #include "collision/collision_world.h"
+#include "physics/character_controller.h"
 #include "renderer/renderer.h"
 #include "renderer/view.h"
 
@@ -21,5 +22,14 @@
 /// - `const collision_world_t *collision_world`: 描画対象の衝突ワールド。
 void debug_draw_colliders(renderer_t *renderer,
 			  const collision_world_t *collision_world);
+/// キャラクターの接触点、接触法線、補正量を描画キューへ追加する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 描画に使用するレンダラー。
+/// - `vec3_t origin`: 補正量を描画する基準座標。
+/// - `const character_debug_state_t *state`: 描画対象のデバッグ情報。
+void debug_draw_character_contacts(renderer_t *renderer,
+				   vec3_t origin,
+				   const character_debug_state_t *state);
 
 #endif

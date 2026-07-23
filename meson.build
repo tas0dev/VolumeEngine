@@ -38,6 +38,7 @@ volume_sources = files(
         'src/entity/func_ladder.c',
         'src/entity/info_player_start.c',
         'src/entity/io.c',
+        'src/entity/logic_auto.c',
         'src/entity/logic_relay.c',
         'src/entity/player.c',
         'src/entity/trigger.c',

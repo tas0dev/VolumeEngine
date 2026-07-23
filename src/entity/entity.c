@@ -33,6 +33,7 @@ void entity_initialize(entity_t *entity,
 	entity->transform = transform_create();
 	entity->linear_velocity = vec3_create(0.0f, 0.0f, 0.0f);
 	entity->active = true;
+	entity->activated = false;
 	entity->has_collider = false;
 	entity->collider_follows_transform = false;
 	entity->pending_destroy = false;
@@ -60,6 +61,18 @@ entity_t *entity_create(const char *classname,
 	return class->create(id, context);
 }
 
+void entity_activate(entity_t *entity) {
+	if (entity == NULL || entity->activated) { return; }
+	entity->activated = true;
+	if (entity->class != NULL && entity->class->activate != NULL) {
+		entity->class->activate(entity);
+	}
+}
+
+bool entity_is_activated(const entity_t *entity) {
+	return entity != NULL && entity->activated;
+}
+
 const char *entity_get_classname(const entity_t *entity) {
 	if (entity == NULL || entity->class == NULL) { return NULL; }
 
@@ -67,8 +80,8 @@ const char *entity_get_classname(const entity_t *entity) {
 }
 
 void entity_update(entity_t *entity, const float delta_time) {
-	if (entity == NULL || !entity->active || entity->class == NULL ||
-	    entity->class->update == NULL) {
+	if (entity == NULL || !entity->activated || !entity->active ||
+	    entity->class == NULL || entity->class->update == NULL) {
 		return;
 	}
 
@@ -76,8 +89,8 @@ void entity_update(entity_t *entity, const float delta_time) {
 }
 
 void entity_draw_shadow(entity_t *entity, renderer_t *renderer) {
-	if (entity == NULL || renderer == NULL || !entity->active ||
-	    entity->class == NULL || entity->class->draw_shadow == NULL) {
+	if (entity == NULL || renderer == NULL || !entity->activated ||
+	    !entity->active || entity->class == NULL || entity->class->draw_shadow == NULL) {
 		return;
 	}
 
@@ -88,7 +101,7 @@ void entity_draw(entity_t *entity,
 		 renderer_t *renderer,
 		 const render_view_t *view) {
 	if (entity == NULL || renderer == NULL || view == NULL ||
-	    !entity->active || entity->class == NULL ||
+	    !entity->activated || !entity->active || entity->class == NULL ||
 	    entity->class->draw == NULL) {
 		return;
 	}

@@ -11,6 +11,7 @@
 #include "entity/func_ladder.h"
 #include "entity/info_player_start.h"
 #include "entity/light_environment.h"
+#include "entity/logic_auto.h"
 #include "entity/logic_relay.h"
 #include "entity/player.h"
 #include "entity/prop_dynamic.h"
@@ -25,6 +26,7 @@ bool entity_register_builtin_classes(void) {
 	if (!prop_static_register()) { return false; }
 	if (!prop_dynamic_register()) { return false; }
 	if (!light_environment_register()) { return false; }
+	if (!logic_auto_register()) { return false; }
 	if (!logic_relay_register()) { return false; }
 	if (!player_register()) { return false; }
 	if (!trigger_once_register()) { return false; }

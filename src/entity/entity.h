@@ -40,6 +40,11 @@ struct entity_class {
 	/// - `entity_t *`: 作成したエンティティ。失敗時は`NULL`。
 	entity_t *(*create)(entity_id_t id,
 			    const entity_spawn_context_t *context);
+	/// 全マップエンティティの生成と参照読込後に有効化処理を行う。
+	///
+	/// ### Args
+	/// - `entity_t *entity`: 有効化するエンティティ。
+	void (*activate)(entity_t *entity);
 	/// クラス固有状態を1tick更新する。
 	///
 	/// ### Args
@@ -89,6 +94,7 @@ struct entity {
 	transform_t transform;
 	vec3_t linear_velocity;
 	bool active;
+	bool activated;
 	bool has_collider;
 	bool collider_follows_transform;
 	bool pending_destroy;
@@ -121,6 +127,20 @@ void entity_initialize(entity_t *entity,
 entity_t *entity_create(const char *classname,
 			entity_id_t id,
 			const entity_spawn_context_t *context);
+/// エンティティのクラス固有Activate処理を一度だけ呼び出す。
+///
+/// ### Args
+/// - `entity_t *entity`: 有効化するエンティティ。
+void entity_activate(entity_t *entity);
+/// エンティティがActivate済みか調べる。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+///
+/// ### Returns
+/// - `true`: Activate処理が完了している。
+/// - `false`: 未実行または引数が`NULL`。
+bool entity_is_activated(const entity_t *entity);
 /// エンティティのクラス名を取得する。
 ///
 /// ### Args

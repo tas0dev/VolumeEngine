@@ -8,6 +8,7 @@
 #include "asset/manager.h"
 #include "common.h"
 #include "entity/entity.h"
+#include "entity/logic_auto.h"
 #include "entity/properties.h"
 #include "entity/world.h"
 #include "map/map.h"
@@ -21,17 +22,22 @@ typedef struct test_entity {
 	mesh_t *mesh;
 	material_t *material;
 	bool casts_shadow;
+	size_t entity_count_on_activate;
+	size_t output_count_on_activate;
 } test_entity_t;
 
 static unsigned char mesh_marker;
+static size_t activation_count;
 
 static entity_t *create_test_entity(entity_id_t id,
 				    const entity_spawn_context_t *context);
+static void activate_test_entity(entity_t *entity);
 static void destroy_test_entity(entity_t *entity);
 
 static const entity_class_t test_entity_class = {
 	.classname = "test_entity",
 	.create = create_test_entity,
+	.activate = activate_test_entity,
 	.update = NULL,
 	.draw_shadow = NULL,
 	.draw = NULL,
@@ -96,6 +102,17 @@ static entity_t *create_test_entity(const entity_id_t id,
 	return (entity_t *)entity;
 }
 
+static void activate_test_entity(entity_t *entity) {
+	test_entity_t *test_entity;
+
+	if (entity == NULL) { return; }
+	test_entity = (test_entity_t *)entity;
+	test_entity->entity_count_on_activate =
+		world_get_entity_count(entity->world);
+	test_entity->output_count_on_activate = entity_get_output_count(entity);
+	activation_count++;
+}
+
 static void destroy_test_entity(entity_t *entity) {
 	free((test_entity_t *)entity);
 }
@@ -147,6 +164,9 @@ static bool test_spawn_entities(void) {
 
 	entity = (test_entity_t *)world_get_entity(world, 0);
 	CHECK(entity != NULL);
+	CHECK(entity_is_activated(&entity->entity));
+	CHECK(entity->entity_count_on_activate == 1);
+	CHECK(entity->output_count_on_activate == 0);
 	CHECK(entity->mesh == mesh);
 	CHECK(entity->material == &material);
 	CHECK(entity->entity.transform.position.x == 1.0f);
@@ -170,6 +190,110 @@ static bool test_spawn_entities(void) {
 	return true;
 }
 
+static bool
+test_spawn_phases_load_all_entities_and_outputs_before_activate(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"first\"\n"
+		"\t\"OnReady\" \"second,Disable,,0,1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"second\"\n}\n";
+	test_entity_t *first;
+	test_entity_t *second;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	activation_count = 0;
+	CHECK(entity_register_class(&test_entity_class));
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	first = (test_entity_t *)world_find_by_targetname(world, "first");
+	second = (test_entity_t *)world_find_by_targetname(world, "second");
+	CHECK(first != NULL && second != NULL);
+	CHECK(activation_count == 2);
+	CHECK(first->entity_count_on_activate == 2);
+	CHECK(second->entity_count_on_activate == 2);
+	CHECK(first->output_count_on_activate == 1);
+	CHECK(second->output_count_on_activate == 0);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+	return true;
+}
+
+static bool test_logic_auto_fires_on_map_spawn_for_later_entity(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"logic_auto\"\n"
+		"\t\"OnMapSpawn\" \"receiver,Disable,,0,1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"receiver\"\n}\n";
+	entity_t *receiver;
+	entity_t *logic_auto;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	activation_count = 0;
+	CHECK(logic_auto_register());
+	CHECK(entity_register_class(&test_entity_class));
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	receiver = world_find_by_targetname(world, "receiver");
+	logic_auto = world_find_by_classname(world, "logic_auto");
+	CHECK(receiver != NULL && logic_auto != NULL);
+	CHECK(entity_is_active(receiver));
+	CHECK(world_get_pending_event_count(world) == 1);
+	entity_activate(logic_auto);
+	CHECK(world_get_pending_event_count(world) == 1);
+
+	world_update(world, 0.0f);
+	CHECK(!entity_is_active(receiver));
+	CHECK(world_get_pending_event_count(world) == 0);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+	return true;
+}
+
+static bool test_invalid_output_rolls_back_before_activate(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"test_entity\"\n"
+		"\t\"OnReady\" \"target,Enable,,0,1\"\n}\n"
+		"entity\n{\n\t\"classname\" \"test_entity\"\n"
+		"\t\"OnBroken\" \"invalid\"\n}\n";
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	activation_count = 0;
+	CHECK(entity_register_class(&test_entity_class));
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(!map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	CHECK(strstr(error, "must use") != NULL);
+	CHECK(world_get_entity_count(world) == 0);
+	CHECK(activation_count == 0);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+	return true;
+}
+
 static bool test_missing_asset_rolls_back(void) {
 	static const char source[] = "world\n"
 				     "{\n"
@@ -185,6 +309,7 @@ static bool test_missing_asset_rolls_back(void) {
 				     "\t\"model\" \"models/missing\"\n"
 				     "}\n";
 	asset_manager_t *assets;
+	entity_t *existing;
 	entity_properties_t properties;
 	entity_spawn_context_t context = {0};
 	world_t *world;
@@ -192,6 +317,7 @@ static bool test_missing_asset_rolls_back(void) {
 	char error[256];
 
 	CHECK(entity_register_class(&test_entity_class));
+	activation_count = 0;
 
 	assets = asset_manager_create();
 	CHECK(assets != NULL);
@@ -208,12 +334,16 @@ static bool test_missing_asset_rolls_back(void) {
 	context.error = error;
 	context.error_size = sizeof(error);
 
-	CHECK(world_spawn_entity(world, "test_entity", &context) != NULL);
+	existing = world_spawn_entity(world, "test_entity", &context);
+	CHECK(existing != NULL);
+	CHECK(entity_is_activated(existing));
+	CHECK(activation_count == 1);
 	CHECK(world_get_entity_count(world) == 1);
 
 	CHECK(!map_spawn_entities(map, world, assets, error, sizeof(error)));
 	CHECK(strstr(error, "mesh asset not found") != NULL);
 	CHECK(world_get_entity_count(world) == 1);
+	CHECK(activation_count == 1);
 
 	world_destroy(world);
 	map_destroy(map);
@@ -264,6 +394,12 @@ static bool test_invalid_transform_rolls_back(void) {
 int main(void) {
 	static const test_case_t tests[] = {
 		{"spawn entities",		   test_spawn_entities	      },
+		{"spawn phases load all entities and outputs before activate",
+		 test_spawn_phases_load_all_entities_and_outputs_before_activate				},
+		{"logic_auto fires OnMapSpawn for later entity",
+		 test_logic_auto_fires_on_map_spawn_for_later_entity					    },
+		{"invalid output rolls back before activate",
+		 test_invalid_output_rolls_back_before_activate					       },
 		{"missing asset rolls back",     test_missing_asset_rolls_back},
 		{"invalid transform rolls back",
 		 test_invalid_transform_rolls_back				  },

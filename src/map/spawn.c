@@ -140,7 +140,8 @@ bool map_spawn_entities(const map_t *map,
 		context.error = error;
 		context.error_size = error_size;
 
-		entity = world_spawn_entity(world, classname, &context);
+		entity =
+			world_spawn_entity_deferred(world, classname, &context);
 		if (entity == NULL) {
 			if (error == NULL || error_size == 0 ||
 			    error[0] == '\0') {
@@ -153,12 +154,30 @@ bool map_spawn_entities(const map_t *map,
 			rollback_entities(world, initial_count);
 			return false;
 		}
+	}
 
-		if (!load_entity_outputs(entity, map_entity, error,
+	for (index = 0; index < count; index++) {
+		map_entity = map_get_entity(map, index);
+		entity = world_get_entity(world, initial_count + index);
+		if (map_entity == NULL || entity == NULL ||
+		    !load_entity_outputs(entity, map_entity, error,
 					 error_size)) {
+			if ((error == NULL || error_size == 0 ||
+			     error[0] == '\0') &&
+			    (map_entity == NULL || entity == NULL)) {
+				set_error(error, error_size,
+					  "failed to load references for "
+					  "entity %zu",
+					  index);
+			}
 			rollback_entities(world, initial_count);
 			return false;
 		}
+	}
+
+	for (index = 0; index < count; index++) {
+		entity = world_get_entity(world, initial_count + index);
+		entity_activate(entity);
 	}
 
 	return true;

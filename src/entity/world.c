@@ -144,6 +144,16 @@ entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,
 			     const entity_spawn_context_t *context) {
 	entity_t *entity;
+
+	entity = world_spawn_entity_deferred(world, classname, context);
+	if (entity != NULL) { entity_activate(entity); }
+	return entity;
+}
+
+entity_t *world_spawn_entity_deferred(world_t *world,
+				      const char *classname,
+				      const entity_spawn_context_t *context) {
+	entity_t *entity;
 	entity_id_t id;
 
 	if (world == NULL || classname == NULL || context == NULL ||

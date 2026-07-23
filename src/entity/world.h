@@ -24,7 +24,7 @@ world_t *world_create(void);
 /// ### Args
 /// - `world_t *world`: 破棄するワールド。
 void world_destroy(world_t *world);
-/// クラス名とスポーン情報からエンティティを生成してワールドへ追加する。
+/// エンティティを生成してワールドへ追加し、直ちにActivateする。
 ///
 /// ### Args
 /// - `world_t *world`: 追加先のワールド。
@@ -36,7 +36,21 @@ void world_destroy(world_t *world);
 entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,
 			     const entity_spawn_context_t *context);
-/// 既存のエンティティをワールドへ追加する。
+/// エンティティを生成してワールドへ追加するが、Activateは遅延する。
+///
+/// マップのように複数エンティティを一括構築する処理で使用する。
+///
+/// ### Args
+/// - `world_t *world`: 追加先のワールド。
+/// - `const char *classname`: 生成するエンティティのクラス名。
+/// - `const entity_spawn_context_t *context`: スポーン情報。
+///
+/// ### Returns
+/// - `entity_t *`: 生成した未Activateのエンティティ。失敗時は`NULL`。
+entity_t *world_spawn_entity_deferred(world_t *world,
+				      const char *classname,
+				      const entity_spawn_context_t *context);
+/// 既存のエンティティをワールドへ追加する。Activateは呼び出さない。
 ///
 /// ### Args
 /// - `world_t *world`: 追加先のワールド。

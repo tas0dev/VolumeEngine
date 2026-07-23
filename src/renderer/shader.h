@@ -50,6 +50,11 @@ void shader_set_mat4(const shader_t *shader,
 /// - `const char *name`: uniform名。
 /// - `vec3_t value`: 設定する値。
 void shader_set_vec3(const shader_t *shader, const char *name, vec3_t value);
+/// シェーダーの2次元ベクトルuniformを設定する。
+void shader_set_vec2(const shader_t *shader,
+		     const char *name,
+		     float x,
+		     float y);
 /// シェーダーの浮動小数点uniformを設定する。
 ///
 /// ### Args

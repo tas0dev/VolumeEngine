@@ -16,6 +16,7 @@
 #include "renderer/mesh.h"
 #include "renderer/shader.h"
 #include "renderer/texture.h"
+#include "renderer/ui_renderer.h"
 #include "shadow_map.h"
 #include <SDL3/SDL.h>
 #include <epoxy/gl.h>
@@ -35,6 +36,8 @@ struct renderer {
 	shader_t *blur_shader;
 	int framebuffer_width;
 	int framebuffer_height;
+	ui_renderer_t *ui_renderer;
+	renderer_frame_stats_t frame_stats;
 };
 
 static bool renderer_create_screen_quad(renderer_t *renderer) {
@@ -185,6 +188,12 @@ renderer_t *renderer_create(platform_t *platform) {
 		return NULL;
 	}
 
+	renderer->ui_renderer = ui_renderer_create();
+	if (renderer->ui_renderer == NULL) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
@@ -204,6 +213,8 @@ void renderer_destroy(renderer_t *renderer) {
 	if (renderer->screen_vertex_array != 0) {
 		glDeleteVertexArrays(1, &renderer->screen_vertex_array);
 	}
+
+	ui_renderer_destroy(renderer->ui_renderer);
 
 	bloom_buffer_destroy(renderer->bloom_buffer);
 	hdr_buffer_destroy(renderer->hdr_buffer);
@@ -237,6 +248,8 @@ void renderer_begin_frame(renderer_t *renderer) {
 
 	renderer->framebuffer_width = width;
 	renderer->framebuffer_height = height;
+	renderer->frame_stats = (renderer_frame_stats_t){0};
+	ui_renderer_begin_frame(renderer->ui_renderer);
 
 	hdr_buffer_bind(renderer->hdr_buffer);
 
@@ -347,6 +360,8 @@ void renderer_end_frame(const renderer_t *renderer) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 
 	shader_unbind();
+	ui_renderer_flush(renderer->ui_renderer, renderer->framebuffer_width,
+			  renderer->framebuffer_height);
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -431,6 +446,7 @@ void renderer_draw_mesh(renderer_t *renderer,
 	}
 
 	mesh_draw(mesh);
+	renderer->frame_stats.mesh_draw_calls++;
 
 	if (material->normal_texture != NULL) { texture_unbind(2); }
 
@@ -467,4 +483,34 @@ void renderer_draw_shadow_mesh(renderer_t *renderer,
 
 	shader_set_mat4(renderer->shadow_shader, "model", model);
 	mesh_draw(mesh);
+	renderer->frame_stats.shadow_draw_calls++;
+}
+
+void renderer_draw_rectangle(renderer_t *renderer,
+			     const float x,
+			     const float y,
+			     const float width,
+			     const float height,
+			     const renderer_color_t color) {
+	if (renderer == NULL) { return; }
+
+	ui_renderer_draw_rectangle(renderer->ui_renderer, x, y, width, height,
+				   color);
+}
+
+void renderer_draw_text(const renderer_t *renderer,
+			const float x,
+			const float y,
+			const float scale,
+			const renderer_color_t color,
+			const char *text) {
+	if (renderer == NULL) { return; }
+
+	ui_renderer_draw_text(renderer->ui_renderer, x, y, scale, color, text);
+}
+
+renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer) {
+	if (renderer == NULL) { return (renderer_frame_stats_t){0}; }
+
+	return renderer->frame_stats;
 }

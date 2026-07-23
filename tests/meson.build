@@ -163,6 +163,16 @@ info_player_start_test = executable(
     install : false,
 )
 
+debug_hud_test = executable(
+    'debug-hud-test',
+    [
+        'common.c',
+        'debug_hud_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -236,4 +246,9 @@ test(
 test(
     'info-player-start',
     info_player_start_test
+)
+
+test(
+    'debug-hud',
+    debug_hud_test
 )

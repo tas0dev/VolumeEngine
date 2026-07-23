@@ -20,6 +20,7 @@ typedef struct game_state {
 	float yaw;
 	float pitch;
 	bool jump_requested;
+	debug_hud_t debug_hud;
 } game_state_t;
 
 static const float player_move_speed = 4.0f;
@@ -161,6 +162,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
 	game_state->jump_requested = false;
+	debug_hud_initialize(&game_state->debug_hud);
 
 	game_state->camera =
 		camera_create(player_get_view_position(game_state->player));
@@ -266,6 +268,12 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	if (input_key_pressed(input, INPUT_KEY_E)) {
 		use_look_target(game_state);
 	}
+
+	if (input_key_pressed(input, INPUT_KEY_F3)) {
+		debug_hud_toggle(&game_state->debug_hud);
+	}
+
+	debug_hud_update(&game_state->debug_hud, delta_time);
 }
 
 static void use_look_target(game_state_t *game_state) {
@@ -389,6 +397,12 @@ static void render(engine_t *engine, void *user_data) {
 	renderer_end_shadow_pass(renderer);
 
 	world_draw(game_state->world, renderer, &render_view);
+
+	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,
+		       player_get_position(game_state->player),
+		       player_get_velocity(game_state->player),
+		       player_get_ground_entity_id(game_state->player) != 0,
+		       1.0f / 120.0f);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

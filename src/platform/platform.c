@@ -121,6 +121,7 @@ static input_key_t translate_key(const SDL_Keycode key) {
 	case SDLK_LCTRL:
 	case SDLK_RCTRL: return INPUT_KEY_CONTROL;
 	case SDLK_ESCAPE: return INPUT_KEY_ESCAPE;
+	case SDLK_F3: return INPUT_KEY_F3;
 	default: return INPUT_KEY_COUNT;
 	}
 }

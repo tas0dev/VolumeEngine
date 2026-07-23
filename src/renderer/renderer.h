@@ -13,11 +13,25 @@
 #include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/view.h"
+#include <stddef.h>
+
+typedef struct renderer_color {
+	float r;
+	float g;
+	float b;
+	float a;
+} renderer_color_t;
+
+typedef struct renderer_frame_stats {
+	size_t mesh_draw_calls;
+	size_t shadow_draw_calls;
+} renderer_frame_stats_t;
 
 /// プラットフォームの描画コンテキストを使用してレンダラーを作成する。
 ///
 /// ### Args
-/// - `platform_t *platform`: ウィンドウと描画コンテキストを所有するプラットフォーム。
+/// - `platform_t *platform`:
+/// ウィンドウと描画コンテキストを所有するプラットフォーム。
 ///
 /// ### Returns
 /// - `renderer_t *`: 作成したレンダラー。失敗時は`NULL`。
@@ -78,5 +92,21 @@ void renderer_draw_mesh(renderer_t *renderer,
 /// ### Args
 /// - `renderer_t *renderer`: 対象のレンダラー。
 void renderer_begin_frame(renderer_t *renderer);
+/// 最終合成後に描画するスクリーン座標の矩形を登録する。
+void renderer_draw_rectangle(renderer_t *renderer,
+			     float x,
+			     float y,
+			     float width,
+			     float height,
+			     renderer_color_t color);
+/// 最終合成後に描画するASCIIテキストを登録する。
+void renderer_draw_text(const renderer_t *renderer,
+			float x,
+			float y,
+			float scale,
+			renderer_color_t color,
+			const char *text);
+/// 現在のフレームの描画統計を取得する。
+renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer);
 
 #endif

@@ -41,6 +41,7 @@ typedef enum input_key {
 	INPUT_KEY_SPACE,
 	INPUT_KEY_CONTROL,
 	INPUT_KEY_ESCAPE,
+	INPUT_KEY_F3,
 	INPUT_KEY_COUNT,
 } input_key_t;
 

@@ -13,6 +13,7 @@
 #include "core/log.h"
 #include "core/path.h"
 #include "core/types.h"
+#include "debug/hud.h"
 #include "entity/info_player_start.h"
 #include "entity/light_environment.h"
 #include "entity/player.h"

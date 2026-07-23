@@ -233,6 +233,23 @@ void shader_set_vec3(const shader_t *shader,
 	glUniform3f(location, value.x, value.y, value.z);
 }
 
+void shader_set_vec2(const shader_t *shader,
+		     const char *name,
+		     const float x,
+		     const float y) {
+	GLint location;
+
+	if (shader == NULL || name == NULL) { return; }
+
+	location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+
+	glUniform2f(location, x, y);
+}
+
 void shader_set_float(const shader_t *shader,
 		      const char *name,
 		      const float value) {

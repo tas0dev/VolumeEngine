@@ -38,6 +38,9 @@ struct renderer {
 	int framebuffer_height;
 	ui_renderer_t *ui_renderer;
 	renderer_frame_stats_t frame_stats;
+	shader_t *debug_line_shader;
+	GLuint debug_line_vertex_array;
+	GLuint debug_line_vertex_buffer;
 };
 
 static bool renderer_create_screen_quad(renderer_t *renderer) {
@@ -90,6 +93,31 @@ static shader_t *renderer_load_shader(const char *vertex_path,
 	free(resolved_fragment_path);
 
 	return shader;
+}
+
+static bool renderer_create_debug_line(renderer_t *renderer) {
+	if (renderer == NULL) { return false; }
+
+	glGenVertexArrays(1, &renderer->debug_line_vertex_array);
+	glGenBuffers(1, &renderer->debug_line_vertex_buffer);
+
+	if (renderer->debug_line_vertex_array == 0 ||
+	    renderer->debug_line_vertex_buffer == 0) {
+		return false;
+	}
+
+	glBindVertexArray(renderer->debug_line_vertex_array);
+	glBindBuffer(GL_ARRAY_BUFFER, renderer->debug_line_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6, NULL, GL_DYNAMIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
+			      (const void *)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	return true;
 }
 
 renderer_t *renderer_create(platform_t *platform) {
@@ -188,6 +216,19 @@ renderer_t *renderer_create(platform_t *platform) {
 		return NULL;
 	}
 
+	renderer->debug_line_shader =
+	renderer_load_shader("assets/engine/shaders/debug_line.vert",
+				     "assets/engine/shaders/debug_line.frag");
+	if (renderer->debug_line_shader == NULL) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
+	if (!renderer_create_debug_line(renderer)) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
+
 	renderer->ui_renderer = ui_renderer_create();
 	if (renderer->ui_renderer == NULL) {
 		renderer_destroy(renderer);
@@ -213,6 +254,16 @@ void renderer_destroy(renderer_t *renderer) {
 	if (renderer->screen_vertex_array != 0) {
 		glDeleteVertexArrays(1, &renderer->screen_vertex_array);
 	}
+
+	if (renderer->debug_line_vertex_buffer != 0) {
+		glDeleteBuffers(1, &renderer->debug_line_vertex_buffer);
+	}
+
+	if (renderer->debug_line_vertex_array != 0) {
+		glDeleteVertexArrays(1, &renderer->debug_line_vertex_array);
+	}
+
+	shader_destroy(renderer->debug_line_shader);
 
 	ui_renderer_destroy(renderer->ui_renderer);
 
@@ -513,4 +564,63 @@ renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer) {
 	if (renderer == NULL) { return (renderer_frame_stats_t){0}; }
 
 	return renderer->frame_stats;
+}
+
+void renderer_draw_debug_line(renderer_t *renderer,
+			      const vec3_t start,
+			      const vec3_t end,
+			      const renderer_color_t color,
+			      const render_view_t *view) {
+	const float vertices[] = {
+		start.x,
+		start.y,
+		start.z,
+		end.x,
+		end.y,
+		end.z,
+	};
+	GLboolean depth_test_enabled;
+	GLboolean blend_enabled;
+
+	if (renderer == NULL || view == NULL ||
+	    renderer->debug_line_shader == NULL ||
+	    renderer->debug_line_vertex_array == 0 ||
+	    renderer->debug_line_vertex_buffer == 0) {
+		return;
+	    }
+
+	depth_test_enabled = glIsEnabled(GL_DEPTH_TEST);
+	blend_enabled = glIsEnabled(GL_BLEND);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	shader_bind(renderer->debug_line_shader);
+	shader_set_mat4(renderer->debug_line_shader, "view", &view->view);
+	shader_set_mat4(renderer->debug_line_shader,
+			"projection",
+			&view->projection);
+	shader_set_vec3(renderer->debug_line_shader,
+			"color",
+			(vec3_t){color.r, color.g, color.b});
+	shader_set_float(renderer->debug_line_shader, "alpha", color.a);
+
+	glBindVertexArray(renderer->debug_line_vertex_array);
+	glBindBuffer(GL_ARRAY_BUFFER, renderer->debug_line_vertex_buffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+
+	glDrawArrays(GL_LINES, 0, 2);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+	shader_unbind();
+
+	if (!blend_enabled) {
+		glDisable(GL_BLEND);
+	}
+
+	if (!depth_test_enabled) {
+		glDisable(GL_DEPTH_TEST);
+	}
 }

@@ -956,3 +956,23 @@ static bool update_triangle_sweep_axis(vec3_t axis,
 
 	return *entry_time <= *exit_time;
 }
+
+bool collision_world_get_collider(const collision_world_t *world,
+				  const size_t index,
+				  entity_id_t *entity_id,
+				  collider_t *collider,
+				  vec3_t *position) {
+	const collision_entry_t *entry;
+
+	if (world == NULL || index >= world->count) { return false; }
+
+	entry = &world->entries[index];
+
+	if (entity_id != NULL) { *entity_id = entry->entity_id; }
+
+	if (collider != NULL) { *collider = entry->collider; }
+
+	if (position != NULL) { *position = entry->position; }
+
+	return true;
+}

@@ -59,6 +59,7 @@ volume_sources = files(
         'src/renderer/ui_renderer.c',
         'src/debug/debug_ui.c',
         'src/debug/hud.c',
+        'src/debug/debug_draw.c',
         'src/math/mat4.c',
         'src/math/vec3.c',
         'src/scene/camera.c',

@@ -321,5 +321,22 @@ size_t collision_world_query_aabb(const collision_world_t *world,
 				  collision_filter_t filter,
 				  entity_id_t *entity_ids,
 				  size_t capacity);
+/// 指定位置に登録されたコライダー情報を取得する。
+///
+/// ### Args
+/// - `const collision_world_t *world`: 対象の衝突ワールド。
+/// - `size_t index`: 取得するコライダーの位置。
+/// - `entity_id_t *entity_id`: 所有者IDの格納先。不要な場合は`NULL`。
+/// - `collider_t *collider`: コライダーの格納先。不要な場合は`NULL`。
+/// - `vec3_t *position`: 所有者のワールド座標の格納先。不要な場合は`NULL`。
+///
+/// ### Returns
+/// - `true`: コライダー情報を取得した。
+/// - `false`: ワールドまたは位置が不正だった。
+bool collision_world_get_collider(const collision_world_t *world,
+				  size_t index,
+				  entity_id_t *entity_id,
+				  collider_t *collider,
+				  vec3_t *position);
 
 #endif

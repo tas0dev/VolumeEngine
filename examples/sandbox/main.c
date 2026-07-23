@@ -398,6 +398,19 @@ static void render(engine_t *engine, void *user_data) {
 
 	world_draw(game_state->world, renderer, &render_view);
 
+	if (debug_hud_is_visible(&game_state->debug_hud)) {
+		debug_draw_colliders(
+			renderer,
+			world_get_const_collision_world(game_state->world),
+			&render_view);
+	}
+
+	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,
+		       player_get_position(game_state->player),
+		       player_get_velocity(game_state->player),
+		       player_get_ground_entity_id(game_state->player) != 0,
+		       1.0f / 120.0f);
+
 	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,
 		       player_get_position(game_state->player),
 		       player_get_velocity(game_state->player),

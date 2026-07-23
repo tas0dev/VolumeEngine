@@ -108,5 +108,18 @@ void renderer_draw_text(const renderer_t *renderer,
 			const char *text);
 /// 現在のフレームの描画統計を取得する。
 renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer);
+/// ワールド空間上へデバッグ用の線分を描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `vec3_t start`: 線分の開始座標。
+/// - `vec3_t end`: 線分の終了座標。
+/// - `renderer_color_t color`: 線分の色。
+/// - `const render_view_t *view`: 描画に使用するビュー情報。
+void renderer_draw_debug_line(renderer_t *renderer,
+			      vec3_t start,
+			      vec3_t end,
+			      renderer_color_t color,
+			      const render_view_t *view);
 
 #endif

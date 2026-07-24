@@ -356,6 +356,43 @@ static bool test_parenting_failure_preserves_existing_state(void) {
 	return true;
 }
 
+static bool test_world_box_collider_includes_parent_transform(void) {
+	collider_t collider;
+	entity_t parent;
+	entity_t child;
+	aabb_t bounds;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&child, 2, NULL);
+
+	parent.transform.position = vec3_create(10.0f, 5.0f, -2.0f);
+	parent.transform.rotation.z = PI * 0.5f;
+	parent.transform.scale = vec3_create(2.0f, 2.0f, 2.0f);
+
+	child.transform.position = vec3_create(1.0f, 0.0f, 0.0f);
+
+	entity_set_collider(
+		&child, collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
+					    vec3_create(0.5f, 1.0f, 0.25f)));
+
+	CHECK(entity_set_parent(&child, &parent, false));
+	CHECK(entity_get_world_collider(&child, &collider));
+	CHECK(collider_get_aabb(&collider, vec3_create(0.0f, 0.0f, 0.0f),
+				&bounds));
+
+	CHECK(nearly_equal(bounds.minimum.x, 8.0f));
+	CHECK(nearly_equal(bounds.maximum.x, 12.0f));
+	CHECK(nearly_equal(bounds.minimum.y, 6.0f));
+	CHECK(nearly_equal(bounds.maximum.y, 8.0f));
+	CHECK(nearly_equal(bounds.minimum.z, -2.5f));
+	CHECK(nearly_equal(bounds.maximum.z, -1.5f));
+
+	entity_destroy(&child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"sets and clears parent",			   test_sets_and_clears_parent   },
@@ -376,6 +413,8 @@ int main(void) {
 		 test_clearing_parent_can_keep_world_transform				      },
 		{"parenting failure preserves existing state",
 		 test_parenting_failure_preserves_existing_state				},
+		{"world box collider includes parent transform",
+		 test_world_box_collider_includes_parent_transform				  },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

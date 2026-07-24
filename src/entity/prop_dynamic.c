@@ -11,12 +11,11 @@
 
 static entity_t *create_entity(entity_id_t id,
 			       const entity_spawn_context_t *context);
-static void update_entity(entity_t *entity, float delta_time);
 
 static const entity_class_t prop_dynamic_class = {
 	.classname = "prop_dynamic",
 	.create = create_entity,
-	.update = update_entity,
+	.update = NULL,
 	.draw_shadow = prop_internal_draw_shadow,
 	.draw = prop_internal_draw,
 	.destroy = prop_internal_destroy,
@@ -89,24 +88,4 @@ static entity_t *create_entity(const entity_id_t id,
 	entity->collider_follows_transform = true;
 
 	return entity;
-}
-
-static void update_entity(entity_t *entity, const float delta_time) {
-	const triangle_mesh_collider_t *mesh;
-	transform_t local_transform;
-	mat4_t transform;
-
-	(void)delta_time;
-
-	if (entity == NULL || !entity->has_collider ||
-	    entity->collider.type != COLLIDER_TYPE_TRIANGLE_MESH) {
-		return;
-	}
-
-	mesh = entity->collider.shape.triangle_mesh.mesh;
-	local_transform = entity->transform;
-	local_transform.position = vec3_create(0.0f, 0.0f, 0.0f);
-	transform = transform_get_matrix(&local_transform);
-
-	entity->collider = collider_create_triangle_mesh(mesh, transform);
 }

@@ -12,6 +12,8 @@
 #include "entity/world.h"
 #include "map/map.h"
 #include "map/spawn.h"
+
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -196,6 +198,73 @@ static bool test_invalid_map_output_rolls_back(void) {
 	return true;
 }
 
+static bool test_set_parent_and_clear_parent_inputs(void) {
+	entity_input_context_t context;
+	entity_properties_t properties;
+	entity_spawn_context_t spawn_context;
+	entity_t *parent;
+	entity_t *child;
+	vec3_t position;
+	world_t *world;
+
+	CHECK(entity_register_class(&io_test_class));
+
+	world = world_create();
+	CHECK(world != NULL);
+
+	properties = entity_properties_create();
+	properties.targetname = "parent";
+	properties.transform.position = vec3_create(10.0f, 0.0f, 0.0f);
+
+	spawn_context = (entity_spawn_context_t){0};
+	spawn_context.properties = &properties;
+
+	parent = world_spawn_entity(world, io_test_class.classname,
+				    &spawn_context);
+	CHECK(parent != NULL);
+
+	properties = entity_properties_create();
+	properties.targetname = "child";
+	properties.transform.position = vec3_create(2.0f, 3.0f, 4.0f);
+
+	spawn_context.properties = &properties;
+
+	child = world_spawn_entity(world, io_test_class.classname,
+				   &spawn_context);
+	CHECK(child != NULL);
+
+	context = (entity_input_context_t){0};
+	context.world = world;
+	context.caller = child;
+	context.activator = child;
+	context.parameter = "parent";
+
+	CHECK(entity_accept_input(child, "SetParent", &context));
+	CHECK(entity_get_parent(child) == parent);
+
+	position = entity_get_world_position(child);
+
+	CHECK(fabsf(position.x - 2.0f) < 0.0001f);
+	CHECK(fabsf(position.y - 3.0f) < 0.0001f);
+	CHECK(fabsf(position.z - 4.0f) < 0.0001f);
+
+	context.parameter = "";
+
+	CHECK(entity_accept_input(child, "ClearParent", &context));
+	CHECK(entity_get_parent(child) == NULL);
+
+	position = entity_get_world_position(child);
+
+	CHECK(fabsf(position.x - 2.0f) < 0.0001f);
+	CHECK(fabsf(position.y - 3.0f) < 0.0001f);
+	CHECK(fabsf(position.z - 4.0f) < 0.0001f);
+
+	world_destroy(world);
+	entity_registry_shutdown();
+
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"map output delay and fire count",
@@ -204,6 +273,8 @@ int main(void) {
 		 test_generic_inputs_and_deferred_kill},
 		{"invalid map output rolls back",
 		 test_invalid_map_output_rolls_back   },
+		{"SetParent and ClearParent inputs",
+		 test_set_parent_and_clear_parent_inputs},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

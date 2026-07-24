@@ -176,8 +176,8 @@ entity_t *world_spawn_entity_deferred(world_t *world,
 }
 
 bool world_add_entity(world_t *world, entity_t *entity) {
+	collider_t world_collider;
 	size_t capacity;
-	vec3_t world_position;
 
 	if (world == NULL || entity == NULL || entity->id == 0) {
 		return false;
@@ -195,15 +195,15 @@ bool world_add_entity(world_t *world, entity_t *entity) {
 		if (!world_reserve(world, capacity)) { return false; }
 	}
 
-	world_position = entity_get_world_position(entity);
-
-	if (entity->has_collider &&
-	    !collision_world_add_collider_filtered(
-		    world->collision_world, entity->id, entity->collider,
-		    world_position, entity->collision_layer,
-		    entity->collision_mask)) {
-		return false;
-		    }
+	if (entity->has_collider) {
+		if (!entity_get_world_collider(entity, &world_collider) ||
+		    !collision_world_add_collider_filtered(
+			    world->collision_world, entity->id, world_collider,
+			    vec3_create(0.0f, 0.0f, 0.0f),
+			    entity->collision_layer, entity->collision_mask)) {
+			return false;
+		}
+	}
 
 	world->entities[world->count] = entity;
 	entity->world = world;
@@ -286,9 +286,11 @@ entity_t *world_get_entity(world_t *world, const size_t index) {
 }
 
 void world_update(world_t *world, const float delta_time) {
+	collider_t world_collider;
 	size_t index;
 
 	if (world == NULL) { return; }
+
 	if (delta_time > 0.0f) { world->time += delta_time; }
 
 	world_process_events(world);
@@ -310,17 +312,24 @@ void world_update(world_t *world, const float delta_time) {
 
 		entity->linear_velocity =
 			delta_time > 0.0f
-				? vec3_scale(vec3_subtract(current_position,
+				? vec3_scale(
+					  vec3_subtract(current_position,
 							   previous_position),
 					     1.0f / delta_time)
 				: vec3_create(0.0f, 0.0f, 0.0f);
 
-		if (entity->collider_follows_transform) {
-			collision_world_update_collider_filtered(
-				world->collision_world, entity->id,
-				entity->collider, current_position,
-				entity->collision_layer,
-				entity->collision_mask);
+		if (entity->has_collider &&
+		    (entity->collider_follows_transform ||
+		     entity->parent != NULL)) {
+			if (entity_get_world_collider(entity,
+						      &world_collider)) {
+				collision_world_update_collider_filtered(
+					world->collision_world, entity->id,
+					world_collider,
+					vec3_create(0.0f, 0.0f, 0.0f),
+					entity->collision_layer,
+					entity->collision_mask);
+			}
 		}
 	}
 

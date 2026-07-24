@@ -315,5 +315,17 @@ mat4_t entity_get_world_matrix(const entity_t *entity);
 /// ### Returns
 /// - `vec3_t`: ワールド位置。
 vec3_t entity_get_world_position(const entity_t *entity);
+/// エンティティのワールド変換を適用したコライダーを取得する。
+///
+/// 箱コライダーはワールド空間AABBへ変換される。
+///
+/// ### Args
+/// - `const entity_t *entity`: 対象のエンティティ。
+/// - `collider_t *collider`: 結果の格納先。
+///
+/// ### Returns
+/// - `true`: ワールド空間コライダーを取得した。
+/// - `false`: コライダーがない、または引数が不正だった。
+bool entity_get_world_collider(const entity_t *entity, collider_t *collider);
 
 #endif

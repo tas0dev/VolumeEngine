@@ -6,7 +6,9 @@
  */
 
 #include "entity/io.h"
+
 #include "entity/entity.h"
+#include "world.h"
 #include <errno.h>
 #include <math.h>
 #include <stdarg.h>
@@ -19,6 +21,8 @@ static bool reserve_outputs(entity_t *entity, size_t capacity);
 static void set_error(char *error, size_t error_size, const char *format, ...);
 static bool parse_float(const char *text, float *value);
 static bool parse_integer(const char *text, int *value);
+static entity_t *resolve_parent_target(entity_t *entity,
+				       const entity_input_context_t *context);
 
 static char *duplicate_string(const char *string) {
 	char *copy;
@@ -188,8 +192,27 @@ const entity_output_connection_t *entity_get_output(const entity_t *entity,
 bool entity_accept_input(entity_t *entity,
 			 const char *input_name,
 			 const entity_input_context_t *context) {
+	entity_t *parent;
+
 	if (entity == NULL || input_name == NULL || input_name[0] == '\0') {
 		return false;
+	}
+
+	if (strcmp(input_name, "SetParent") == 0) {
+		parent = resolve_parent_target(entity, context);
+
+		if (parent == NULL || parent == entity) { return false; }
+
+		return entity_set_parent(entity, parent, true);
+	}
+
+	if (strcmp(input_name, "ClearParent") == 0) {
+		return entity_clear_parent(entity, true);
+	}
+
+	if (strcmp(input_name, "Kill") == 0) {
+		entity->pending_destroy = true;
+		return true;
 	}
 
 	if (entity->class != NULL && entity->class->accept_input != NULL &&
@@ -209,11 +232,6 @@ bool entity_accept_input(entity_t *entity,
 
 	if (strcmp(input_name, "Toggle") == 0) {
 		entity_set_active(entity, !entity_is_active(entity));
-		return true;
-	}
-
-	if (strcmp(input_name, "Kill") == 0) {
-		entity->pending_destroy = true;
 		return true;
 	}
 
@@ -277,4 +295,32 @@ static bool parse_integer(const char *text, int *value) {
 	}
 	*value = (int)parsed;
 	return true;
+}
+
+static entity_t *resolve_parent_target(
+	entity_t *entity,
+	const entity_input_context_t *context) {
+	const char *parameter;
+
+	if (entity == NULL || context == NULL || context->world == NULL) {
+		return NULL;
+	}
+
+	parameter = context->parameter;
+
+	if (parameter == NULL || parameter[0] == '\0') { return NULL; }
+
+	if (strcmp(parameter, "!self") == 0) { return entity; }
+
+	if (strcmp(parameter, "!activator") == 0) {
+		return context->activator;
+	}
+
+	if (strcmp(parameter, "!caller") == 0) {
+		return context->caller;
+	}
+
+	if (parameter[0] == '!') { return NULL; }
+
+	return world_find_by_targetname(context->world, parameter);
 }

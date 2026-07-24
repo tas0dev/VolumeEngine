@@ -67,12 +67,8 @@ collider_t collider_create_none(void) {
 }
 
 collider_t collider_create_box(const vec3_t center, const vec3_t half_extents) {
-	collider_t collider = {0};
-
-	collider.type = COLLIDER_TYPE_BOX;
-	collider.shape.box = box_collider_create(center, half_extents);
-
-	return collider;
+	return collider_create_box_transformed(center, half_extents,
+					       mat4_identity());
 }
 
 bool collider_get_aabb(const collider_t *collider,
@@ -110,6 +106,20 @@ collider_t collider_create_triangle_mesh(const triangle_mesh_collider_t *mesh,
 	collider.shape.triangle_mesh.mesh = mesh;
 	collider.shape.triangle_mesh.transform = transform;
 	collider.shape.triangle_mesh.bounds = transform_aabb(bounds, transform);
+
+	return collider;
+}
+
+collider_t collider_create_box_transformed(const vec3_t center,
+					   const vec3_t half_extents,
+					   const mat4_t transform) {
+	collider_t collider = {0};
+
+	collider.type = COLLIDER_TYPE_BOX;
+	collider.shape.box =
+		box_collider_create_transformed(center,
+					       half_extents,
+					       transform);
 
 	return collider;
 }

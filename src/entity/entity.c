@@ -426,13 +426,7 @@ bool entity_get_world_collider(const entity_t *entity, collider_t *collider) {
 	const box_collider_t *box;
 	const triangle_mesh_collider_instance_t *triangle_mesh;
 	mat4_t world_matrix;
-	vec3_t corners[8];
-	vec3_t minimum;
-	vec3_t maximum;
-	vec3_t transformed;
-	vec3_t center;
-	vec3_t half_extents;
-	size_t index;
+	mat4_t collider_matrix;
 
 	if (entity == NULL || collider == NULL || !entity->has_collider) {
 		return false;
@@ -444,79 +438,26 @@ bool entity_get_world_collider(const entity_t *entity, collider_t *collider) {
 	case COLLIDER_TYPE_BOX:
 		box = &entity->collider.shape.box;
 
-		corners[0] = vec3_create(box->center.x - box->half_extents.x,
-					 box->center.y - box->half_extents.y,
-					 box->center.z - box->half_extents.z);
-		corners[1] = vec3_create(box->center.x + box->half_extents.x,
-					 box->center.y - box->half_extents.y,
-					 box->center.z - box->half_extents.z);
-		corners[2] = vec3_create(box->center.x - box->half_extents.x,
-					 box->center.y + box->half_extents.y,
-					 box->center.z - box->half_extents.z);
-		corners[3] = vec3_create(box->center.x + box->half_extents.x,
-					 box->center.y + box->half_extents.y,
-					 box->center.z - box->half_extents.z);
-		corners[4] = vec3_create(box->center.x - box->half_extents.x,
-					 box->center.y - box->half_extents.y,
-					 box->center.z + box->half_extents.z);
-		corners[5] = vec3_create(box->center.x + box->half_extents.x,
-					 box->center.y - box->half_extents.y,
-					 box->center.z + box->half_extents.z);
-		corners[6] = vec3_create(box->center.x - box->half_extents.x,
-					 box->center.y + box->half_extents.y,
-					 box->center.z + box->half_extents.z);
-		corners[7] = vec3_create(box->center.x + box->half_extents.x,
-					 box->center.y + box->half_extents.y,
-					 box->center.z + box->half_extents.z);
+		collider_matrix = mat4_multiply(world_matrix, box->transform);
 
-		minimum = mat4_transform_point(world_matrix, corners[0]);
-		maximum = minimum;
+		*collider = collider_create_box_transformed(
+			box->center, box->half_extents, collider_matrix);
 
-		for (index = 1; index < 8; index++) {
-			transformed = mat4_transform_point(world_matrix,
-							   corners[index]);
-
-			if (transformed.x < minimum.x) {
-				minimum.x = transformed.x;
-			}
-
-			if (transformed.y < minimum.y) {
-				minimum.y = transformed.y;
-			}
-
-			if (transformed.z < minimum.z) {
-				minimum.z = transformed.z;
-			}
-
-			if (transformed.x > maximum.x) {
-				maximum.x = transformed.x;
-			}
-
-			if (transformed.y > maximum.y) {
-				maximum.y = transformed.y;
-			}
-
-			if (transformed.z > maximum.z) {
-				maximum.z = transformed.z;
-			}
-		}
-
-		center = vec3_scale(vec3_add(minimum, maximum), 0.5f);
-		half_extents =
-			vec3_scale(vec3_subtract(maximum, minimum), 0.5f);
-
-		*collider = collider_create_box(center, half_extents);
 		return true;
 
 	case COLLIDER_TYPE_TRIANGLE_MESH:
 		triangle_mesh = &entity->collider.shape.triangle_mesh;
 
+		collider_matrix =
+			mat4_multiply(world_matrix, triangle_mesh->transform);
+
 		*collider = collider_create_triangle_mesh(triangle_mesh->mesh,
-							  world_matrix);
+							  collider_matrix);
 
 		return collider->type == COLLIDER_TYPE_TRIANGLE_MESH;
 
 	case COLLIDER_TYPE_NONE:
-	default: return false;
+	default:
+		return false;
 	}
 }

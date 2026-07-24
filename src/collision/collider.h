@@ -74,5 +74,17 @@ bool collider_get_aabb(const collider_t *collider,
 /// - `collider_t`: 三角形メッシュ形状のコライダー。失敗時は形状なし。
 collider_t collider_create_triangle_mesh(const triangle_mesh_collider_t *mesh,
 					 mat4_t transform);
+/// 変換行列付きの箱コライダーを作成する。
+///
+/// ### Args
+/// - `vec3_t center`: ローカル中心。
+/// - `vec3_t half_extents`: ローカル半サイズ。
+/// - `mat4_t transform`: 箱へ適用する変換。
+///
+/// ### Returns
+/// - `collider_t`: 箱コライダー。
+collider_t collider_create_box_transformed(vec3_t center,
+					   vec3_t half_extents,
+					   mat4_t transform);
 
 #endif

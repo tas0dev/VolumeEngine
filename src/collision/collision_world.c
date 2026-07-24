@@ -76,6 +76,17 @@ static bool update_triangle_sweep_axis(vec3_t axis,
 				       float *entry_time,
 				       float *exit_time,
 				       vec3_t *normal);
+static bool get_aabb_obb_collision(aabb_t aabb,
+				   const box_collider_t *box,
+				   vec3_t box_position,
+				   aabb_collision_t *collision);
+static bool test_sat_axis(vec3_t axis,
+			  vec3_t center_difference,
+			  vec3_t aabb_half_extents,
+			  const vec3_t box_axes[3],
+			  vec3_t box_half_extents,
+			  float *minimum_depth,
+			  vec3_t *minimum_axis);
 
 collision_world_t *collision_world_create(void) {
 	return calloc(1, sizeof(collision_world_t));
@@ -325,16 +336,21 @@ static bool resolve_box_entry(const collision_entry_t *entry,
 			      collision_result_t *result) {
 	aabb_collision_t collision;
 	aabb_t moving_bounds;
-	aabb_t static_bounds;
+	aabb_t broad_phase_bounds;
 	vec3_t correction;
 
 	moving_bounds = aabb_translate(local_bounds, *position);
 
 	if (!collider_get_aabb(&entry->collider, entry->position,
-			       &static_bounds) ||
-	    !aabb_get_collision(moving_bounds, static_bounds, &collision)) {
+			       &broad_phase_bounds) ||
+	    !aabb_intersects(moving_bounds, broad_phase_bounds)) {
 		return false;
 	}
+
+	if (!get_aabb_obb_collision(moving_bounds, &entry->collider.shape.box,
+				    entry->position, &collision)) {
+		return false;
+		    }
 
 	correction = vec3_scale(collision.normal, collision.depth);
 	*position = vec3_add(*position, correction);
@@ -976,6 +992,150 @@ bool collision_world_get_collider(const collision_world_t *world,
 	if (position != NULL) { *position = entry->position; }
 
 	if (layer != NULL) { *layer = entry->layer; }
+
+	return true;
+}
+
+static bool test_sat_axis(const vec3_t axis,
+			  const vec3_t center_difference,
+			  const vec3_t aabb_half_extents,
+			  const vec3_t box_axes[3],
+			  const vec3_t box_half_extents,
+			  float *minimum_depth,
+			  vec3_t *minimum_axis) {
+	const float epsilon = 0.000001f;
+	vec3_t normalized_axis;
+	float length;
+	float aabb_radius;
+	float box_radius;
+	float distance;
+	float depth;
+
+	length = vec3_length(axis);
+
+	if (length <= epsilon) { return true; }
+
+	normalized_axis = vec3_scale(axis, 1.0f / length);
+
+	aabb_radius =
+		aabb_half_extents.x * fabsf(normalized_axis.x) +
+		aabb_half_extents.y * fabsf(normalized_axis.y) +
+		aabb_half_extents.z * fabsf(normalized_axis.z);
+
+	box_radius =
+		box_half_extents.x *
+			fabsf(vec3_dot(normalized_axis, box_axes[0])) +
+		box_half_extents.y *
+			fabsf(vec3_dot(normalized_axis, box_axes[1])) +
+		box_half_extents.z *
+			fabsf(vec3_dot(normalized_axis, box_axes[2]));
+
+	distance = vec3_dot(center_difference, normalized_axis);
+	depth = aabb_radius + box_radius - fabsf(distance);
+
+	if (depth <= 0.0f) { return false; }
+
+	if (depth < *minimum_depth) {
+		if (distance < 0.0f) {
+			normalized_axis =
+				vec3_scale(normalized_axis, -1.0f);
+		}
+
+		*minimum_depth = depth;
+		*minimum_axis = normalized_axis;
+	}
+
+	return true;
+}
+
+static bool get_aabb_obb_collision(const aabb_t aabb,
+				   const box_collider_t *box,
+				   const vec3_t box_position,
+				   aabb_collision_t *collision) {
+	const vec3_t aabb_axes[3] = {
+		{1.0f, 0.0f, 0.0f},
+		{0.0f, 1.0f, 0.0f},
+		{0.0f, 0.0f, 1.0f},
+	};
+	vec3_t box_axes[3];
+	vec3_t aabb_center;
+	vec3_t aabb_half_extents;
+	vec3_t box_center;
+	vec3_t box_half_extents;
+	vec3_t center_difference;
+	vec3_t minimum_axis;
+	float minimum_depth;
+	size_t aabb_axis_index;
+	size_t box_axis_index;
+
+	if (box == NULL || collision == NULL) { return false; }
+
+	if (!box_collider_get_world_box(*box,
+					box_position,
+					&box_center,
+					box_axes,
+					&box_half_extents)) {
+		return false;
+	}
+
+	aabb_center = aabb_get_center(aabb);
+	aabb_half_extents = aabb_get_half_extents(aabb);
+	center_difference = vec3_subtract(aabb_center, box_center);
+
+	minimum_depth = INFINITY;
+	minimum_axis = vec3_create(0.0f, 0.0f, 0.0f);
+
+	for (aabb_axis_index = 0;
+	     aabb_axis_index < 3;
+	     aabb_axis_index++) {
+		if (!test_sat_axis(aabb_axes[aabb_axis_index],
+				   center_difference,
+				   aabb_half_extents,
+				   box_axes,
+				   box_half_extents,
+				   &minimum_depth,
+				   &minimum_axis)) {
+			return false;
+		}
+	}
+
+	for (box_axis_index = 0;
+	     box_axis_index < 3;
+	     box_axis_index++) {
+		if (!test_sat_axis(box_axes[box_axis_index],
+				   center_difference,
+				   aabb_half_extents,
+				   box_axes,
+				   box_half_extents,
+				   &minimum_depth,
+				   &minimum_axis)) {
+			return false;
+		}
+	}
+
+	for (aabb_axis_index = 0;
+	     aabb_axis_index < 3;
+	     aabb_axis_index++) {
+		for (box_axis_index = 0;
+		     box_axis_index < 3;
+		     box_axis_index++) {
+			if (!test_sat_axis(
+				    vec3_cross(
+					    aabb_axes[aabb_axis_index],
+					    box_axes[box_axis_index]),
+				    center_difference,
+				    aabb_half_extents,
+				    box_axes,
+				    box_half_extents,
+				    &minimum_depth,
+				    &minimum_axis)) {
+				return false;
+			}
+		}
+	}
+
+	collision->normal = minimum_axis;
+	collision->depth = minimum_depth;
 
 	return true;
 }

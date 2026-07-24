@@ -7,6 +7,7 @@
 
 #include "collision/collision_world.h"
 #include "common.h"
+#include "math/math.h"
 
 static collider_t create_floor_collider(void) {
 	return collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
@@ -285,6 +286,82 @@ static bool test_ray_trace_uses_layers_and_nearest_hit(void) {
 	return true;
 }
 
+static bool test_rotated_box_does_not_use_aabb_approximation(void) {
+	collision_result_t result;
+	collision_world_t *world;
+	collider_t collider;
+	mat4_t transform;
+	vec3_t position;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+
+	transform = mat4_rotation_z(PI * 0.25f);
+	transform = mat4_multiply(
+		mat4_translation(vec3_create(0.0f, 0.0f, 0.0f)), transform);
+
+	collider = collider_create_box_transformed(
+		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(2.0f, 0.1f, 0.5f),
+		transform);
+
+	CHECK(collision_world_add_collider(world, 1, collider,
+					   vec3_create(0.0f, 0.0f, 0.0f)));
+
+	position = vec3_create(1.35f, -1.35f, 0.0f);
+
+	CHECK(!collision_world_resolve_aabb(
+		world,
+		aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+			    vec3_create(0.1f, 0.1f, 0.1f)),
+		&position, &result));
+
+	collision_world_destroy(world);
+
+	return true;
+}
+
+static bool test_rotated_box_returns_sat_correction(void) {
+	collision_result_t result;
+	collision_world_t *world;
+	collider_t collider;
+	mat4_t transform;
+	vec3_t position;
+	float original_x;
+	float original_y;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+
+	transform = mat4_rotation_z(PI * 0.25f);
+
+	collider = collider_create_box_transformed(
+		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(2.0f, 0.25f, 0.5f),
+		transform);
+
+	CHECK(collision_world_add_collider(world, 1, collider,
+					   vec3_create(0.0f, 0.0f, 0.0f)));
+
+	position = vec3_create(0.0f, 0.2f, 0.0f);
+	original_x = position.x;
+	original_y = position.y;
+
+	CHECK(collision_world_resolve_aabb(
+		world,
+		aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+			    vec3_create(0.2f, 0.2f, 0.2f)),
+		&position, &result));
+
+	CHECK(result.contact_count >= 1);
+	CHECK(result.correction.x != 0.0f);
+	CHECK(result.correction.y != 0.0f);
+	CHECK(position.x != original_x);
+	CHECK(position.y != original_y);
+
+	collision_world_destroy(world);
+
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"add and remove collider",		    test_add_and_remove	       },
@@ -299,6 +376,10 @@ int main(void) {
 		 test_collision_layers_filter_queries				     },
 		{"ray trace uses layers and nearest hit",
 		 test_ray_trace_uses_layers_and_nearest_hit			   },
+		{"rotated box does not use AABB approximation",
+		 test_rotated_box_does_not_use_aabb_approximation				 },
+		{"rotated box returns SAT correction",
+		 test_rotated_box_returns_sat_correction					},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

@@ -391,18 +391,152 @@ static bool test_invalid_transform_rolls_back(void) {
 	return true;
 }
 
+static bool test_resolves_parent_after_all_entities_are_spawned(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n"
+		"\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"child\"\n"
+		"\t\"parent\" \"parent\"\n"
+		"\t\"origin\" \"1 2 3\"\n"
+		"}\n"
+		"entity\n{\n"
+		"\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"parent\"\n"
+		"\t\"origin\" \"10 20 30\"\n"
+		"}\n";
+	entity_t *parent;
+	entity_t *child;
+	vec3_t world_position;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	CHECK(entity_register_class(&test_entity_class));
+
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+
+	world = world_create();
+	CHECK(world != NULL);
+
+	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
+
+	parent = world_find_by_targetname(world, "parent");
+	child = world_find_by_targetname(world, "child");
+
+	CHECK(parent != NULL);
+	CHECK(child != NULL);
+	CHECK(entity_get_parent(child) == parent);
+	CHECK(entity_get_first_child(parent) == child);
+	CHECK(entity_is_activated(parent));
+	CHECK(entity_is_activated(child));
+
+	world_position = entity_get_world_position(child);
+
+	CHECK(world_position.x == 11.0f);
+	CHECK(world_position.y == 22.0f);
+	CHECK(world_position.z == 33.0f);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+
+	return true;
+}
+
+static bool test_missing_parent_rolls_back_before_activate(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n"
+		"\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"child\"\n"
+		"\t\"parent\" \"missing_parent\"\n"
+		"}\n";
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	activation_count = 0;
+
+	CHECK(entity_register_class(&test_entity_class));
+
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+
+	world = world_create();
+	CHECK(world != NULL);
+
+	CHECK(!map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	CHECK(strstr(error, "missing_parent") != NULL);
+	CHECK(strstr(error, "was not found") != NULL);
+	CHECK(world_get_entity_count(world) == 0);
+	CHECK(activation_count == 0);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+
+	return true;
+}
+
+static bool test_cyclic_parent_rolls_back_before_activate(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n"
+		"\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"first\"\n"
+		"\t\"parent\" \"second\"\n"
+		"}\n"
+		"entity\n{\n"
+		"\t\"classname\" \"test_entity\"\n"
+		"\t\"targetname\" \"second\"\n"
+		"\t\"parent\" \"first\"\n"
+		"}\n";
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	activation_count = 0;
+
+	CHECK(entity_register_class(&test_entity_class));
+
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+
+	world = world_create();
+	CHECK(world != NULL);
+
+	CHECK(!map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	CHECK(strstr(error, "failed to set parent") != NULL);
+	CHECK(world_get_entity_count(world) == 0);
+	CHECK(activation_count == 0);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
-		{"spawn entities",		   test_spawn_entities	      },
+		{"spawn entities",					     test_spawn_entities	      },
 		{"spawn phases load all entities and outputs before activate",
 		 test_spawn_phases_load_all_entities_and_outputs_before_activate				},
 		{"logic_auto fires OnMapSpawn for later entity",
 		 test_logic_auto_fires_on_map_spawn_for_later_entity					    },
 		{"invalid output rolls back before activate",
 		 test_invalid_output_rolls_back_before_activate					       },
-		{"missing asset rolls back",     test_missing_asset_rolls_back},
+		{"missing asset rolls back",				     test_missing_asset_rolls_back},
 		{"invalid transform rolls back",
-		 test_invalid_transform_rolls_back				  },
+		 test_invalid_transform_rolls_back							  },
+		{"resolves parent after all entities are spawned",
+		 test_resolves_parent_after_all_entities_are_spawned					    },
+		{"missing parent rolls back before activate",
+		 test_missing_parent_rolls_back_before_activate					       },
+		{"cyclic parent rolls back before activate",
+		 test_cyclic_parent_rolls_back_before_activate					      },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

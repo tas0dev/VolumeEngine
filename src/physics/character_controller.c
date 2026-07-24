@@ -178,7 +178,6 @@ void character_controller_move_filtered(character_controller_t *controller,
 		wish_direction.y = 0.0f;
 		wish_speed = input->wish_speed;
 		wants_crouch = input->crouch;
-
 	}
 
 	character_controller_update_crouch(controller, world, filter,
@@ -260,7 +259,7 @@ void character_controller_move_filtered(character_controller_t *controller,
 			controller->gravity * delta_time * 0.5f;
 	} else {
 		character_controller_clip_velocity(controller,
-					   controller->ground_normal);
+						   controller->ground_normal);
 		controller->surfing = false;
 	}
 }
@@ -556,8 +555,8 @@ character_controller_resolve_contacts(character_controller_t *controller,
 			controller, collision->contacts[index].normal);
 	}
 
-	if (!character_controller_find_ground(controller, collision,
-					      &ground_normal, &ground_entity_id)) {
+	if (!character_controller_find_ground(
+		    controller, collision, &ground_normal, &ground_entity_id)) {
 		return;
 	}
 

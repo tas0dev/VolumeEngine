@@ -106,9 +106,10 @@ entity
 {
 	"classname" "prop_dynamic"
 	"targetname" "example_door_handle"
+	"parent" "example_door"
 	"model" "models/test_cube.obj"
 	"material" "materials/test_cube.volmat"
-	"origin" "0 0 0"
+	"origin" "0.35 0 -1.2"
 	"angles" "0 0 0"
 	"scale" "0.075 0.12 0.5"
 	"casts_shadow" "1"

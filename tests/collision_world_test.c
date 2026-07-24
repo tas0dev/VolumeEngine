@@ -287,16 +287,16 @@ static bool test_ray_trace_uses_layers_and_nearest_hit(void) {
 
 int main(void) {
 	static const test_case_t tests[] = {
-		{"add and remove collider",	    test_add_and_remove       },
-		{"reject none collider",		 test_reject_none_collider },
-		{"no collision",			 test_no_collision	  },
-		{"floor collision",		    test_floor_collision	},
+		{"add and remove collider",		    test_add_and_remove	       },
+		{"reject none collider",			 test_reject_none_collider  },
+		{"no collision",				 test_no_collision	  },
+		{"floor collision",			    test_floor_collision	},
 		{"wall collision",			   test_wall_collision	      },
-		{"floor and wall corner",		  test_floor_and_wall_corner},
-		{"invalid collision world arguments", test_invalid_arguments    },
+		{"floor and wall corner",		  test_floor_and_wall_corner },
+		{"invalid collision world arguments",     test_invalid_arguments	    },
 		{"resolve ignores an entity",	      test_resolve_ignores_entity},
 		{"collision layers filter queries",
-		 test_collision_layers_filter_queries			     },
+		 test_collision_layers_filter_queries				     },
 		{"ray trace uses layers and nearest hit",
 		 test_ray_trace_uses_layers_and_nearest_hit			   },
 	};

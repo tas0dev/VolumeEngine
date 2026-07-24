@@ -20,6 +20,44 @@ static bool load_entity_outputs(entity_t *entity,
 				char *error,
 				size_t error_size);
 
+static bool load_entity_parent(entity_t *entity,
+			       const map_entity_t *map_entity,
+			       world_t *world,
+			       char *error,
+			       const size_t error_size) {
+	const char *parent_name;
+	entity_t *parent;
+
+	if (entity == NULL || map_entity == NULL || world == NULL) {
+		set_error(error, error_size, "invalid entity parent context");
+		return false;
+	}
+
+	parent_name = map_entity_get_property(map_entity, "parent");
+
+	if (parent_name == NULL || parent_name[0] == '\0') { return true; }
+
+	parent = world_find_by_targetname(world, parent_name);
+
+	if (parent == NULL) {
+		set_error(error, error_size,
+			  "parent entity \"%s\" was not found", parent_name);
+		return false;
+	}
+
+	if (!entity_set_parent(entity, parent)) {
+		set_error(error, error_size,
+			  "failed to set parent \"%s\" for entity \"%s\"",
+			  parent_name,
+			  entity_get_targetname(entity) == NULL
+				  ? entity_get_classname(entity)
+				  : entity_get_targetname(entity));
+		return false;
+	}
+
+	return true;
+}
+
 static void
 set_error(char *error, const size_t error_size, const char *format, ...) {
 	va_list arguments;
@@ -110,6 +148,7 @@ bool map_spawn_entities(const map_t *map,
 
 	for (index = 0; index < count; index++) {
 		map_entity = map_get_entity(map, index);
+
 		if (map_entity == NULL) {
 			set_error(error, error_size,
 				  "invalid entity at index %zu", index);
@@ -118,6 +157,7 @@ bool map_spawn_entities(const map_t *map,
 		}
 
 		classname = map_entity_get_property(map_entity, "classname");
+
 		if (classname == NULL) {
 			set_error(error, error_size,
 				  "entity %zu has no classname", index);
@@ -142,6 +182,7 @@ bool map_spawn_entities(const map_t *map,
 
 		entity =
 			world_spawn_entity_deferred(world, classname, &context);
+
 		if (entity == NULL) {
 			if (error == NULL || error_size == 0 ||
 			    error[0] == '\0') {
@@ -159,6 +200,25 @@ bool map_spawn_entities(const map_t *map,
 	for (index = 0; index < count; index++) {
 		map_entity = map_get_entity(map, index);
 		entity = world_get_entity(world, initial_count + index);
+
+		if (map_entity == NULL || entity == NULL) {
+			set_error(error, error_size,
+				  "failed to resolve entity %zu", index);
+			rollback_entities(world, initial_count);
+			return false;
+		}
+
+		if (!load_entity_parent(entity, map_entity, world, error,
+					error_size)) {
+			rollback_entities(world, initial_count);
+			return false;
+		}
+	}
+
+	for (index = 0; index < count; index++) {
+		map_entity = map_get_entity(map, index);
+		entity = world_get_entity(world, initial_count + index);
+
 		if (map_entity == NULL || entity == NULL ||
 		    !load_entity_outputs(entity, map_entity, error,
 					 error_size)) {
@@ -170,6 +230,7 @@ bool map_spawn_entities(const map_t *map,
 					  "entity %zu",
 					  index);
 			}
+
 			rollback_entities(world, initial_count);
 			return false;
 		}

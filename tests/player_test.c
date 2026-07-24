@@ -5,9 +5,9 @@
  * Created by tas0dev
  */
 
-#include "common.h"
 #include "collision/triangle.h"
 #include "collision/triangle_mesh_collider.h"
+#include "common.h"
 #include "entity/func_ladder.h"
 #include "entity/player.h"
 #include "entity/world.h"

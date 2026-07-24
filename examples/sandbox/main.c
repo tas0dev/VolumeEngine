@@ -67,8 +67,6 @@ int main(void) {
 
 static bool initialize(engine_t *engine, void *user_data) {
 	game_state_t *game_state;
-	entity_t *door_entity;
-	entity_t *door_handle_entity;
 	entity_t *light_entity;
 	entity_t *player_entity;
 	entity_t *player_start;
@@ -124,26 +122,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	if (game_state->mesh_entity == NULL) {
 		log_error("Map entity \"rotating_box\" was not found");
-		destroy_game_resources(game_state);
-		return false;
-	}
-
-	door_entity =
-		world_find_by_targetname(game_state->world, "example_door");
-	door_handle_entity = world_find_by_targetname(game_state->world,
-						      "example_door_handle");
-
-	if (door_entity == NULL || door_handle_entity == NULL) {
-		log_error("Door hierarchy entities were not found");
-		destroy_game_resources(game_state);
-		return false;
-	}
-
-	door_handle_entity->transform.position =
-		vec3_create(0.35f, 0.0f, -1.2f);
-
-	if (!entity_set_parent(door_handle_entity, door_entity)) {
-		log_error("Failed to parent door handle");
 		destroy_game_resources(game_state);
 		return false;
 	}

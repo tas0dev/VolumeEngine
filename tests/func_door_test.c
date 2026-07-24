@@ -375,10 +375,10 @@ int main(void) {
 		{"door reverses after blocked",
 		 test_door_reverses_after_blocked						 },
 		{"door motion, inputs, and collision",
-		 test_door_motion_inputs_and_collision},
+		 test_door_motion_inputs_and_collision					      },
 		{"door stops and resumes after OnBlocked",
-		 test_door_stops_and_resumes_after_blocked				  },
-		{"door is blocked by player",	      test_door_is_blocked_by_player},
+		 test_door_stops_and_resumes_after_blocked					  },
+		{"door is blocked by player",		      test_door_is_blocked_by_player},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

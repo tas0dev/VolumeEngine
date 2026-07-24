@@ -155,7 +155,7 @@ entity
 	"scale" "2 0.25 2"
 	"casts_shadow" "1"
 	"collision" "box"
-	"collision_size" "2 0.25 2"
+	"collision_size" "1 1 1"
 	"move_offset" "0 3 0"
 	"speed" "1"
 	"wait" "2"
@@ -172,7 +172,7 @@ entity
 	"scale" "0.3 0.3 0.15"
 	"casts_shadow" "1"
 	"collision" "box"
-	"collision_size" "0.3 0.3 0.15"
+	"collision_size" "1 1 1"
 	"move_offset" "0 0 -0.1"
 	"speed" "0.5"
 	"wait" "1"
@@ -189,7 +189,7 @@ entity
 	"scale" "3 4 0.3"
 	"casts_shadow" "1"
 	"collision" "box"
-	"collision_size" "3 4 0.3"
+	"collision_size" "1 1 1"
 }
 
 entity
@@ -211,5 +211,5 @@ entity
 	"scale" "3 0.3 3"
 	"casts_shadow" "1"
 	"collision" "box"
-	"collision_size" "3 0.3 3"
+	"collision_size" "1 1 1"
 }

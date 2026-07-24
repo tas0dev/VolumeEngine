@@ -254,23 +254,27 @@ void entity_set_collision_filter(entity_t *entity,
 				 collision_layer_t mask);
 /// エンティティの親を設定する。
 ///
-/// 子のtransformは親から見たローカルtransformとして維持される。
-///
 /// ### Args
 /// - `entity_t *entity`: 子にするエンティティ。
-/// - `entity_t *parent`: 設定する親。親を解除する場合は`NULL`。
+/// - `entity_t *parent`: 設定する親。解除時は`NULL`。
+/// - `bool keep_world_transform`: ワールド変換を維持する場合は`true`。
 ///
 /// ### Returns
 /// - `true`: 親の設定に成功した。
-/// - `false`: 循環参照、異なるワールド、または無効な引数。
-bool entity_set_parent(entity_t *entity, entity_t *parent);
+/// - `false`: 循環参照、異なるワールド、変換不能などで失敗した。
+bool entity_set_parent(entity_t *entity,
+		       entity_t *parent,
+		       bool keep_world_transform);
 /// エンティティの親を解除する。
-///
-/// ローカルtransformは維持される。
 ///
 /// ### Args
 /// - `entity_t *entity`: 対象のエンティティ。
-void entity_clear_parent(entity_t *entity);
+/// - `bool keep_world_transform`: ワールド変換を維持する場合は`true`。
+///
+/// ### Returns
+/// - `true`: 親の解除に成功した。
+/// - `false`: ワールド変換をローカル変換へ分解できなかった。
+bool entity_clear_parent(entity_t *entity, bool keep_world_transform);
 /// エンティティの親を取得する。
 ///
 /// ### Args

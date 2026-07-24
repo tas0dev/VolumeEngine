@@ -181,3 +181,80 @@ vec3_t mat4_transform_point(const mat4_t matrix, const vec3_t point) {
 
 	return result;
 }
+
+bool mat4_inverse_affine(const mat4_t *matrix, mat4_t *inverse) {
+	const float epsilon = 0.000001f;
+	float a00;
+	float a01;
+	float a02;
+	float a10;
+	float a11;
+	float a12;
+	float a20;
+	float a21;
+	float a22;
+	float determinant;
+	float inverse_determinant;
+	float translation_x;
+	float translation_y;
+	float translation_z;
+	mat4_t result;
+
+	if (matrix == NULL || inverse == NULL) { return false; }
+
+	if (fabsf(matrix->elements[3]) > epsilon ||
+	    fabsf(matrix->elements[7]) > epsilon ||
+	    fabsf(matrix->elements[11]) > epsilon ||
+	    fabsf(matrix->elements[15] - 1.0f) > epsilon) {
+		return false;
+	}
+
+	a00 = matrix->elements[0];
+	a01 = matrix->elements[4];
+	a02 = matrix->elements[8];
+	a10 = matrix->elements[1];
+	a11 = matrix->elements[5];
+	a12 = matrix->elements[9];
+	a20 = matrix->elements[2];
+	a21 = matrix->elements[6];
+	a22 = matrix->elements[10];
+
+	determinant = a00 * (a11 * a22 - a12 * a21) -
+		      a01 * (a10 * a22 - a12 * a20) +
+		      a02 * (a10 * a21 - a11 * a20);
+
+	if (fabsf(determinant) <= epsilon) { return false; }
+
+	inverse_determinant = 1.0f / determinant;
+	result = mat4_identity();
+
+	result.elements[0] = (a11 * a22 - a12 * a21) * inverse_determinant;
+	result.elements[4] = (a02 * a21 - a01 * a22) * inverse_determinant;
+	result.elements[8] = (a01 * a12 - a02 * a11) * inverse_determinant;
+
+	result.elements[1] = (a12 * a20 - a10 * a22) * inverse_determinant;
+	result.elements[5] = (a00 * a22 - a02 * a20) * inverse_determinant;
+	result.elements[9] = (a02 * a10 - a00 * a12) * inverse_determinant;
+
+	result.elements[2] = (a10 * a21 - a11 * a20) * inverse_determinant;
+	result.elements[6] = (a01 * a20 - a00 * a21) * inverse_determinant;
+	result.elements[10] = (a00 * a11 - a01 * a10) * inverse_determinant;
+
+	translation_x = matrix->elements[12];
+	translation_y = matrix->elements[13];
+	translation_z = matrix->elements[14];
+
+	result.elements[12] = -(result.elements[0] * translation_x +
+				result.elements[4] * translation_y +
+				result.elements[8] * translation_z);
+	result.elements[13] = -(result.elements[1] * translation_x +
+				result.elements[5] * translation_y +
+				result.elements[9] * translation_z);
+	result.elements[14] = -(result.elements[2] * translation_x +
+				result.elements[6] * translation_y +
+				result.elements[10] * translation_z);
+
+	*inverse = result;
+
+	return true;
+}

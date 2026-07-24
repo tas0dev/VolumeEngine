@@ -316,7 +316,15 @@ static bool entity_is_ancestor(const entity_t *entity,
 	return false;
 }
 
-bool entity_set_parent(entity_t *entity, entity_t *parent) {
+bool entity_set_parent(entity_t *entity,
+		       entity_t *parent,
+		       const bool keep_world_transform) {
+	mat4_t world_matrix;
+	mat4_t parent_world_matrix;
+	mat4_t inverse_parent_world_matrix;
+	mat4_t local_matrix;
+	transform_t local_transform;
+
 	if (entity == NULL || entity == parent) { return false; }
 
 	if (parent != NULL) {
@@ -330,21 +338,46 @@ bool entity_set_parent(entity_t *entity, entity_t *parent) {
 
 	if (entity->parent == parent) { return true; }
 
+	if (keep_world_transform) {
+		world_matrix = entity_get_world_matrix(entity);
+
+		if (parent == NULL) {
+			local_matrix = world_matrix;
+		} else {
+			parent_world_matrix = entity_get_world_matrix(parent);
+
+			if (!mat4_inverse_affine(
+				    &parent_world_matrix,
+				    &inverse_parent_world_matrix)) {
+				return false;
+			}
+
+			local_matrix = mat4_multiply(
+				inverse_parent_world_matrix, world_matrix);
+		}
+
+		if (!transform_from_matrix(&local_matrix, &local_transform)) {
+			return false;
+		}
+	}
+
 	entity_unlink_from_parent(entity);
 
-	if (parent == NULL) { return true; }
+	if (parent != NULL) {
+		entity->parent = parent;
+		entity->next_sibling = parent->first_child;
+		parent->first_child = entity;
+	}
 
-	entity->parent = parent;
-	entity->next_sibling = parent->first_child;
-	parent->first_child = entity;
+	if (keep_world_transform) { entity->transform = local_transform; }
 
 	return true;
 }
 
-void entity_clear_parent(entity_t *entity) {
-	if (entity == NULL) { return; }
+bool entity_clear_parent(entity_t *entity, const bool keep_world_transform) {
+	if (entity == NULL) { return false; }
 
-	entity_unlink_from_parent(entity);
+	return entity_set_parent(entity, NULL, keep_world_transform);
 }
 
 entity_t *entity_get_parent(const entity_t *entity) {

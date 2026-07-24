@@ -30,5 +30,17 @@ transform_t transform_create(void);
 /// ### Returns
 /// - `mat4_t`: 合成済みの変換行列。
 mat4_t transform_get_matrix(const transform_t *transform);
+/// 行列を位置、回転、スケールへ分解する。
+///
+/// シアーと反転を含む行列は分解できない。
+///
+/// ### Args
+/// - `const mat4_t *matrix`: 分解する行列。
+/// - `transform_t *transform`: 結果の格納先。
+///
+/// ### Returns
+/// - `true`: 分解に成功した。
+/// - `false`: 行列が不正、特異、シアーまたは反転を含む。
+bool transform_from_matrix(const mat4_t *matrix, transform_t *transform);
 
 #endif

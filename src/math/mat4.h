@@ -9,6 +9,7 @@
 #define VOLUME_MATH_MAT4_H
 
 #include "math/vec3.h"
+#include <stdbool.h>
 
 typedef struct mat4 {
 	float elements[16];
@@ -127,5 +128,15 @@ mat4_t mat4_scale(vec3_t scale);
 /// ### Returns
 /// - `vec3_t`: 変換後の位置。
 vec3_t mat4_transform_point(mat4_t matrix, vec3_t point);
+/// アフィン変換行列の逆行列を計算する。
+///
+/// ### Args
+/// - `const mat4_t *matrix`: 逆変換する行列。
+/// - `mat4_t *inverse`: 結果の格納先。
+///
+/// ### Returns
+/// - `true`: 逆行列を計算できた。
+/// - `false`: 行列が特異、または引数が不正だった。
+bool mat4_inverse_affine(const mat4_t *matrix, mat4_t *inverse);
 
 #endif

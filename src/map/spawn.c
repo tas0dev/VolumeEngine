@@ -45,7 +45,7 @@ static bool load_entity_parent(entity_t *entity,
 		return false;
 	}
 
-	if (!entity_set_parent(entity, parent)) {
+	if (!entity_set_parent(entity, parent, false)) {
 		set_error(error, error_size,
 			  "failed to set parent \"%s\" for entity \"%s\"",
 			  parent_name,

@@ -9,6 +9,8 @@
 #include "common.h"
 #include "math/math.h"
 
+#include <math.h>
+
 static collider_t create_floor_collider(void) {
 	return collider_create_box(vec3_create(0.0f, 0.0f, 0.0f),
 				   vec3_create(5.0f, 0.5f, 5.0f));
@@ -362,6 +364,122 @@ static bool test_rotated_box_returns_sat_correction(void) {
 	return true;
 }
 
+static bool test_trace_aabb_hits_rotated_box(void) {
+	collision_trace_t trace;
+	collision_world_t *world;
+	collider_t collider;
+	mat4_t transform;
+	aabb_t moving_bounds;
+	vec3_t movement;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+
+	transform = mat4_rotation_z(PI * 0.25f);
+
+	collider = collider_create_box_transformed(
+		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(2.0f, 0.25f, 0.5f),
+		transform);
+
+	CHECK(collision_world_add_collider(world, 1, collider,
+					   vec3_create(0.0f, 0.0f, 0.0f)));
+
+	moving_bounds = aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.2f, 0.2f, 0.2f));
+
+	CHECK(collision_world_trace_aabb(
+		world, moving_bounds, vec3_create(-4.0f, -4.0f, 0.0f),
+		vec3_create(4.0f, 4.0f, 0.0f), &trace));
+
+	CHECK(trace.hit);
+	CHECK(!trace.started_inside);
+	CHECK(trace.entity_id == 1);
+	CHECK(trace.fraction > 0.0f);
+	CHECK(trace.fraction < 1.0f);
+
+	movement = vec3_create(8.0f, 8.0f, 0.0f);
+
+	CHECK(vec3_dot(trace.normal, movement) < 0.0f);
+	CHECK(trace.normal.x < 0.0f);
+	CHECK(trace.normal.y < 0.0f);
+	CHECK(fabsf(fabsf(trace.normal.x) - fabsf(trace.normal.y)) < 0.0001f);
+	CHECK(fabsf(trace.normal.z) < 0.0001f);
+
+	collision_world_destroy(world);
+
+	return true;
+}
+
+static bool test_trace_aabb_avoids_rotated_box_false_positive(void) {
+	collision_trace_t trace;
+	collision_world_t *world;
+	collider_t collider;
+	mat4_t transform;
+	aabb_t moving_bounds;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+
+	transform = mat4_rotation_z(PI * 0.25f);
+
+	collider = collider_create_box_transformed(
+		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(2.0f, 0.1f, 0.5f),
+		transform);
+
+	CHECK(collision_world_add_collider(world, 1, collider,
+					   vec3_create(0.0f, 0.0f, 0.0f)));
+
+	moving_bounds = aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.1f, 0.1f, 0.1f));
+
+	CHECK(!collision_world_trace_aabb(
+		world, moving_bounds, vec3_create(-2.0f, 1.7f, 0.0f),
+		vec3_create(2.0f, 1.7f, 0.0f), &trace));
+
+	CHECK(!trace.hit);
+	CHECK(trace.fraction == 1.0f);
+
+	collision_world_destroy(world);
+
+	return true;
+}
+
+static bool test_trace_aabb_detects_high_speed_rotated_box(void) {
+	collision_trace_t trace;
+	collision_world_t *world;
+	collider_t collider;
+	mat4_t transform;
+	aabb_t moving_bounds;
+
+	world = collision_world_create();
+	CHECK(world != NULL);
+
+	transform = mat4_rotation_y(PI * 0.25f);
+
+	collider = collider_create_box_transformed(
+		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(0.1f, 2.0f, 2.0f),
+		transform);
+
+	CHECK(collision_world_add_collider(world, 1, collider,
+					   vec3_create(0.0f, 0.0f, 0.0f)));
+
+	moving_bounds = aabb_create(vec3_create(0.0f, 0.0f, 0.0f),
+				    vec3_create(0.25f, 0.5f, 0.25f));
+
+	CHECK(collision_world_trace_aabb(
+		world, moving_bounds, vec3_create(-100.0f, 0.0f, 0.0f),
+		vec3_create(100.0f, 0.0f, 0.0f), &trace));
+
+	CHECK(trace.hit);
+	CHECK(!trace.started_inside);
+	CHECK(trace.fraction > 0.0f);
+	CHECK(trace.fraction < 1.0f);
+
+	collision_world_destroy(world);
+
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"add and remove collider",		    test_add_and_remove	       },
@@ -380,6 +498,12 @@ int main(void) {
 		 test_rotated_box_does_not_use_aabb_approximation				 },
 		{"rotated box returns SAT correction",
 		 test_rotated_box_returns_sat_correction					},
+		{"trace AABB hits rotated box",
+		 test_trace_aabb_hits_rotated_box						 },
+		{"trace AABB avoids rotated box false positive",
+		 test_trace_aabb_avoids_rotated_box_false_positive			  },
+		{"trace AABB detects high-speed rotated box",
+		 test_trace_aabb_detects_high_speed_rotated_box			       },
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

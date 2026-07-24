@@ -173,6 +173,16 @@ debug_hud_test = executable(
     install : false,
 )
 
+entity_parent_test = executable(
+    'entity-parent-test',
+    [
+        'common.c',
+        'entity_parent_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -251,4 +261,9 @@ test(
 test(
     'debug-hud',
     debug_hud_test
+)
+
+test(
+    'entity-parent',
+    entity_parent_test
 )

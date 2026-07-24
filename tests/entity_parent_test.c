@@ -1,0 +1,281 @@
+/*
+ * Copyright (c) 2026, tas0dev.
+ * This software is provided under the zlib License.
+ *
+ * Created by tas0dev
+ */
+
+#include "common.h"
+#include "entity/entity.h"
+#include "entity/world.h"
+#include "math/math.h"
+
+#include <math.h>
+
+static bool nearly_equal(const float left, const float right) {
+	return fabsf(left - right) < 0.0001f;
+}
+
+static bool test_sets_and_clears_parent(void) {
+	entity_t parent;
+	entity_t child;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&child, 2, NULL);
+
+	CHECK(entity_set_parent(&child, &parent));
+	CHECK(entity_get_parent(&child) == &parent);
+	CHECK(entity_get_first_child(&parent) == &child);
+	CHECK(entity_get_next_sibling(&child) == NULL);
+
+	entity_clear_parent(&child);
+
+	CHECK(entity_get_parent(&child) == NULL);
+	CHECK(entity_get_first_child(&parent) == NULL);
+	CHECK(entity_get_next_sibling(&child) == NULL);
+
+	entity_destroy(&child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
+static bool test_manages_multiple_children(void) {
+	entity_t parent;
+	entity_t first_child;
+	entity_t second_child;
+	entity_t third_child;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&first_child, 2, NULL);
+	entity_initialize(&second_child, 3, NULL);
+	entity_initialize(&third_child, 4, NULL);
+
+	CHECK(entity_set_parent(&first_child, &parent));
+	CHECK(entity_set_parent(&second_child, &parent));
+	CHECK(entity_set_parent(&third_child, &parent));
+
+	CHECK(entity_get_first_child(&parent) == &third_child);
+	CHECK(entity_get_next_sibling(&third_child) == &second_child);
+	CHECK(entity_get_next_sibling(&second_child) == &first_child);
+	CHECK(entity_get_next_sibling(&first_child) == NULL);
+
+	entity_clear_parent(&second_child);
+
+	CHECK(entity_get_first_child(&parent) == &third_child);
+	CHECK(entity_get_next_sibling(&third_child) == &first_child);
+	CHECK(entity_get_next_sibling(&first_child) == NULL);
+	CHECK(entity_get_parent(&second_child) == NULL);
+	CHECK(entity_get_next_sibling(&second_child) == NULL);
+
+	entity_destroy(&third_child);
+
+	CHECK(entity_get_first_child(&parent) == &first_child);
+	CHECK(entity_get_next_sibling(&first_child) == NULL);
+
+	entity_destroy(&second_child);
+	entity_destroy(&first_child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
+static bool test_rejects_invalid_hierarchy(void) {
+	entity_t first;
+	entity_t second;
+	entity_t third;
+
+	entity_initialize(&first, 1, NULL);
+	entity_initialize(&second, 2, NULL);
+	entity_initialize(&third, 3, NULL);
+
+	CHECK(!entity_set_parent(NULL, &first));
+	CHECK(!entity_set_parent(&first, &first));
+
+	CHECK(entity_set_parent(&second, &first));
+	CHECK(entity_set_parent(&third, &second));
+
+	CHECK(!entity_set_parent(&first, &third));
+	CHECK(entity_get_parent(&first) == NULL);
+	CHECK(entity_get_parent(&second) == &first);
+	CHECK(entity_get_parent(&third) == &second);
+
+	entity_destroy(&third);
+	entity_destroy(&second);
+	entity_destroy(&first);
+
+	return true;
+}
+
+static bool test_rejects_different_worlds(void) {
+	entity_t parent;
+	entity_t child;
+	world_t *first_world;
+	world_t *second_world;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&child, 2, NULL);
+
+	first_world = world_create();
+	second_world = world_create();
+
+	CHECK(first_world != NULL);
+	CHECK(second_world != NULL);
+
+	parent.world = first_world;
+	child.world = second_world;
+
+	CHECK(!entity_set_parent(&child, &parent));
+	CHECK(entity_get_parent(&child) == NULL);
+	CHECK(entity_get_first_child(&parent) == NULL);
+
+	child.world = NULL;
+
+	CHECK(!entity_set_parent(&child, &parent));
+
+	child.world = first_world;
+
+	CHECK(entity_set_parent(&child, &parent));
+
+	entity_clear_parent(&child);
+	parent.world = NULL;
+	child.world = NULL;
+
+	world_destroy(second_world);
+	world_destroy(first_world);
+
+	entity_destroy(&child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
+static bool test_destroying_child_unlinks_from_parent(void) {
+	entity_t parent;
+	entity_t first_child;
+	entity_t second_child;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&first_child, 2, NULL);
+	entity_initialize(&second_child, 3, NULL);
+
+	CHECK(entity_set_parent(&first_child, &parent));
+	CHECK(entity_set_parent(&second_child, &parent));
+
+	CHECK(entity_get_first_child(&parent) == &second_child);
+	CHECK(entity_get_next_sibling(&second_child) == &first_child);
+
+	entity_destroy(&second_child);
+
+	CHECK(entity_get_first_child(&parent) == &first_child);
+	CHECK(entity_get_next_sibling(&first_child) == NULL);
+
+	entity_destroy(&first_child);
+
+	CHECK(entity_get_first_child(&parent) == NULL);
+
+	entity_destroy(&parent);
+
+	return true;
+}
+
+static bool test_destroying_parent_detaches_children(void) {
+	entity_t parent;
+	entity_t first_child;
+	entity_t second_child;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&first_child, 2, NULL);
+	entity_initialize(&second_child, 3, NULL);
+
+	CHECK(entity_set_parent(&first_child, &parent));
+	CHECK(entity_set_parent(&second_child, &parent));
+
+	entity_destroy(&parent);
+
+	CHECK(entity_get_parent(&first_child) == NULL);
+	CHECK(entity_get_parent(&second_child) == NULL);
+	CHECK(entity_get_next_sibling(&first_child) == NULL);
+	CHECK(entity_get_next_sibling(&second_child) == NULL);
+
+	entity_destroy(&second_child);
+	entity_destroy(&first_child);
+
+	return true;
+}
+
+static bool test_world_transform_includes_parent(void) {
+	entity_t parent;
+	entity_t child;
+	entity_t grandchild;
+	vec3_t position;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&child, 2, NULL);
+	entity_initialize(&grandchild, 3, NULL);
+
+	parent.transform.position = vec3_create(10.0f, 2.0f, -3.0f);
+	child.transform.position = vec3_create(2.0f, 3.0f, 4.0f);
+	grandchild.transform.position = vec3_create(-1.0f, 1.0f, 2.0f);
+
+	CHECK(entity_set_parent(&child, &parent));
+	CHECK(entity_set_parent(&grandchild, &child));
+
+	position = entity_get_world_position(&grandchild);
+
+	CHECK(nearly_equal(position.x, 11.0f));
+	CHECK(nearly_equal(position.y, 6.0f));
+	CHECK(nearly_equal(position.z, 3.0f));
+
+	entity_destroy(&grandchild);
+	entity_destroy(&child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
+static bool test_world_transform_includes_rotation_and_scale(void) {
+	entity_t parent;
+	entity_t child;
+	vec3_t position;
+
+	entity_initialize(&parent, 1, NULL);
+	entity_initialize(&child, 2, NULL);
+
+	parent.transform.position = vec3_create(5.0f, 0.0f, 0.0f);
+	parent.transform.rotation.z = PI * 0.5f;
+	parent.transform.scale = vec3_create(2.0f, 2.0f, 2.0f);
+	child.transform.position = vec3_create(1.0f, 0.0f, 0.0f);
+
+	CHECK(entity_set_parent(&child, &parent));
+
+	position = entity_get_world_position(&child);
+
+	CHECK(nearly_equal(position.x, 5.0f));
+	CHECK(nearly_equal(position.y, 2.0f));
+	CHECK(nearly_equal(position.z, 0.0f));
+
+	entity_destroy(&child);
+	entity_destroy(&parent);
+
+	return true;
+}
+
+int main(void) {
+	static const test_case_t tests[] = {
+		{"sets and clears parent",			   test_sets_and_clears_parent   },
+		{"manages multiple children",		      test_manages_multiple_children},
+		{"rejects invalid hierarchy",		      test_rejects_invalid_hierarchy},
+		{"rejects different worlds",		     test_rejects_different_worlds },
+		{"destroying child unlinks from parent",
+		 test_destroying_child_unlinks_from_parent					  },
+		{"destroying parent detaches children",
+		 test_destroying_parent_detaches_children					 },
+		{"world transform includes parent",
+		 test_world_transform_includes_parent					     },
+		{"world transform includes rotation and scale",
+		 test_world_transform_includes_rotation_and_scale				 },
+	};
+
+	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));
+}

@@ -117,10 +117,25 @@ void entity_draw(entity_t *entity,
 
 void entity_destroy(entity_t *entity) {
 	const entity_class_t *class;
+	entity_t *child;
+	entity_t *next_child;
 
 	if (entity == NULL) { return; }
 
 	class = entity->class;
+
+	entity_unlink_from_parent(entity);
+
+	child = entity->first_child;
+
+	while (child != NULL) {
+		next_child = child->next_sibling;
+		child->parent = NULL;
+		child->next_sibling = NULL;
+		child = next_child;
+	}
+
+	entity->first_child = NULL;
 
 	entity_io_destroy(entity);
 	free(entity->targetname);
@@ -307,10 +322,10 @@ bool entity_set_parent(entity_t *entity, entity_t *parent) {
 	if (parent != NULL) {
 		if (entity_is_ancestor(parent, entity)) { return false; }
 
-		if (entity->world != NULL && parent->world != NULL &&
+		if ((entity->world != NULL || parent->world != NULL) &&
 		    entity->world != parent->world) {
 			return false;
-		}
+		    }
 	}
 
 	if (entity->parent == parent) { return true; }

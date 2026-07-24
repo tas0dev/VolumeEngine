@@ -64,7 +64,8 @@ static entity_t *create_entity(const entity_id_t id,
 	mover_config.outputs.on_move_to_end = "OnOpen";
 	mover_config.outputs.on_reached_end = "OnFullyOpen";
 	mover_config.outputs.on_move_to_start = "OnClose";
-	mover_config.outputs.on_reached_start = "OnFullyClosed";
+	mover_config.outputs.on_reached_end = NULL;
+	mover_config.outputs.on_reached_start = "OnReleased";
 	mover_config.outputs.on_blocked = "OnBlocked";
 	mover_config.outputs.on_unblocked = "OnUnblocked";
 	starts_open = false;

@@ -48,59 +48,86 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 
 	CHECK(player_register());
 	CHECK(func_button_register());
+
 	assets = asset_manager_create();
 	CHECK(assets != NULL);
+
 	mesh = (mesh_t *)(void *)&mesh_marker;
+
 	CHECK(asset_manager_register_mesh(assets, "models/button", mesh));
 	CHECK(asset_manager_register_material(assets, "materials/button",
 					      &material));
+
 	map = map_parse(source, error, sizeof(error));
 	CHECK(map != NULL);
+
 	world = world_create();
 	CHECK(world != NULL);
+
 	CHECK(map_spawn_entities(map, world, assets, error, sizeof(error)));
+
 	player = world_find_by_targetname(world, "player");
 	button_entity = world_find_by_targetname(world, "button");
 	button = func_button_from_entity(button_entity);
-	CHECK(player != NULL && button != NULL);
+
+	CHECK(player != NULL);
+	CHECK(button != NULL);
 	CHECK(entity_is_active(button_entity));
 	CHECK(!func_button_is_enabled(button));
 
 	filter.layer = COLLISION_LAYER_PLAYER;
 	filter.mask = COLLISION_LAYER_WORLD_STATIC | COLLISION_LAYER_DYNAMIC;
 	filter.ignored_entity_id = player->id;
+
 	CHECK(collision_world_trace_ray_filtered(
 		world_get_const_collision_world(world),
 		vec3_create(0.0f, 0.0f, 0.0f), vec3_create(0.0f, 0.0f, -3.0f),
 		filter, &trace));
 	CHECK(trace.entity_id == button_entity->id);
+
 	CHECK(!world_send_input_to_entity(world, button_entity, "Use", "",
 					  player, player));
+
 	CHECK(world_send_input_to_entity(world, button_entity, "Enable", "",
 					 player, player));
 	CHECK(func_button_is_enabled(button));
+
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",
 					 player, player));
 	CHECK(func_button_is_pressed(button));
-	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
-	world_update(world, 0.0f);
+	CHECK(func_button_get_state(button) ==
+	      FUNC_BUTTON_PRESSING);
 	CHECK(entity_is_active(player));
+
+	world_update(world, 0.0f);
+
+	CHECK(!entity_is_active(player));
+	CHECK(func_button_get_state(button) ==
+	      FUNC_BUTTON_PRESSING);
+
 	world_update(world, 0.5f);
+
 	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
 	CHECK(fabsf(button_entity->transform.position.z + 2.1f) < 0.0001f);
+
 	world_update(world, 0.5f);
+
 	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSED);
 	CHECK(fabsf(button_entity->transform.position.z + 2.2f) < 0.0001f);
-	CHECK(entity_is_active(player));
-	world_update(world, 0.0f);
-	CHECK(!entity_is_active(player));
 
 	world_update(world, 1.0f);
-	CHECK(func_button_get_state(button) == FUNC_BUTTON_RELEASING);
+
+	CHECK(func_button_get_state(button) ==
+	      FUNC_BUTTON_RELEASING);
+
 	world_update(world, 1.0f);
+
 	CHECK(!func_button_is_pressed(button));
-	CHECK(func_button_get_state(button) == FUNC_BUTTON_IDLE);
-	CHECK(fabsf(button_entity->transform.position.z + 2.0f) < 0.0001f);
+	CHECK(func_button_get_state(button) ==
+	      FUNC_BUTTON_IDLE);
+	CHECK(fabsf(
+		      button_entity->transform.position.z + 2.0f) < 0.0001f);
+
 	CHECK(world_send_input_to_entity(world, button_entity, "Lock", "",
 					 player, player));
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",
@@ -111,6 +138,7 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 	map_destroy(map);
 	asset_manager_destroy(assets);
 	entity_registry_shutdown();
+
 	return true;
 }
 

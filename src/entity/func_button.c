@@ -90,7 +90,7 @@ static entity_t *create_entity(const entity_id_t id,
 	mover_config.speed = 1.0f;
 	mover_config.wait = 1.0f;
 	mover_config.block_policy = MOVER_BLOCK_STOP;
-	mover_config.sweep_collider = true;
+	mover_config.sweep_collider = false;
 	mover_config.move_riders = true;
 	mover_config.outputs.on_reached_end = "OnPressed";
 	mover_config.outputs.on_reached_start = "OnReleased";
@@ -213,6 +213,7 @@ static bool accept_input(entity_t *entity,
 	entity_t *activator;
 
 	if (entity == NULL || input_name == NULL) { return false; }
+
 	button = (func_button_t *)entity;
 	activator = context == NULL ? NULL : context->activator;
 
@@ -220,51 +221,65 @@ static bool accept_input(entity_t *entity,
 		button->enabled = true;
 		return true;
 	}
+
 	if (strcmp(input_name, "Disable") == 0) {
 		button->enabled = false;
 		(void)mover_move_to_start(&button->mover,
 					  mover_get_activator(&button->mover));
 		return true;
 	}
+
 	if (strcmp(input_name, "Toggle") == 0) {
 		button->enabled = !button->enabled;
+
 		if (!button->enabled) {
 			(void)mover_move_to_start(
 				&button->mover,
 				mover_get_activator(&button->mover));
 		}
+
 		return true;
 	}
+
 	if (strcmp(input_name, "Lock") == 0) {
 		button->locked = true;
 		return true;
 	}
+
 	if (strcmp(input_name, "Unlock") == 0) {
 		button->locked = false;
 		return true;
 	}
+
 	if (strcmp(input_name, "Reset") == 0) {
 		(void)mover_move_to_start(&button->mover,
 					  mover_get_activator(&button->mover));
 		return true;
 	}
+
 	if (strcmp(input_name, "Use") != 0 &&
 	    strcmp(input_name, "Press") != 0) {
 		return false;
-	}
+	    }
+
 	if (!button->enabled) { return false; }
+
 	if (button->locked) {
 		world_fire_output(entity->world, entity, "OnLockedUse",
 				  activator);
 		return true;
 	}
+
 	if (mover_get_state(&button->mover) == MOVER_MOVING_TO_END ||
 	    mover_get_state(&button->mover) == MOVER_AT_END) {
 		return true;
-	}
+	    }
 
-	(void)mover_move_to_end(&button->mover, activator);
-	return true;
+	if (!mover_move_to_end(&button->mover, activator)) { return false; }
+
+	    world_fire_output(entity->world, entity, "OnPressed", activator);
+
+	    return true;
 }
 
 static void

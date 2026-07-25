@@ -26,6 +26,22 @@ entity
 
 entity
 {
+	"classname" "prop_breakable"
+	"targetname" "shooting_target"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "3 0 -4"
+	"angles" "0 0 0"
+	"scale" "1 1 1"
+	"casts_shadow" "1"
+	"collision" "box"
+	"collision_size" "1 1 1"
+	"health" "40"
+	"OnBreak" "example_door,Open,,0,1"
+}
+
+entity
+{
 	"classname" "prop_static"
 	"targetname" "floor"
 	"model" "models/test_floor.obj"

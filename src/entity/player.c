@@ -15,12 +15,14 @@
 struct player {
 	entity_t entity;
 	character_controller_t controller;
+	health_t health;
 	entity_id_t ladder_id;
 	float ladder_detach_time;
 };
 
 static entity_t *create_entity(entity_id_t id,
 			       const entity_spawn_context_t *context);
+static bool take_damage(entity_t *entity, const damage_info_t *damage);
 static void destroy_entity(entity_t *entity);
 static void sync_player_transform_and_collider(player_t *player);
 static func_ladder_t *find_touching_ladder(const player_t *player,
@@ -31,6 +33,7 @@ set_error(const entity_spawn_context_t *context, const char *format, ...);
 static const entity_class_t player_class = {
 	.classname = "player",
 	.create = create_entity,
+	.take_damage = take_damage,
 	.destroy = destroy_entity,
 };
 
@@ -149,7 +152,7 @@ void player_move(player_t *player,
 	vec3_t wish_direction;
 	bool entering_ladder;
 
-	if (player == NULL) { return; }
+	if (player == NULL || !health_is_alive(&player->health)) { return; }
 
 	collision_world =
 		player->entity.world == NULL
@@ -285,11 +288,13 @@ static entity_t *create_entity(const entity_id_t id,
 	vec3_t half_extents;
 	float radius;
 	float height;
+	float maximum_health;
 
 	if (context == NULL || context->properties == NULL) { return NULL; }
 
 	radius = 0.35f;
 	height = 1.7f;
+	maximum_health = 100.0f;
 
 	text = entity_property_get(context->source, "radius");
 	if (text != NULL &&
@@ -307,6 +312,15 @@ static entity_t *create_entity(const entity_id_t id,
 		return NULL;
 	}
 
+	text = entity_property_get(context->source, "health");
+	if (text != NULL &&
+	    (!entity_property_parse_float(text, &maximum_health) ||
+	     maximum_health <= 0.0f)) {
+		set_error(context, "invalid positive player health: \"%s\"",
+			  text);
+		return NULL;
+	}
+
 	player = calloc(1, sizeof(*player));
 	if (player == NULL) { return NULL; }
 
@@ -314,6 +328,10 @@ static entity_t *create_entity(const entity_id_t id,
 	player->entity.transform = context->properties->transform;
 	player->controller = character_controller_create(
 		player->entity.transform.position, radius, height);
+	if (!health_initialize(&player->health, maximum_health)) {
+		free(player);
+		return NULL;
+	}
 
 	center = aabb_get_center(player->controller.bounds);
 	half_extents = aabb_get_half_extents(player->controller.bounds);
@@ -332,6 +350,31 @@ static entity_t *create_entity(const entity_id_t id,
 	}
 
 	return &player->entity;
+}
+
+static bool take_damage(entity_t *entity, const damage_info_t *damage) {
+	player_t *player;
+	float applied;
+
+	player = player_from_entity(entity);
+	if (player == NULL || damage == NULL) { return false; }
+	applied = health_apply_damage(&player->health, damage->amount);
+	if (applied <= 0.0f) { return false; }
+	if (entity->world != NULL) {
+		(void)world_fire_output(entity->world, entity, "OnDamaged",
+					damage->attacker);
+	}
+	if (!health_is_alive(&player->health)) {
+		entity_set_active(entity, false);
+		if (entity->world != NULL) {
+			(void)collision_world_remove(
+				world_get_collision_world(entity->world),
+				entity->id);
+			(void)world_fire_output(entity->world, entity,
+						"OnDeath", damage->attacker);
+		}
+	}
+	return true;
 }
 
 static void destroy_entity(entity_t *entity) { free(entity); }
@@ -355,4 +398,16 @@ bool player_get_collision_debug_state(const player_t *player,
 	if (player == NULL) { return false; }
 
 	return character_controller_get_debug_state(&player->controller, state);
+}
+
+float player_get_health(const player_t *player) {
+	return player == NULL ? 0.0f : health_get_current(&player->health);
+}
+
+float player_get_max_health(const player_t *player) {
+	return player == NULL ? 0.0f : health_get_maximum(&player->health);
+}
+
+bool player_is_alive(const player_t *player) {
+	return player != NULL && health_is_alive(&player->health);
 }

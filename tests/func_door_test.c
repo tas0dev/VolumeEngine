@@ -33,7 +33,8 @@ static bool test_door_motion_inputs_and_collision(void) {
 		"\t\"move_offset\" \"4 0 0\"\n"
 		"\t\"speed\" \"2\"\n"
 		"\t\"wait\" \"-1\"\n"
-		"\t\"OnFullyOpen\" \"!self,Close,,0.5,1\"\n}\n";
+		"\t\"OnFullyOpen\" \"!self,Close,,0.5,1\"\n"
+		"\t\"OnFullyClosed\" \"!self,Lock,,0,1\"\n}\n";
 	asset_manager_t *assets;
 	collision_result_t collision;
 	func_door_t *door;
@@ -85,7 +86,7 @@ static bool test_door_motion_inputs_and_collision(void) {
 	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSED);
 	CHECK(door->prop.entity.transform.position.x == 0.0f);
 
-	CHECK(world_send_input(world, "door", "Lock", "", NULL, NULL) == 1);
+	world_update(world, 0.0f);
 	CHECK(world_send_input(world, "door", "Open", "", NULL, NULL) == 1);
 	CHECK(func_door_get_state(door) == FUNC_DOOR_CLOSED);
 	CHECK(world_send_input(world, "door", "Unlock", "", NULL, NULL) == 1);

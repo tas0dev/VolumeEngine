@@ -8,6 +8,7 @@
 #include "collision/triangle.h"
 #include "collision/triangle_mesh_collider.h"
 #include "common.h"
+#include "entity/damage.h"
 #include "entity/func_ladder.h"
 #include "entity/player.h"
 #include "entity/world.h"
@@ -26,6 +27,48 @@ static triangle_mesh_collider_t *create_ramp(const float slope) {
 				       vec3_create(5.0f, 5.0f * slope, 5.0f),
 				       vec3_create(5.0f, 5.0f * slope, -5.0f));
 	return triangle_mesh_collider_create(triangles, 2);
+}
+
+static bool test_player_takes_damage_and_dies(void) {
+	damage_info_t damage = {0};
+	entity_input_context_t input_context = {0};
+	entity_properties_t properties;
+	entity_spawn_context_t context = {0};
+	entity_t *entity;
+	player_t *player;
+	world_t *world;
+
+	CHECK(player_register());
+	world = world_create();
+	CHECK(world != NULL);
+	properties = entity_properties_create();
+	context.properties = &properties;
+	entity = world_spawn_entity(world, "player", &context);
+	player = player_from_entity(entity);
+	CHECK(player != NULL);
+	CHECK(player_get_health(player) == 100.0f);
+	CHECK(player_get_max_health(player) == 100.0f);
+	CHECK(player_is_alive(player));
+
+	damage.amount = 25.0f;
+	damage.type = DAMAGE_TYPE_BULLET;
+	CHECK(entity_take_damage(entity, &damage));
+	CHECK(player_get_health(player) == 75.0f);
+	CHECK(player_is_alive(player));
+
+	input_context.world = world;
+	input_context.parameter = "100";
+	CHECK(entity_accept_input(entity, "TakeDamage", &input_context));
+	CHECK(player_get_health(player) == 0.0f);
+	CHECK(!player_is_alive(player));
+	CHECK(!entity_is_active(entity));
+	CHECK(collision_world_get_count(
+		      world_get_const_collision_world(world)) == 0);
+	CHECK(!entity_take_damage(entity, &damage));
+
+	world_destroy(world);
+	entity_registry_shutdown();
+	return true;
 }
 
 static bool test_player_moves_without_hitting_itself(void) {
@@ -305,6 +348,8 @@ static bool test_player_climbs_and_jumps_off_ladder(void) {
 
 int main(void) {
 	static const test_case_t tests[] = {
+		{"player takes damage and dies",
+		 test_player_takes_damage_and_dies	  },
 		{"player moves without hitting itself",
 		 test_player_moves_without_hitting_itself},
 		{"air strafe exceeds ground speed",

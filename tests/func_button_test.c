@@ -33,7 +33,7 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 		"\t\"move_offset\" \"0 0 -0.2\"\n"
 		"\t\"speed\" \"0.2\"\n"
 		"\t\"wait\" \"1\"\n"
-		"\t\"OnPressed\" \"player,Disable,,0,-1\"\n}\n";
+		"\t\"OnPressed\" \"player,Toggle,,0,-1\"\n}\n";
 	asset_manager_t *assets;
 	collision_filter_t filter;
 	collision_trace_t trace;
@@ -114,11 +114,13 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 
 	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSED);
 	CHECK(fabsf(button_entity->transform.position.z + 2.2f) < 0.0001f);
+	CHECK(!entity_is_active(player));
 
 	world_update(world, 1.0f);
 
 	CHECK(func_button_get_state(button) ==
 	      FUNC_BUTTON_RELEASING);
+	CHECK(!entity_is_active(player));
 
 	world_update(world, 1.0f);
 

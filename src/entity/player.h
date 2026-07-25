@@ -8,6 +8,8 @@
 #ifndef VOLUME_ENTITY_PLAYER_H
 #define VOLUME_ENTITY_PLAYER_H
 
+#include "entity/damage.h"
+#include "entity/health.h"
 #include "physics/character_controller.h"
 
 typedef struct player player_t;
@@ -165,5 +167,30 @@ void player_move(player_t *player,
 /// - `false`: 情報がない、または引数が不正だった。
 bool player_get_collision_debug_state(const player_t *player,
 				      character_debug_state_t *state);
+/// プレイヤーの現在ヘルスを取得する。
+///
+/// ### Args
+/// - `const player_t *player`: 対象のプレイヤー。
+///
+/// ### Returns
+/// - `float`: 現在ヘルス。引数が`NULL`の場合は`0`。
+float player_get_health(const player_t *player);
+/// プレイヤーの最大ヘルスを取得する。
+///
+/// ### Args
+/// - `const player_t *player`: 対象のプレイヤー。
+///
+/// ### Returns
+/// - `float`: 最大ヘルス。引数が`NULL`の場合は`0`。
+float player_get_max_health(const player_t *player);
+/// プレイヤーが生存しているか調べる。
+///
+/// ### Args
+/// - `const player_t *player`: 対象のプレイヤー。
+///
+/// ### Returns
+/// - `true`: 生存している。
+/// - `false`: 死亡している、または引数が`NULL`。
+bool player_is_alive(const player_t *player);
 
 #endif

@@ -18,6 +18,7 @@
 #include <stddef.h>
 
 typedef struct entity_class entity_class_t;
+struct damage_info;
 struct asset_manager;
 
 typedef struct entity_spawn_context {
@@ -79,6 +80,16 @@ struct entity_class {
 	bool (*accept_input)(entity_t *entity,
 			     const char *input_name,
 			     const entity_input_context_t *context);
+	/// クラス固有のダメージ処理を行う。
+	///
+	/// ### Args
+	/// - `entity_t *entity`: ダメージを受けるエンティティ。
+	/// - `const struct damage_info *damage`: ダメージ情報。
+	///
+	/// ### Returns
+	/// - `true`: ダメージを受理した。
+	/// - `false`: 無効またはダメージを受けられなかった。
+	bool (*take_damage)(entity_t *entity, const struct damage_info *damage);
 	/// クラス固有エンティティと所有リソースを破棄する。
 	///
 	/// ### Args

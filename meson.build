@@ -28,10 +28,13 @@ volume_dependencies = [
 
 volume_sources = files(
         'src/volume.c',
+        'src/game/hitscan_weapon.c',
         'src/platform/platform.c',
         'src/core/log.c',
         'src/core/path.c',
         'src/entity/entity.c',
+        'src/entity/damage.c',
+        'src/entity/health.c',
         'src/entity/mover.c',
         'src/entity/func_door.c',
         'src/entity/func_button.c',
@@ -45,6 +48,7 @@ volume_sources = files(
         'src/entity/builtin.c',
         'src/entity/prop_static.c',
         'src/entity/prop_dynamic.c',
+        'src/entity/prop_breakable.c',
         'src/entity/light_environment.c',
         'src/entity/world.c',
         'src/entity/properties.c',

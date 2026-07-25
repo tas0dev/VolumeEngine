@@ -7,6 +7,7 @@
 
 #include "volume.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 typedef struct game_state {
@@ -20,6 +21,8 @@ typedef struct game_state {
 	float yaw;
 	float pitch;
 	bool jump_requested;
+	bool fire_requested;
+	hitscan_weapon_t weapon;
 	debug_hud_t debug_hud;
 } game_state_t;
 
@@ -32,6 +35,10 @@ static void shutdown(engine_t *engine, void *user_data);
 static void destroy_game_resources(game_state_t *game_state);
 static void fixed_update(engine_t *engine, float delta_time, void *user_data);
 static void use_look_target(game_state_t *game_state);
+static void draw_player_hud(const game_state_t *game_state,
+			    renderer_t *renderer,
+			    int width,
+			    int height);
 
 static game_state_t state;
 
@@ -75,6 +82,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	char *asset_root;
 	char *map_path;
 	char error[512];
+	hitscan_weapon_config_t weapon_config;
 
 	(void)engine;
 
@@ -169,6 +177,13 @@ static bool initialize(engine_t *engine, void *user_data) {
 
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
 	game_state->jump_requested = false;
+	game_state->fire_requested = false;
+	weapon_config = hitscan_weapon_config_create();
+	if (!hitscan_weapon_initialize(&game_state->weapon, &weapon_config)) {
+		log_error("Failed to initialize weapon");
+		destroy_game_resources(game_state);
+		return false;
+	}
 
 	debug_hud_initialize(&game_state->debug_hud);
 
@@ -177,7 +192,7 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->yaw = player_start->transform.rotation.y;
 	game_state->pitch = -player_start->transform.rotation.x;
 
-	log_info("Look at an entity and press E to use it");
+	log_info("Left click: shoot, R: reload, E: use");
 
 	return true;
 }
@@ -192,6 +207,7 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	float mouse_y;
 	float mouse_wheel_y;
 	float pitch_limit;
+	bool mouse_was_captured;
 	const float mouse_sensitivity = 0.0025f;
 
 	(void)delta_time;
@@ -201,13 +217,17 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 	if (game_state == NULL || input == NULL) { return; }
 
+	mouse_was_captured = engine_is_mouse_captured(engine);
 	if (input_key_pressed(input, INPUT_KEY_ESCAPE)) {
 		engine_set_mouse_captured(engine, false);
 	}
 
-	if (!engine_is_mouse_captured(engine) &&
+	if (!mouse_was_captured &&
 	    input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
 		engine_set_mouse_captured(engine, true);
+	} else if (mouse_was_captured &&
+		   input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
+		game_state->fire_requested = true;
 	}
 
 	mouse_x = 0.0f;
@@ -278,6 +298,10 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		use_look_target(game_state);
 	}
 
+	if (input_key_pressed(input, INPUT_KEY_R)) {
+		(void)hitscan_weapon_reload(&game_state->weapon);
+	}
+
 	if (input_key_pressed(input, INPUT_KEY_F3)) {
 		debug_hud_toggle(&game_state->debug_hud);
 	}
@@ -325,6 +349,16 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state = user_data;
 
 	if (game_state == NULL || game_state->world == NULL) { return; }
+
+	hitscan_weapon_update(&game_state->weapon, delta_time);
+	if (game_state->fire_requested && player_is_alive(game_state->player)) {
+		(void)hitscan_weapon_fire(&game_state->weapon,
+					  game_state->world,
+					  player_get_entity(game_state->player),
+					  game_state->camera.position,
+					  game_state->camera.forward, NULL);
+	}
+	game_state->fire_requested = false;
 
 	wish_speed = vec3_length(game_state->movement_input);
 
@@ -432,12 +466,36 @@ static void render(engine_t *engine, void *user_data) {
 		       player_get_velocity(game_state->player),
 		       player_get_ground_entity_id(game_state->player) != 0,
 		       1.0f / 120.0f);
+	draw_player_hud(game_state, renderer, width, height);
+}
 
-	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,
-		       player_get_position(game_state->player),
-		       player_get_velocity(game_state->player),
-		       player_get_ground_entity_id(game_state->player) != 0,
-		       1.0f / 120.0f);
+static void draw_player_hud(const game_state_t *game_state,
+			    renderer_t *renderer,
+			    const int width,
+			    const int height) {
+	const renderer_color_t color = {0.95f, 0.95f, 0.95f, 1.0f};
+	char ammunition[32];
+	char health[32];
+
+	if (game_state == NULL || renderer == NULL ||
+	    game_state->player == NULL) {
+		return;
+	}
+	snprintf(health, sizeof(health), "HEALTH %.0f",
+		 player_get_health(game_state->player));
+	snprintf(ammunition, sizeof(ammunition), "AMMO %d / %d",
+		 hitscan_weapon_get_ammo(&game_state->weapon),
+		 hitscan_weapon_get_reserve_ammo(&game_state->weapon));
+	renderer_draw_text(renderer, 20.0f, (float)height - 36.0f, 2.0f, color,
+			   health);
+	renderer_draw_text(renderer, (float)width - 180.0f,
+			   (float)height - 36.0f, 2.0f, color, ammunition);
+	renderer_draw_rectangle(renderer, (float)width * 0.5f - 8.0f,
+				(float)height * 0.5f - 1.0f, 16.0f, 2.0f,
+				color);
+	renderer_draw_rectangle(renderer, (float)width * 0.5f - 1.0f,
+				(float)height * 0.5f - 8.0f, 2.0f, 16.0f,
+				color);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

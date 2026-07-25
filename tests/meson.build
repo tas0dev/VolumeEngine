@@ -183,6 +183,16 @@ entity_parent_test = executable(
     install : false,
 )
 
+damage_test = executable(
+    'damage-test',
+    [
+        'common.c',
+        'damage_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -266,4 +276,9 @@ test(
 test(
     'entity-parent',
     entity_parent_test
+)
+
+test(
+    'damage',
+    damage_test
 )

@@ -7,6 +7,7 @@
 
 #include "entity/io.h"
 
+#include "entity/damage.h"
 #include "entity/entity.h"
 #include "world.h"
 #include <errno.h>
@@ -192,6 +193,7 @@ const entity_output_connection_t *entity_get_output(const entity_t *entity,
 bool entity_accept_input(entity_t *entity,
 			 const char *input_name,
 			 const entity_input_context_t *context) {
+	damage_info_t damage = {0};
 	entity_t *parent;
 
 	if (entity == NULL || input_name == NULL || input_name[0] == '\0') {
@@ -213,6 +215,19 @@ bool entity_accept_input(entity_t *entity,
 	if (strcmp(input_name, "Kill") == 0) {
 		entity->pending_destroy = true;
 		return true;
+	}
+
+	if (strcmp(input_name, "TakeDamage") == 0) {
+		if (context == NULL ||
+		    !parse_float(context->parameter, &damage.amount) ||
+		    damage.amount <= 0.0f) {
+			return false;
+		}
+		damage.type = DAMAGE_TYPE_GENERIC;
+		damage.attacker = context->activator;
+		damage.inflictor = context->caller;
+		damage.position = entity_get_world_position(entity);
+		return entity_take_damage(entity, &damage);
 	}
 
 	if (entity->class != NULL && entity->class->accept_input != NULL &&

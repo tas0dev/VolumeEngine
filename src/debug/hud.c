@@ -9,7 +9,7 @@
 #include "collision/collision_world.h"
 #include "debug/debug_ui.h"
 #include "entity/world.h"
-
+#include <math.h>
 #include <stdio.h>
 
 void debug_hud_initialize(debug_hud_t *hud) {
@@ -54,6 +54,7 @@ void debug_hud_draw(const debug_hud_t *hud,
 	char value[96];
 	float fps;
 	float fixed_rate;
+	float player_speed;
 
 	if (!debug_hud_is_visible(hud) || renderer == NULL || world == NULL) {
 		return;
@@ -63,6 +64,10 @@ void debug_hud_draw(const debug_hud_t *hud,
 					      : 0.0f;
 
 	fixed_rate = fixed_delta_time > 0.0f ? 1.0f / fixed_delta_time : 0.0f;
+
+	player_speed = sqrtf(player_velocity.x * player_velocity.x +
+			     player_velocity.y * player_velocity.y +
+			     player_velocity.z * player_velocity.z);
 
 	render_stats = renderer_get_frame_stats(renderer);
 	collision_world = world_get_const_collision_world(world);
@@ -109,6 +114,9 @@ void debug_hud_draw(const debug_hud_t *hud,
 	snprintf(value, sizeof(value), "%.2f %.2f %.2f", player_velocity.x,
 		 player_velocity.y, player_velocity.z);
 	debug_ui_draw_row(&ui, "velocity", value);
+
+	snprintf(value, sizeof(value), "%.2f unit/s", player_speed);
+	debug_ui_draw_row(&ui, "speed", value);
 
 	debug_ui_draw_row(&ui, "grounded", player_grounded ? "yes" : "no");
 }

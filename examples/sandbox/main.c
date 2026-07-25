@@ -5,9 +5,9 @@
  * Created by tas0dev
  */
 
+#include "hud.h"
 #include "volume.h"
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 typedef struct game_state {
@@ -24,9 +24,8 @@ typedef struct game_state {
 	bool jump_requested;
 	bool fire_requested;
 	bool respawn_requested;
-	float previous_health;
-	float damage_flash_time;
 	hitscan_weapon_t weapon;
+	sandbox_hud_t hud;
 	debug_hud_t debug_hud;
 } game_state_t;
 
@@ -39,10 +38,6 @@ static void shutdown(engine_t *engine, void *user_data);
 static void destroy_game_resources(game_state_t *game_state);
 static void fixed_update(engine_t *engine, float delta_time, void *user_data);
 static void use_look_target(game_state_t *game_state);
-static void draw_player_hud(const game_state_t *game_state,
-			    renderer_t *renderer,
-			    int width,
-			    int height);
 
 static game_state_t state;
 
@@ -184,8 +179,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->jump_requested = false;
 	game_state->fire_requested = false;
 	game_state->respawn_requested = false;
-	game_state->previous_health = player_get_health(game_state->player);
-	game_state->damage_flash_time = 0.0f;
+	sandbox_hud_initialize(&game_state->hud,
+			       player_get_health(game_state->player));
 	weapon_config = hitscan_weapon_config_create();
 	if (!hitscan_weapon_initialize(&game_state->weapon, &weapon_config)) {
 		log_error("Failed to initialize weapon");
@@ -356,7 +351,6 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	character_move_input_t move_input = {0};
 	float wish_speed;
-	float current_health;
 	hitscan_weapon_config_t weapon_config;
 
 	game_state = user_data;
@@ -393,13 +387,8 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	world_update(game_state->world, delta_time);
-	game_state->damage_flash_time =
-		fmaxf(0.0f, game_state->damage_flash_time - delta_time);
-	current_health = player_get_health(game_state->player);
-	if (current_health < game_state->previous_health) {
-		game_state->damage_flash_time = 0.35f;
-	}
-	game_state->previous_health = current_health;
+	sandbox_hud_update(&game_state->hud,
+			   player_get_health(game_state->player), delta_time);
 
 	if (!player_is_alive(game_state->player)) {
 		game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
@@ -409,9 +398,9 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 				weapon_config = hitscan_weapon_config_create();
 				(void)hitscan_weapon_initialize(
 					&game_state->weapon, &weapon_config);
-				game_state->previous_health =
-					player_get_health(game_state->player);
-				game_state->damage_flash_time = 0.0f;
+				sandbox_hud_reset(
+					&game_state->hud,
+					player_get_health(game_state->player));
 			}
 			game_state->respawn_requested = false;
 		}
@@ -433,6 +422,7 @@ static void render(engine_t *engine, void *user_data) {
 	vec3_t light_target;
 	vec3_t light_up;
 	character_debug_state_t character_debug_state;
+	sandbox_hud_values_t hud_values;
 	int width;
 	int height;
 	float aspect_ratio;
@@ -504,56 +494,13 @@ static void render(engine_t *engine, void *user_data) {
 		       player_get_velocity(game_state->player),
 		       player_get_ground_entity_id(game_state->player) != 0,
 		       1.0f / 120.0f);
-	draw_player_hud(game_state, renderer, width, height);
-}
-
-static void draw_player_hud(const game_state_t *game_state,
-			    renderer_t *renderer,
-			    const int width,
-			    const int height) {
-	const renderer_color_t color = {1.0f, 0.55f, 0.12f, 1.0f};
-	const renderer_color_t crosshair_color = {0.95f, 0.95f, 0.95f, 1.0f};
-	char ammunition[32];
-	char health[32];
-	float flash_alpha;
-
-	if (game_state == NULL || renderer == NULL ||
-	    game_state->player == NULL) {
-		return;
-	}
-	if (!player_is_alive(game_state->player)) {
-		renderer_draw_rectangle(
-			renderer, 0.0f, 0.0f, (float)width, (float)height,
-			(renderer_color_t){0.3f, 0.0f, 0.0f, 0.65f});
-		renderer_draw_text(renderer, (float)width * 0.5f - 90.0f,
-				   (float)height * 0.5f - 20.0f, 3.0f, color,
-				   "YOU DIED");
-		renderer_draw_text(renderer, (float)width * 0.5f - 155.0f,
-				   (float)height * 0.5f + 24.0f, 1.5f, color,
-				   "CLICK TO RESPAWN");
-		return;
-	}
-	if (game_state->damage_flash_time > 0.0f) {
-		flash_alpha = 0.32f * game_state->damage_flash_time / 0.35f;
-		renderer_draw_rectangle(
-			renderer, 0.0f, 0.0f, (float)width, (float)height,
-			(renderer_color_t){0.8f, 0.0f, 0.0f, flash_alpha});
-	}
-	snprintf(health, sizeof(health), "HEALTH %.0f",
-		 player_get_health(game_state->player));
-	snprintf(ammunition, sizeof(ammunition), "AMMO %d / %d",
-		 hitscan_weapon_get_ammo(&game_state->weapon),
-		 hitscan_weapon_get_reserve_ammo(&game_state->weapon));
-	renderer_draw_text(renderer, 20.0f, (float)height - 36.0f, 2.0f, color,
-			   health);
-	renderer_draw_text(renderer, (float)width - 180.0f,
-			   (float)height - 36.0f, 2.0f, color, ammunition);
-	renderer_draw_rectangle(renderer, (float)width * 0.5f - 8.0f,
-				(float)height * 0.5f - 1.0f, 16.0f, 2.0f,
-				crosshair_color);
-	renderer_draw_rectangle(renderer, (float)width * 0.5f - 1.0f,
-				(float)height * 0.5f - 8.0f, 2.0f, 16.0f,
-				crosshair_color);
+	hud_values.health = (int)player_get_health(game_state->player);
+	hud_values.ammunition = hitscan_weapon_get_ammo(&game_state->weapon);
+	hud_values.reserve_ammunition =
+		hitscan_weapon_get_reserve_ammo(&game_state->weapon);
+	hud_values.alive = player_is_alive(game_state->player);
+	sandbox_hud_draw(&game_state->hud, renderer, width, height,
+			 &hud_values);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

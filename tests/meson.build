@@ -193,6 +193,17 @@ damage_test = executable(
     install : false,
 )
 
+sandbox_hud_test = executable(
+    'sandbox-hud-test',
+    [
+        'common.c',
+        'sandbox_hud_test.c',
+        '../examples/sandbox/hud.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -281,4 +292,9 @@ test(
 test(
     'damage',
     damage_test
+)
+
+test(
+    'sandbox-hud',
+    sandbox_hud_test
 )

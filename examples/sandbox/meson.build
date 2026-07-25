@@ -12,7 +12,10 @@ meson.add_postconf_script(
 
 executable(
     'volume example',
-    'main.c',
+    [
+        'main.c',
+        'hud.c',
+    ],
     dependencies : volume_dependency,
     install : false,
 )

@@ -192,5 +192,18 @@ float player_get_max_health(const player_t *player);
 /// - `true`: 生存している。
 /// - `false`: 死亡している、または引数が`NULL`。
 bool player_is_alive(const player_t *player);
+/// プレイヤーを指定位置で最大ヘルスの状態へ戻す。
+///
+/// 速度、接地、しゃがみ、梯子状態を初期化し、死亡時に外したColliderを
+/// 衝突ワールドへ再登録する。
+///
+/// ### Args
+/// - `player_t *player`: 復帰させるプレイヤー。
+/// - `vec3_t position`: 復帰先の足元座標。
+///
+/// ### Returns
+/// - `true`: 復帰に成功した。
+/// - `false`: 引数または座標が不正だった。
+bool player_respawn(player_t *player, vec3_t position);
 
 #endif

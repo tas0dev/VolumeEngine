@@ -63,8 +63,18 @@ static bool test_player_takes_damage_and_dies(void) {
 	CHECK(!player_is_alive(player));
 	CHECK(!entity_is_active(entity));
 	CHECK(collision_world_get_count(
-		      world_get_const_collision_world(world)) == 0);
+		world_get_const_collision_world(world)) == 0);
 	CHECK(!entity_take_damage(entity, &damage));
+	CHECK(player_respawn(player, vec3_create(3.0f, 2.0f, 1.0f)));
+	CHECK(player_is_alive(player));
+	CHECK(entity_is_active(entity));
+	CHECK(player_get_health(player) == 100.0f);
+	CHECK(player_get_position(player).x == 3.0f);
+	CHECK(player_get_position(player).y == 2.0f);
+	CHECK(player_get_position(player).z == 1.0f);
+	CHECK(vec3_length(player_get_velocity(player)) == 0.0f);
+	CHECK(collision_world_get_count(
+		      world_get_const_collision_world(world)) == 1);
 
 	world_destroy(world);
 	entity_registry_shutdown();

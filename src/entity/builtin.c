@@ -18,6 +18,7 @@
 #include "entity/prop_dynamic.h"
 #include "entity/prop_static.h"
 #include "entity/trigger.h"
+#include "entity/trigger_hurt.h"
 
 bool entity_register_builtin_classes(void) {
 	if (!func_door_register()) { return false; }
@@ -33,6 +34,7 @@ bool entity_register_builtin_classes(void) {
 	if (!player_register()) { return false; }
 	if (!trigger_once_register()) { return false; }
 	if (!trigger_multiple_register()) { return false; }
+	if (!trigger_hurt_register()) { return false; }
 
 	return true;
 }

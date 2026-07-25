@@ -17,11 +17,16 @@ typedef struct game_state {
 	light_environment_t *environment_light;
 	camera_t camera;
 	player_t *player;
+	vec3_t player_spawn_position;
 	vec3_t movement_input;
 	float yaw;
 	float pitch;
 	bool jump_requested;
 	bool fire_requested;
+	bool respawn_requested;
+	float previous_health;
+	float damage_flash_time;
+	float death_time;
 	hitscan_weapon_t weapon;
 	debug_hud_t debug_hud;
 } game_state_t;
@@ -176,8 +181,13 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 
 	game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
+	game_state->player_spawn_position = player_start->transform.position;
 	game_state->jump_requested = false;
 	game_state->fire_requested = false;
+	game_state->respawn_requested = false;
+	game_state->previous_health = player_get_health(game_state->player);
+	game_state->damage_flash_time = 0.0f;
+	game_state->death_time = 0.0f;
 	weapon_config = hitscan_weapon_config_create();
 	if (!hitscan_weapon_initialize(&game_state->weapon, &weapon_config)) {
 		log_error("Failed to initialize weapon");
@@ -222,12 +232,15 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		engine_set_mouse_captured(engine, false);
 	}
 
-	if (!mouse_was_captured &&
-	    input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
-		engine_set_mouse_captured(engine, true);
-	} else if (mouse_was_captured &&
-		   input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
-		game_state->fire_requested = true;
+	if (input_mouse_button_pressed(input, INPUT_MOUSE_BUTTON_LEFT)) {
+		if (!mouse_was_captured) {
+			engine_set_mouse_captured(engine, true);
+		}
+		if (!player_is_alive(game_state->player)) {
+			game_state->respawn_requested = true;
+		} else if (mouse_was_captured) {
+			game_state->fire_requested = true;
+		}
 	}
 
 	mouse_x = 0.0f;
@@ -345,6 +358,8 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	character_move_input_t move_input = {0};
 	float wish_speed;
+	float current_health;
+	hitscan_weapon_config_t weapon_config;
 
 	game_state = user_data;
 
@@ -380,6 +395,35 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	world_update(game_state->world, delta_time);
+	game_state->damage_flash_time =
+		fmaxf(0.0f, game_state->damage_flash_time - delta_time);
+	current_health = player_get_health(game_state->player);
+	if (current_health < game_state->previous_health) {
+		game_state->damage_flash_time = 0.35f;
+	}
+	game_state->previous_health = current_health;
+
+	if (!player_is_alive(game_state->player)) {
+		game_state->death_time += delta_time;
+		game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
+		if (game_state->respawn_requested ||
+		    game_state->death_time >= 2.0f) {
+			if (player_respawn(game_state->player,
+					   game_state->player_spawn_position)) {
+				weapon_config = hitscan_weapon_config_create();
+				(void)hitscan_weapon_initialize(
+					&game_state->weapon, &weapon_config);
+				game_state->previous_health =
+					player_get_health(game_state->player);
+				game_state->damage_flash_time = 0.0f;
+				game_state->death_time = 0.0f;
+			}
+			game_state->respawn_requested = false;
+		}
+	} else {
+		game_state->death_time = 0.0f;
+		game_state->respawn_requested = false;
+	}
 
 	game_state->camera.position =
 		player_get_view_position(game_state->player);
@@ -476,10 +520,29 @@ static void draw_player_hud(const game_state_t *game_state,
 	const renderer_color_t color = {0.95f, 0.95f, 0.95f, 1.0f};
 	char ammunition[32];
 	char health[32];
+	float flash_alpha;
 
 	if (game_state == NULL || renderer == NULL ||
 	    game_state->player == NULL) {
 		return;
+	}
+	if (!player_is_alive(game_state->player)) {
+		renderer_draw_rectangle(
+			renderer, 0.0f, 0.0f, (float)width, (float)height,
+			(renderer_color_t){0.3f, 0.0f, 0.0f, 0.65f});
+		renderer_draw_text(renderer, (float)width * 0.5f - 90.0f,
+				   (float)height * 0.5f - 20.0f, 3.0f, color,
+				   "YOU DIED");
+		renderer_draw_text(renderer, (float)width * 0.5f - 155.0f,
+				   (float)height * 0.5f + 24.0f, 1.5f, color,
+				   "CLICK TO RESPAWN");
+		return;
+	}
+	if (game_state->damage_flash_time > 0.0f) {
+		flash_alpha = 0.32f * game_state->damage_flash_time / 0.35f;
+		renderer_draw_rectangle(
+			renderer, 0.0f, 0.0f, (float)width, (float)height,
+			(renderer_color_t){0.8f, 0.0f, 0.0f, flash_alpha});
 	}
 	snprintf(health, sizeof(health), "HEALTH %.0f",
 		 player_get_health(game_state->player));

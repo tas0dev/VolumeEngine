@@ -43,6 +43,30 @@ entity
 entity
 {
 	"classname" "prop_static"
+	"targetname" "hurt_platform"
+	"model" "models/test_cube.obj"
+	"material" "materials/test_cube.volmat"
+	"origin" "3 -0.85 3"
+	"angles" "0 0 0"
+	"scale" "2 0.15 2"
+	"casts_shadow" "1"
+	"collision" "box"
+	"collision_size" "1 1 1"
+}
+
+entity
+{
+	"classname" "trigger_hurt"
+	"targetname" "example_hurt"
+	"origin" "3 0 3"
+	"size" "2 2 2"
+	"damage" "20"
+	"damage_interval" "0.5"
+}
+
+entity
+{
+	"classname" "prop_static"
 	"targetname" "floor"
 	"model" "models/test_floor.obj"
 	"material" "materials/floor.volmat"

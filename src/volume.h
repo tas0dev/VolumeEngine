@@ -19,6 +19,7 @@
 #include "entity/light_environment.h"
 #include "entity/player.h"
 #include "entity/prop_breakable.h"
+#include "entity/trigger_hurt.h"
 #include "entity/world.h"
 #include "game/game.h"
 #include "game/hitscan_weapon.h"

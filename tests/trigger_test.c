@@ -8,6 +8,7 @@
 #include "common.h"
 #include "entity/player.h"
 #include "entity/trigger.h"
+#include "entity/trigger_hurt.h"
 #include "entity/world.h"
 #include "map/map.h"
 #include "map/spawn.h"
@@ -69,7 +70,52 @@ static void destroy_receiver(entity_t *entity) { free(entity); }
 static bool register_test_classes(void) {
 	return player_register() && trigger_once_register() &&
 	       trigger_multiple_register() &&
+	       trigger_hurt_register() &&
 	       entity_register_class(&receiver_class);
+}
+
+static bool test_trigger_hurt_damages_at_interval(void) {
+	static const char source[] =
+		"world\n{\n\t\"classname\" \"worldspawn\"\n}\n"
+		"entity\n{\n\t\"classname\" \"trigger_hurt\"\n"
+		"\t\"targetname\" \"hurt\"\n"
+		"\t\"size\" \"4 4 4\"\n"
+		"\t\"damage\" \"10\"\n"
+		"\t\"damage_interval\" \"0.5\"\n}\n"
+		"entity\n{\n\t\"classname\" \"player\"\n"
+		"\t\"targetname\" \"player\"\n"
+		"\t\"origin\" \"0 -0.85 0\"\n}\n";
+	player_t *player;
+	world_t *world;
+	map_t *map;
+	char error[256];
+
+	CHECK(register_test_classes());
+	map = map_parse(source, error, sizeof(error));
+	CHECK(map != NULL);
+	world = world_create();
+	CHECK(world != NULL);
+	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
+	player = player_from_entity(world_find_by_targetname(world, "player"));
+	CHECK(player != NULL);
+
+	world_update(world, 0.1f);
+	CHECK(player_get_health(player) == 90.0f);
+	world_update(world, 0.2f);
+	CHECK(player_get_health(player) == 90.0f);
+	world_update(world, 0.3f);
+	CHECK(player_get_health(player) == 80.0f);
+	CHECK(world_send_input(world, "hurt", "Disable", "", NULL, NULL) == 1);
+	world_update(world, 1.0f);
+	CHECK(player_get_health(player) == 80.0f);
+	CHECK(world_send_input(world, "hurt", "Enable", "", NULL, NULL) == 1);
+	world_update(world, 0.0f);
+	CHECK(player_get_health(player) == 70.0f);
+
+	world_destroy(world);
+	map_destroy(map);
+	entity_registry_shutdown();
+	return true;
 }
 
 static bool test_trigger_once_fires_with_player_activator(void) {
@@ -174,6 +220,8 @@ static bool test_trigger_multiple_repeats_and_ends_touch(void) {
 
 int main(void) {
 	static const test_case_t tests[] = {
+		{"trigger_hurt damages at interval",
+		 test_trigger_hurt_damages_at_interval	      },
 		{"trigger_once fires with player activator",
 		 test_trigger_once_fires_with_player_activator},
 		{"trigger_multiple repeats and ends touch",

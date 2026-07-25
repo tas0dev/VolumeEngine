@@ -8,6 +8,7 @@
 #include "entity/player.h"
 #include "entity/func_ladder.h"
 #include "entity/world.h"
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,8 @@ struct player {
 	entity_t entity;
 	character_controller_t controller;
 	health_t health;
+	float radius;
+	float height;
 	entity_id_t ladder_id;
 	float ladder_detach_time;
 };
@@ -328,6 +331,8 @@ static entity_t *create_entity(const entity_id_t id,
 	player->entity.transform = context->properties->transform;
 	player->controller = character_controller_create(
 		player->entity.transform.position, radius, height);
+	player->radius = radius;
+	player->height = height;
 	if (!health_initialize(&player->health, maximum_health)) {
 		free(player);
 		return NULL;
@@ -410,4 +415,28 @@ float player_get_max_health(const player_t *player) {
 
 bool player_is_alive(const player_t *player) {
 	return player != NULL && health_is_alive(&player->health);
+}
+
+bool player_respawn(player_t *player, const vec3_t position) {
+	float maximum_health;
+
+	if (player == NULL || !isfinite(position.x) || !isfinite(position.y) ||
+	    !isfinite(position.z)) {
+		return false;
+	}
+	maximum_health = health_get_maximum(&player->health);
+	if (!health_initialize(&player->health, maximum_health)) {
+		return false;
+	}
+	player->controller = character_controller_create(
+		position, player->radius, player->height);
+	player->ladder_id = 0;
+	player->ladder_detach_time = 0.0f;
+	entity_set_active(&player->entity, true);
+	sync_player_transform_and_collider(player);
+	if (player->entity.world != NULL) {
+		(void)world_fire_output(player->entity.world, &player->entity,
+					"OnRespawn", &player->entity);
+	}
+	return true;
 }

@@ -10,7 +10,11 @@
 
 #include <stdbool.h>
 
-/// `trigger_hurt`エンティティクラスを登録する。
+/// Source互換の`trigger_hurt`エンティティクラスを登録する。
+///
+/// `damage`を毎秒ダメージとして扱い、0.5秒ごとに適用する。
+/// `damagecap`、`damagetype`、`damagemodel`、`StartDisabled`、
+/// `SetDamage`入力、`OnHurtPlayer`出力に対応する。
 ///
 /// ### Returns
 /// - `true`: 登録に成功した。

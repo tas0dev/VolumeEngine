@@ -26,7 +26,6 @@ typedef struct game_state {
 	bool respawn_requested;
 	float previous_health;
 	float damage_flash_time;
-	float death_time;
 	hitscan_weapon_t weapon;
 	debug_hud_t debug_hud;
 } game_state_t;
@@ -187,7 +186,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->respawn_requested = false;
 	game_state->previous_health = player_get_health(game_state->player);
 	game_state->damage_flash_time = 0.0f;
-	game_state->death_time = 0.0f;
 	weapon_config = hitscan_weapon_config_create();
 	if (!hitscan_weapon_initialize(&game_state->weapon, &weapon_config)) {
 		log_error("Failed to initialize weapon");
@@ -404,10 +402,8 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state->previous_health = current_health;
 
 	if (!player_is_alive(game_state->player)) {
-		game_state->death_time += delta_time;
 		game_state->movement_input = vec3_create(0.0f, 0.0f, 0.0f);
-		if (game_state->respawn_requested ||
-		    game_state->death_time >= 2.0f) {
+		if (game_state->respawn_requested) {
 			if (player_respawn(game_state->player,
 					   game_state->player_spawn_position)) {
 				weapon_config = hitscan_weapon_config_create();
@@ -416,12 +412,10 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 				game_state->previous_health =
 					player_get_health(game_state->player);
 				game_state->damage_flash_time = 0.0f;
-				game_state->death_time = 0.0f;
 			}
 			game_state->respawn_requested = false;
 		}
 	} else {
-		game_state->death_time = 0.0f;
 		game_state->respawn_requested = false;
 	}
 
@@ -517,7 +511,8 @@ static void draw_player_hud(const game_state_t *game_state,
 			    renderer_t *renderer,
 			    const int width,
 			    const int height) {
-	const renderer_color_t color = {0.95f, 0.95f, 0.95f, 1.0f};
+	const renderer_color_t color = {1.0f, 0.55f, 0.12f, 1.0f};
+	const renderer_color_t crosshair_color = {0.95f, 0.95f, 0.95f, 1.0f};
 	char ammunition[32];
 	char health[32];
 	float flash_alpha;
@@ -555,10 +550,10 @@ static void draw_player_hud(const game_state_t *game_state,
 			   (float)height - 36.0f, 2.0f, color, ammunition);
 	renderer_draw_rectangle(renderer, (float)width * 0.5f - 8.0f,
 				(float)height * 0.5f - 1.0f, 16.0f, 2.0f,
-				color);
+				crosshair_color);
 	renderer_draw_rectangle(renderer, (float)width * 0.5f - 1.0f,
 				(float)height * 0.5f - 8.0f, 2.0f, 16.0f,
-				color);
+				crosshair_color);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {

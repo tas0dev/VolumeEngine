@@ -9,18 +9,31 @@
 #include "entity/damage.h"
 #include "entity/entity.h"
 #include "entity/world.h"
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define TRIGGER_HURT_MAXIMUM_TARGETS 64
+#define TRIGGER_HURT_INTERVAL 0.5f
+#define TRIGGER_HURT_FORGIVE_TIME 3.0f
+
+typedef enum trigger_hurt_damage_model {
+	TRIGGER_HURT_DAMAGE_NORMAL = 0,
+	TRIGGER_HURT_DAMAGE_DOUBLE_WITH_FORGIVENESS = 1,
+} trigger_hurt_damage_model_t;
 
 typedef struct trigger_hurt {
 	entity_t entity;
-	float damage;
-	float damage_interval;
+	float original_damage;
+	float current_damage;
+	float damage_cap;
 	float cooldown;
+	float time_without_target;
+	damage_type_t damage_type;
+	trigger_hurt_damage_model_t damage_model;
 } trigger_hurt_t;
 
 static entity_t *create_entity(entity_id_t id,
@@ -30,6 +43,7 @@ static bool accept_input(entity_t *entity,
 			 const char *input_name,
 			 const entity_input_context_t *context);
 static void destroy_entity(entity_t *entity);
+static bool parse_integer(const char *text, int *value);
 static void
 set_error(const entity_spawn_context_t *context, const char *format, ...);
 
@@ -70,30 +84,63 @@ static entity_t *create_entity(const entity_id_t id,
 	if (trigger == NULL) { return NULL; }
 	entity_initialize(&trigger->entity, id, &trigger_hurt_class);
 	trigger->entity.transform = context->properties->transform;
-	trigger->damage = 10.0f;
-	trigger->damage_interval = 0.5f;
+	trigger->original_damage = 10.0f;
+	trigger->damage_cap = 20.0f;
+	trigger->damage_type = DAMAGE_TYPE_GENERIC;
+	trigger->damage_model = TRIGGER_HURT_DAMAGE_NORMAL;
 
 	text = entity_property_get(context->source, "damage");
 	if (text != NULL &&
-	    (!entity_property_parse_float(text, &trigger->damage) ||
-	     trigger->damage <= 0.0f)) {
+	    (!entity_property_parse_float(text, &trigger->original_damage) ||
+	     trigger->original_damage <= 0.0f)) {
 		set_error(context,
 			  "invalid positive trigger_hurt damage: \"%s\"", text);
 		free(trigger);
 		return NULL;
 	}
-	text = entity_property_get(context->source, "damage_interval");
+	trigger->current_damage = trigger->original_damage;
+	text = entity_property_get(context->source, "damagecap");
 	if (text != NULL &&
-	    (!entity_property_parse_float(text, &trigger->damage_interval) ||
-	     trigger->damage_interval <= 0.0f)) {
-		set_error(
-			context,
-			"invalid positive trigger_hurt damage_interval: \"%s\"",
-			text);
+	    (!entity_property_parse_float(text, &trigger->damage_cap) ||
+	     trigger->damage_cap <= 0.0f)) {
+		set_error(context,
+			  "invalid positive trigger_hurt damagecap: \"%s\"",
+			  text);
 		free(trigger);
 		return NULL;
 	}
-	text = entity_property_get(context->source, "starts_disabled");
+	text = entity_property_get(context->source, "damagetype");
+	if (text != NULL) {
+		int damage_type;
+
+		if (!parse_integer(text, &damage_type) || damage_type < 0) {
+			set_error(context,
+				  "invalid trigger_hurt damagetype: \"%s\"",
+				  text);
+			free(trigger);
+			return NULL;
+		}
+		trigger->damage_type = (damage_type_t)damage_type;
+	}
+	text = entity_property_get(context->source, "damagemodel");
+	if (text != NULL) {
+		int damage_model;
+
+		if (!parse_integer(text, &damage_model) || damage_model < 0 ||
+		    damage_model > 1) {
+			set_error(context,
+				  "invalid trigger_hurt damagemodel: \"%s\"",
+				  text);
+			free(trigger);
+			return NULL;
+		}
+		trigger->damage_model =
+			(trigger_hurt_damage_model_t)damage_model;
+	}
+	text = entity_property_get(context->source, "StartDisabled");
+	if (text == NULL) {
+		text = entity_property_get(context->source, "starts_disabled");
+	}
 	if (text != NULL &&
 	    !entity_property_parse_bool(text, &starts_disabled)) {
 		set_error(context,
@@ -132,7 +179,6 @@ static void update_entity(entity_t *entity, const float delta_time) {
 	}
 	trigger = (trigger_hurt_t *)entity;
 	trigger->cooldown -= delta_time;
-	if (trigger->cooldown > 0.0f) { return; }
 	if (!collider_get_aabb(&entity->collider, entity->transform.position,
 			       &bounds)) {
 		return;
@@ -146,21 +192,36 @@ static void update_entity(entity_t *entity, const float delta_time) {
 	if (count > TRIGGER_HURT_MAXIMUM_TARGETS) {
 		count = TRIGGER_HURT_MAXIMUM_TARGETS;
 	}
-	if (count == 0) { return; }
+	if (count == 0) {
+		trigger->time_without_target += delta_time;
+		if (trigger->time_without_target >= TRIGGER_HURT_FORGIVE_TIME) {
+			trigger->current_damage = trigger->original_damage;
+		}
+		return;
+	}
+	trigger->time_without_target = 0.0f;
+	if (trigger->cooldown > 0.0f) { return; }
 
-	trigger->cooldown = trigger->damage_interval;
+	trigger->cooldown = TRIGGER_HURT_INTERVAL;
 	for (index = 0; index < count; index++) {
 		target = world_find_entity(entity->world, targets[index]);
-		damage.amount = trigger->damage;
-		damage.type = DAMAGE_TYPE_GENERIC;
+		damage.amount = trigger->current_damage * TRIGGER_HURT_INTERVAL;
+		damage.type = trigger->damage_type;
 		damage.attacker = entity;
 		damage.inflictor = entity;
 		damage.position = target == NULL
 					  ? entity_get_world_position(entity)
 					  : entity_get_world_position(target);
 		if (entity_take_damage(target, &damage)) {
-			(void)world_fire_output(entity->world, entity, "OnHurt",
-						target);
+			(void)world_fire_output(entity->world, entity,
+						"OnHurtPlayer", target);
+		}
+	}
+	if (trigger->damage_model ==
+	    TRIGGER_HURT_DAMAGE_DOUBLE_WITH_FORGIVENESS) {
+		trigger->current_damage *= 2.0f;
+		if (trigger->current_damage > trigger->damage_cap) {
+			trigger->current_damage = trigger->damage_cap;
 		}
 	}
 }
@@ -170,21 +231,34 @@ static bool accept_input(entity_t *entity,
 			 const entity_input_context_t *context) {
 	trigger_hurt_t *trigger;
 
-	(void)context;
 	if (entity == NULL || input_name == NULL) { return false; }
 	trigger = (trigger_hurt_t *)entity;
+	if (strcmp(input_name, "SetDamage") == 0) {
+		float value;
+
+		if (context == NULL ||
+		    !entity_property_parse_float(context->parameter, &value) ||
+		    value <= 0.0f) {
+			return false;
+		}
+		trigger->current_damage = value;
+		return true;
+	}
 	if (strcmp(input_name, "Enable") == 0) {
 		trigger->cooldown = 0.0f;
+		trigger->time_without_target = 0.0f;
 		entity_set_active(entity, true);
 		return true;
 	}
 	if (strcmp(input_name, "Disable") == 0) {
 		trigger->cooldown = 0.0f;
+		trigger->time_without_target = 0.0f;
 		entity_set_active(entity, false);
 		return true;
 	}
 	if (strcmp(input_name, "Toggle") == 0) {
 		trigger->cooldown = 0.0f;
+		trigger->time_without_target = 0.0f;
 		entity_set_active(entity, !entity_is_active(entity));
 		return true;
 	}
@@ -192,6 +266,21 @@ static bool accept_input(entity_t *entity,
 }
 
 static void destroy_entity(entity_t *entity) { free(entity); }
+
+static bool parse_integer(const char *text, int *value) {
+	char *end;
+	long parsed;
+
+	if (text == NULL || text[0] == '\0' || value == NULL) { return false; }
+	errno = 0;
+	parsed = strtol(text, &end, 10);
+	if (errno == ERANGE || end == text || *end != '\0' ||
+	    parsed < INT_MIN || parsed > INT_MAX) {
+		return false;
+	}
+	*value = (int)parsed;
+	return true;
+}
 
 static void
 set_error(const entity_spawn_context_t *context, const char *format, ...) {

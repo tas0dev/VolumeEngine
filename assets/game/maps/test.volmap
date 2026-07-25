@@ -60,8 +60,11 @@ entity
 	"targetname" "example_hurt"
 	"origin" "3 0 3"
 	"size" "2 2 2"
-	"damage" "20"
-	"damage_interval" "0.5"
+	"damage" "40"
+	"damagecap" "40"
+	"damagetype" "8"
+	"damagemodel" "0"
+	"StartDisabled" "0"
 }
 
 entity

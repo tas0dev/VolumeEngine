@@ -81,10 +81,17 @@ static bool test_trigger_hurt_damages_at_interval(void) {
 		"\t\"targetname\" \"hurt\"\n"
 		"\t\"size\" \"4 4 4\"\n"
 		"\t\"damage\" \"10\"\n"
-		"\t\"damage_interval\" \"0.5\"\n}\n"
+		"\t\"damagecap\" \"20\"\n"
+		"\t\"damagetype\" \"8\"\n"
+		"\t\"damagemodel\" \"1\"\n"
+		"\t\"StartDisabled\" \"0\"\n"
+		"\t\"OnHurtPlayer\" \"receiver,Hit,,0,-1\"\n}\n"
 		"entity\n{\n\t\"classname\" \"player\"\n"
 		"\t\"targetname\" \"player\"\n"
-		"\t\"origin\" \"0 -0.85 0\"\n}\n";
+		"\t\"origin\" \"0 -0.85 0\"\n}\n"
+		"entity\n{\n\t\"classname\" \"trigger_receiver\"\n"
+		"\t\"targetname\" \"receiver\"\n}\n";
+	trigger_receiver_t *receiver;
 	player_t *player;
 	world_t *world;
 	map_t *map;
@@ -97,20 +104,28 @@ static bool test_trigger_hurt_damages_at_interval(void) {
 	CHECK(world != NULL);
 	CHECK(map_spawn_entities(map, world, NULL, error, sizeof(error)));
 	player = player_from_entity(world_find_by_targetname(world, "player"));
-	CHECK(player != NULL);
+	receiver = (trigger_receiver_t *)world_find_by_targetname(world,
+								  "receiver");
+	CHECK(player != NULL && receiver != NULL);
 
 	world_update(world, 0.1f);
-	CHECK(player_get_health(player) == 90.0f);
+	CHECK(player_get_health(player) == 95.0f);
 	world_update(world, 0.2f);
-	CHECK(player_get_health(player) == 90.0f);
+	CHECK(player_get_health(player) == 95.0f);
+	CHECK(receiver->input_count == 1);
+	CHECK(receiver->activator_id == player_get_entity(player)->id);
 	world_update(world, 0.3f);
-	CHECK(player_get_health(player) == 80.0f);
+	CHECK(player_get_health(player) == 85.0f);
 	CHECK(world_send_input(world, "hurt", "Disable", "", NULL, NULL) == 1);
 	world_update(world, 1.0f);
-	CHECK(player_get_health(player) == 80.0f);
+	CHECK(player_get_health(player) == 85.0f);
 	CHECK(world_send_input(world, "hurt", "Enable", "", NULL, NULL) == 1);
 	world_update(world, 0.0f);
-	CHECK(player_get_health(player) == 70.0f);
+	CHECK(player_get_health(player) == 75.0f);
+	CHECK(world_send_input(world, "hurt", "SetDamage", "40", NULL, NULL) ==
+	      1);
+	world_update(world, 0.5f);
+	CHECK(player_get_health(player) == 55.0f);
 
 	world_destroy(world);
 	map_destroy(map);

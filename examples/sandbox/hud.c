@@ -8,16 +8,19 @@
 #include "hud.h"
 #include <stdio.h>
 
-static void draw_shadowed_text(renderer_t *renderer,
-			       float x,
-			       float y,
-			       float scale,
-			       renderer_color_t color,
-			       const char *text);
+static void draw_text(renderer_t *renderer,
+		      const renderer_font_t *font,
+		      float x,
+		      float y,
+		      float scale,
+		      renderer_color_t color,
+		      const char *text);
 static void draw_vitals(renderer_t *renderer,
+			const renderer_font_t *font,
 			int height,
 			const sandbox_hud_values_t *values);
 static void draw_ammunition(renderer_t *renderer,
+			    const renderer_font_t *font,
 			    int width,
 			    int height,
 			    const sandbox_hud_values_t *values);
@@ -52,6 +55,7 @@ void sandbox_hud_reset(sandbox_hud_t *hud, const float health) {
 
 void sandbox_hud_draw(const sandbox_hud_t *hud,
 		      renderer_t *renderer,
+		      const renderer_font_t *font,
 		      const int width,
 		      const int height,
 		      const sandbox_hud_values_t *values) {
@@ -65,12 +69,10 @@ void sandbox_hud_draw(const sandbox_hud_t *hud,
 		renderer_draw_rectangle(
 			renderer, 0.0f, 0.0f, (float)width, (float)height,
 			(renderer_color_t){0.22f, 0.0f, 0.0f, 0.68f});
-		draw_shadowed_text(renderer, (float)width * 0.5f - 90.0f,
-				   (float)height * 0.5f - 20.0f, 3.0f,
-				   hud_color, "YOU DIED");
-		draw_shadowed_text(renderer, (float)width * 0.5f - 155.0f,
-				   (float)height * 0.5f + 24.0f, 1.5f,
-				   hud_color, "CLICK TO RESPAWN");
+		draw_text(renderer, font, (float)width * 0.5f - 90.0f,
+			  (float)height * 0.5f - 20.0f, 36.0f, hud_color, "YOU DIED");
+		draw_text(renderer, font, (float)width * 0.5f - 155.0f,
+			  (float)height * 0.5f + 24.0f, 18.0f, hud_color, "CLICK TO RESPAWN");
 		return;
 	}
 	if (hud->damage_flash_time > 0.0f) {
@@ -80,8 +82,8 @@ void sandbox_hud_draw(const sandbox_hud_t *hud,
 			(renderer_color_t){0.8f, 0.0f, 0.0f, flash_alpha});
 	}
 
-	draw_vitals(renderer, height, values);
-	draw_ammunition(renderer, width, height, values);
+	draw_vitals(renderer, font, height, values);
+	draw_ammunition(renderer, font, width, height, values);
 	renderer_draw_rectangle(renderer, (float)width * 0.5f - 7.0f,
 				(float)height * 0.5f - 1.0f, 14.0f, 2.0f,
 				crosshair_color);
@@ -91,6 +93,7 @@ void sandbox_hud_draw(const sandbox_hud_t *hud,
 }
 
 static void draw_vitals(renderer_t *renderer,
+			const renderer_font_t *font,
 			const int height,
 			const sandbox_hud_values_t *values) {
 	renderer_color_t health_color;
@@ -102,13 +105,13 @@ static void draw_vitals(renderer_t *renderer,
 	value_y = (float)height - 66.0f;
 	label_y = (float)height - 36.0f;
 	snprintf(health, sizeof(health), "%d", values->health);
-	draw_shadowed_text(renderer, 30.0f, label_y, 1.7f, health_color,
-			   "HEALTH");
-	draw_shadowed_text(renderer, 106.0f, value_y, 4.2f, health_color,
-			   health);
+	draw_text(renderer, font, 30.0f, label_y, 17.0f, health_color,
+		  "HEALTH");
+	draw_text(renderer, font, 106.0f, value_y, 44.0f, health_color, health);
 }
 
 static void draw_ammunition(renderer_t *renderer,
+			    const renderer_font_t *font,
 			    const int width,
 			    const int height,
 			    const sandbox_hud_values_t *values) {
@@ -121,22 +124,25 @@ static void draw_ammunition(renderer_t *renderer,
 	label_y = (float)height - 36.0f;
 	snprintf(ammunition, sizeof(ammunition), "%d", values->ammunition);
 	snprintf(reserve, sizeof(reserve), "%d", values->reserve_ammunition);
-	draw_shadowed_text(renderer, (float)width - 230.0f, label_y, 1.7f,
-			   hud_color, "AMMO");
-	draw_shadowed_text(renderer, (float)width - 150.0f, value_y, 4.2f,
-			   hud_color, ammunition);
-	draw_shadowed_text(renderer, (float)width - 72.0f,
-			   (float)height - 47.0f, 2.0f, hud_color, reserve);
+	draw_text(renderer, font, (float)width - 230.0f, label_y, 17.0f,
+		  hud_color, "AMMO");
+	draw_text(renderer, font, (float)width - 150.0f, value_y, 44.0f,
+		  hud_color, ammunition);
+	draw_text(renderer, font, (float)width - 72.0f, (float)height - 47.0f,
+		  20.0f, hud_color, reserve);
 }
 
-static void draw_shadowed_text(renderer_t *renderer,
-			       const float x,
-			       const float y,
-			       const float scale,
-			       const renderer_color_t color,
-			       const char *text) {
-	const renderer_color_t shadow = {0.02f, 0.015f, 0.0f, 0.8f};
-
-	renderer_draw_text(renderer, x + 2.0f, y + 2.0f, scale, shadow, text);
-	renderer_draw_text(renderer, x, y, scale, color, text);
+static void draw_text(renderer_t *renderer,
+		      const renderer_font_t *font,
+		      const float x,
+		      const float y,
+		      const float scale,
+		      const renderer_color_t color,
+		      const char *text) {
+	if (font != NULL) {
+		renderer_draw_text_with_font(renderer, font, x, y, scale, color,
+					     text);
+	} else {
+		renderer_draw_text(renderer, x, y, scale / 7.0f, color, text);
+	}
 }

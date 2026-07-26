@@ -25,6 +25,7 @@ typedef struct game_state {
 	bool fire_requested;
 	bool respawn_requested;
 	hitscan_weapon_t weapon;
+	renderer_font_t *hud_font;
 	sandbox_hud_t hud;
 	debug_hud_t debug_hud;
 } game_state_t;
@@ -79,11 +80,10 @@ static bool initialize(engine_t *engine, void *user_data) {
 	entity_properties_t player_properties;
 	entity_spawn_context_t player_context;
 	char *asset_root;
+	char *font_path;
 	char *map_path;
 	char error[512];
 	hitscan_weapon_config_t weapon_config;
-
-	(void)engine;
 
 	game_state = user_data;
 
@@ -179,6 +179,21 @@ static bool initialize(engine_t *engine, void *user_data) {
 	game_state->jump_requested = false;
 	game_state->fire_requested = false;
 	game_state->respawn_requested = false;
+	font_path =
+		path_from_executable("assets/game/fonts/RobotoCondensed.ttf");
+	if (font_path == NULL) {
+		log_error("Failed to resolve HUD font path");
+		destroy_game_resources(game_state);
+		return false;
+	}
+	game_state->hud_font =
+		renderer_font_create(engine_get_renderer(engine), font_path);
+	free(font_path);
+	if (game_state->hud_font == NULL) {
+		log_error("Failed to load HUD font");
+		destroy_game_resources(game_state);
+		return false;
+	}
 	sandbox_hud_initialize(&game_state->hud,
 			       player_get_health(game_state->player));
 	weapon_config = hitscan_weapon_config_create();
@@ -499,8 +514,8 @@ static void render(engine_t *engine, void *user_data) {
 	hud_values.reserve_ammunition =
 		hitscan_weapon_get_reserve_ammo(&game_state->weapon);
 	hud_values.alive = player_is_alive(game_state->player);
-	sandbox_hud_draw(&game_state->hud, renderer, width, height,
-			 &hud_values);
+	sandbox_hud_draw(&game_state->hud, renderer, game_state->hud_font,
+			 width, height, &hud_values);
 }
 
 static void shutdown(engine_t *engine, void *user_data) {
@@ -512,12 +527,14 @@ static void shutdown(engine_t *engine, void *user_data) {
 static void destroy_game_resources(game_state_t *game_state) {
 	if (game_state == NULL) { return; }
 
+	renderer_font_destroy(game_state->hud_font);
 	world_destroy(game_state->world);
 	asset_manager_destroy(game_state->assets);
 
 	game_state->mesh_entity = NULL;
 	game_state->environment_light = NULL;
 	game_state->player = NULL;
+	game_state->hud_font = NULL;
 	game_state->world = NULL;
 	game_state->assets = NULL;
 }

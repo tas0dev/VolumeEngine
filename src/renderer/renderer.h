@@ -11,6 +11,7 @@
 #include "core/types.h"
 #include "math/mat4.h"
 #include "renderer/material.h"
+#include "renderer/font.h"
 #include "renderer/mesh.h"
 #include "renderer/view.h"
 #include <stddef.h>
@@ -106,6 +107,23 @@ void renderer_draw_text(const renderer_t *renderer,
 			float scale,
 			renderer_color_t color,
 			const char *text);
+/// ゲームが指定したTrueTypeフォントでASCIIテキストを登録する。
+///
+/// ### Args
+/// - `const renderer_t *renderer`: 対象のレンダラー。
+/// - `const renderer_font_t *font`: 使用するフォント。
+/// - `float x`: 左上のX座標。
+/// - `float y`: 左上のY座標。
+/// - `float height`: 文字の高さ。
+/// - `renderer_color_t color`: 文字色。
+/// - `const char *text`: 描画するASCII文字列。
+void renderer_draw_text_with_font(const renderer_t *renderer,
+				  const renderer_font_t *font,
+				  float x,
+				  float y,
+				  float height,
+				  renderer_color_t color,
+				  const char *text);
 /// 現在のフレームの描画統計を取得する。
 renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer);
 /// デバッグ線分の収集を開始する。

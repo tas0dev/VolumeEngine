@@ -620,6 +620,18 @@ void renderer_draw_text(const renderer_t *renderer,
 	ui_renderer_draw_text(renderer->ui_renderer, x, y, scale, color, text);
 }
 
+void renderer_draw_text_with_font(const renderer_t *renderer,
+				  const renderer_font_t *font,
+				  const float x,
+				  const float y,
+				  const float height,
+				  const renderer_color_t color,
+				  const char *text) {
+	if (renderer == NULL || font == NULL) { return; }
+	ui_renderer_draw_text_with_font(renderer->ui_renderer, font, x, y,
+					height, color, text);
+}
+
 renderer_frame_stats_t renderer_get_frame_stats(const renderer_t *renderer) {
 	if (renderer == NULL) { return (renderer_frame_stats_t){0}; }
 

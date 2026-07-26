@@ -8,6 +8,7 @@
 #include "renderer/ui_renderer.h"
 
 #include "core/path.h"
+#include "renderer/font_internal.h"
 #include "renderer/shader.h"
 #include <epoxy/gl.h>
 #include <stdint.h>
@@ -35,6 +36,12 @@ typedef struct ui_vertex {
 	float a;
 } ui_vertex_t;
 
+typedef struct ui_batch {
+	GLuint texture;
+	size_t first_vertex;
+	size_t vertex_count;
+} ui_batch_t;
+
 struct ui_renderer {
 	shader_t *shader;
 	GLuint vertex_array;
@@ -43,10 +50,15 @@ struct ui_renderer {
 	ui_vertex_t *vertices;
 	size_t vertex_count;
 	size_t vertex_capacity;
+	ui_batch_t *batches;
+	size_t batch_count;
+	size_t batch_capacity;
 };
 
 static bool reserve_vertices(ui_renderer_t *renderer, size_t count);
+static bool reserve_batches(ui_renderer_t *renderer, size_t count);
 static void append_quad(ui_renderer_t *renderer,
+			GLuint texture,
 			float x,
 			float y,
 			float width,
@@ -104,12 +116,16 @@ void ui_renderer_destroy(ui_renderer_t *renderer) {
 		glDeleteVertexArrays(1, &renderer->vertex_array);
 	}
 	shader_destroy(renderer->shader);
+	free(renderer->batches);
 	free(renderer->vertices);
 	free(renderer);
 }
 
 void ui_renderer_begin_frame(ui_renderer_t *renderer) {
-	if (renderer != NULL) { renderer->vertex_count = 0; }
+	if (renderer != NULL) {
+		renderer->vertex_count = 0;
+		renderer->batch_count = 0;
+	}
 }
 
 void ui_renderer_draw_rectangle(ui_renderer_t *renderer,
@@ -122,7 +138,8 @@ void ui_renderer_draw_rectangle(ui_renderer_t *renderer,
 	const float v = 0.5f / (float)FONT_HEIGHT;
 
 	if (renderer == NULL || width <= 0.0f || height <= 0.0f) { return; }
-	append_quad(renderer, x, y, width, height, u, v, u, v, color);
+	append_quad(renderer, renderer->font_texture, x, y, width, height, u, v,
+		    u, v, color);
 }
 
 void ui_renderer_draw_text(ui_renderer_t *renderer,
@@ -165,10 +182,62 @@ void ui_renderer_draw_text(ui_renderer_t *renderer,
 			v0 = (float)(row * FONT_CELL_HEIGHT) / FONT_HEIGHT;
 			u1 = (float)(column * FONT_CELL_WIDTH + 5) / FONT_WIDTH;
 			v1 = (float)(row * FONT_CELL_HEIGHT + 7) / FONT_HEIGHT;
-			append_quad(renderer, x, y, 5.0f * scale, 7.0f * scale,
-				    u0, v0, u1, v1, color);
+			append_quad(renderer, renderer->font_texture, x, y,
+				    5.0f * scale, 7.0f * scale, u0, v0, u1, v1,
+				    color);
 		}
 		x += FONT_CELL_WIDTH * scale;
+	}
+}
+
+void ui_renderer_draw_text_with_font(ui_renderer_t *renderer,
+				     const renderer_font_t *font,
+				     float x,
+				     float y,
+				     const float height,
+				     const renderer_color_t color,
+				     const char *text) {
+	const float start_x = x;
+	renderer_font_glyph_t glyph;
+	unsigned char character;
+	float scale;
+	float baseline;
+	float width;
+	float glyph_height;
+
+	if (renderer == NULL || font == NULL || text == NULL ||
+	    height <= 0.0f) {
+		return;
+	}
+	scale = height / font->baked_height;
+	baseline = y + font->ascent * scale;
+	while (*text != '\0') {
+		character = (unsigned char)*text++;
+		if (character == '\n') {
+			x = start_x;
+			y += height;
+			baseline = y + font->ascent * scale;
+			continue;
+		}
+		if (character < RENDERER_FONT_FIRST_CHARACTER ||
+		    character >= 128) {
+			character = '?';
+		}
+		glyph = font->glyphs[character - RENDERER_FONT_FIRST_CHARACTER];
+		width = (glyph.atlas_x1 - glyph.atlas_x0) * scale;
+		glyph_height = (glyph.atlas_y1 - glyph.atlas_y0) * scale;
+		if (width > 0.0f && glyph_height > 0.0f) {
+			append_quad(renderer, font->texture,
+				    x + glyph.x_offset * scale,
+				    baseline + glyph.y_offset * scale, width,
+				    glyph_height,
+				    glyph.atlas_x0 / (float)font->atlas_width,
+				    glyph.atlas_y0 / (float)font->atlas_height,
+				    glyph.atlas_x1 / (float)font->atlas_width,
+				    glyph.atlas_y1 / (float)font->atlas_height,
+				    color);
+		}
+		x += glyph.x_advance * scale;
 	}
 }
 
@@ -188,13 +257,17 @@ void ui_renderer_flush(ui_renderer_t *renderer,
 			(float)height);
 	shader_set_int(renderer->shader, "font_texture", 0);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, renderer->font_texture);
 	glBindVertexArray(renderer->vertex_array);
 	glBindBuffer(GL_ARRAY_BUFFER, renderer->vertex_buffer);
 	glBufferData(GL_ARRAY_BUFFER,
 		     renderer->vertex_count * sizeof(*renderer->vertices),
 		     renderer->vertices, GL_STREAM_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)renderer->vertex_count);
+	for (size_t index = 0; index < renderer->batch_count; index++) {
+		glBindTexture(GL_TEXTURE_2D, renderer->batches[index].texture);
+		glDrawArrays(GL_TRIANGLES,
+			     (GLint)renderer->batches[index].first_vertex,
+			     (GLsizei)renderer->batches[index].vertex_count);
+	}
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
@@ -220,7 +293,26 @@ static bool reserve_vertices(ui_renderer_t *renderer, const size_t count) {
 	return true;
 }
 
+static bool reserve_batches(ui_renderer_t *renderer, const size_t count) {
+	size_t capacity;
+	ui_batch_t *batches;
+
+	if (count <= renderer->batch_capacity) { return true; }
+	capacity =
+		renderer->batch_capacity == 0 ? 16 : renderer->batch_capacity;
+	while (capacity < count) {
+		if (capacity > SIZE_MAX / 2) { return false; }
+		capacity *= 2;
+	}
+	batches = realloc(renderer->batches, capacity * sizeof(*batches));
+	if (batches == NULL) { return false; }
+	renderer->batches = batches;
+	renderer->batch_capacity = capacity;
+	return true;
+}
+
 static void append_quad(ui_renderer_t *renderer,
+			const GLuint texture,
 			const float x,
 			const float y,
 			const float width,
@@ -231,8 +323,21 @@ static void append_quad(ui_renderer_t *renderer,
 			const float v1,
 			const renderer_color_t color) {
 	ui_vertex_t quad[6];
+	ui_batch_t *batch;
 
 	if (!reserve_vertices(renderer, renderer->vertex_count + 6)) { return; }
+	if (renderer->batch_count == 0 ||
+	    renderer->batches[renderer->batch_count - 1].texture != texture) {
+		if (!reserve_batches(renderer, renderer->batch_count + 1)) {
+			return;
+		}
+		batch = &renderer->batches[renderer->batch_count++];
+		batch->texture = texture;
+		batch->first_vertex = renderer->vertex_count;
+		batch->vertex_count = 0;
+	} else {
+		batch = &renderer->batches[renderer->batch_count - 1];
+	}
 	quad[0] =
 		(ui_vertex_t){x, y, u0, v0, color.r, color.g, color.b, color.a};
 	quad[1] = (ui_vertex_t){x + width, y,	    u1,	     v0,
@@ -245,6 +350,7 @@ static void append_quad(ui_renderer_t *renderer,
 				color.r, color.g,    color.b, color.a};
 	memcpy(&renderer->vertices[renderer->vertex_count], quad, sizeof(quad));
 	renderer->vertex_count += 6;
+	batch->vertex_count += 6;
 }
 
 static bool create_font_texture(ui_renderer_t *renderer) {

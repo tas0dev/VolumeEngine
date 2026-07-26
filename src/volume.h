@@ -29,6 +29,7 @@
 #include "math/math.h"
 #include "math/vec3.h"
 #include "physics/character_controller.h"
+#include "renderer/font.h"
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"

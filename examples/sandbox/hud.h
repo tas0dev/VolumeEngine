@@ -50,11 +50,13 @@ void sandbox_hud_reset(sandbox_hud_t *hud, float health);
 /// ### Args
 /// - `const sandbox_hud_t *hud`: 描画状態を持つHUD。
 /// - `renderer_t *renderer`: 描画に使用するレンダラー。
+/// - `const renderer_font_t *font`: ゲームが選択したHUD用フォント。
 /// - `int width`: 描画領域の幅。
 /// - `int height`: 描画領域の高さ。
 /// - `const sandbox_hud_values_t *values`: 表示するゲーム状態。
 void sandbox_hud_draw(const sandbox_hud_t *hud,
 		      renderer_t *renderer,
+		      const renderer_font_t *font,
 		      int width,
 		      int height,
 		      const sandbox_hud_values_t *values);

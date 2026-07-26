@@ -9,6 +9,7 @@
 #define VOLUME_RENDERER_UI_RENDERER_H
 
 #include "renderer/renderer.h"
+#include "renderer/font.h"
 
 typedef struct ui_renderer ui_renderer_t;
 
@@ -27,6 +28,13 @@ void ui_renderer_draw_text(ui_renderer_t *renderer,
 			   float scale,
 			   renderer_color_t color,
 			   const char *text);
+void ui_renderer_draw_text_with_font(ui_renderer_t *renderer,
+				     const renderer_font_t *font,
+				     float x,
+				     float y,
+				     float height,
+				     renderer_color_t color,
+				     const char *text);
 void ui_renderer_flush(ui_renderer_t *renderer, int width, int height);
 
 #endif

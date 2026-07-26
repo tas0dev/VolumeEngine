@@ -54,6 +54,7 @@ volume_sources = files(
         'src/entity/world.c',
         'src/entity/properties.c',
         'src/renderer/renderer.c',
+        'src/renderer/font.c',
         'src/renderer/mesh.c',
         'src/renderer/shader.c',
         'src/renderer/material.c',

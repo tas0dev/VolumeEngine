@@ -9,9 +9,9 @@
 #include "common.h"
 #include "entity/prop_breakable.h"
 #include "entity/world.h"
-#include "game/hitscan_weapon.h"
 #include "map/map.h"
 #include "map/spawn.h"
+#include "weapon/hitscan_weapon.h"
 
 static unsigned char mesh_marker;
 
@@ -53,7 +53,11 @@ static bool test_hitscan_breaks_prop_and_reloads(void) {
 	prop = prop_breakable_from_entity(target);
 	CHECK(prop != NULL);
 
-	config = hitscan_weapon_config_create();
+	config.damage = 20.0f;
+	config.range = 100.0f;
+	config.fire_interval = 0.2f;
+	config.magazine_size = 12;
+	config.reserve_ammo = 48;
 	CHECK(hitscan_weapon_initialize(&weapon, &config));
 	CHECK(hitscan_weapon_fire(&weapon, world, NULL,
 				  vec3_create(0.0f, 0.0f, 0.0f),

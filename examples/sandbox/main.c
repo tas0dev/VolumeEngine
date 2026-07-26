@@ -6,6 +6,7 @@
  */
 
 #include "hud.h"
+#include "pistol.h"
 #include "volume.h"
 #include <math.h>
 #include <stdlib.h>
@@ -24,9 +25,7 @@ typedef struct game_state {
 	bool jump_requested;
 	bool fire_requested;
 	bool respawn_requested;
-	hitscan_weapon_t weapon;
-	audio_sound_t *fire_sound;
-	audio_sound_t *reload_sound;
+	sandbox_pistol_t pistol;
 	audio_sound_t *door_sound;
 	audio_sound_t *button_sound;
 	renderer_font_t *hud_font;
@@ -87,7 +86,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 	char *font_path;
 	char *map_path;
 	char error[512];
-	hitscan_weapon_config_t weapon_config;
 
 	game_state = user_data;
 
@@ -109,13 +107,9 @@ static bool initialize(engine_t *engine, void *user_data) {
 		free(map_path);
 		return false;
 	}
-	game_state->fire_sound = audio_sound_create_tone(145.0f, 0.07f);
-	game_state->reload_sound = audio_sound_create_tone(520.0f, 0.09f);
 	game_state->door_sound = audio_sound_create_tone(180.0f, 0.16f);
 	game_state->button_sound = audio_sound_create_tone(780.0f, 0.05f);
-	if (game_state->fire_sound == NULL ||
-	    game_state->reload_sound == NULL ||
-	    game_state->door_sound == NULL ||
+	if (game_state->door_sound == NULL ||
 	    game_state->button_sound == NULL ||
 	    !asset_manager_register_sound(game_state->assets, "sounds/door.wav",
 					  game_state->door_sound) ||
@@ -220,9 +214,10 @@ static bool initialize(engine_t *engine, void *user_data) {
 	}
 	sandbox_hud_initialize(&game_state->hud,
 			       player_get_health(game_state->player));
-	weapon_config = hitscan_weapon_config_create();
-	if (!hitscan_weapon_initialize(&game_state->weapon, &weapon_config)) {
-		log_error("Failed to initialize weapon");
+	if (!sandbox_pistol_initialize(&game_state->pistol, game_state->assets,
+				       engine_get_audio_system(engine), error,
+				       sizeof(error))) {
+		log_error("Failed to initialize sandbox pistol");
 		destroy_game_resources(game_state);
 		return false;
 	}
@@ -248,7 +243,10 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	float mouse_y;
 	float mouse_wheel_y;
 	float pitch_limit;
+	float view_pitch;
+	float view_yaw;
 	bool mouse_was_captured;
+	fps_recoil_offset_t recoil;
 	const float mouse_sensitivity = 0.0025f;
 
 	(void)delta_time;
@@ -284,6 +282,9 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 
 		game_state->yaw += mouse_x * mouse_sensitivity;
 		game_state->pitch -= mouse_y * mouse_sensitivity;
+		sandbox_pistol_add_look_delta(&game_state->pistol,
+					      mouse_x * mouse_sensitivity,
+					      -mouse_y * mouse_sensitivity);
 	}
 
 	pitch_limit = PI * 0.495f;
@@ -296,13 +297,17 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 		game_state->pitch = -pitch_limit;
 	}
 
+	recoil = sandbox_pistol_get_recoil(&game_state->pistol);
+	view_pitch = game_state->pitch + recoil.pitch;
+	view_yaw = game_state->yaw + recoil.yaw;
+	if (view_pitch > pitch_limit) { view_pitch = pitch_limit; }
+	if (view_pitch < -pitch_limit) { view_pitch = -pitch_limit; }
 	game_state->camera.forward = vec3_normalize(
-		vec3_create(cosf(game_state->pitch) * cosf(game_state->yaw),
-			    sinf(game_state->pitch),
-			    cosf(game_state->pitch) * sinf(game_state->yaw)));
+		vec3_create(cosf(view_pitch) * cosf(view_yaw), sinf(view_pitch),
+			    cosf(view_pitch) * sinf(view_yaw)));
 
-	forward = game_state->camera.forward;
-	forward.y = 0.0f;
+	forward =
+		vec3_create(cosf(game_state->yaw), 0.0f, sinf(game_state->yaw));
 
 	if (vec3_length(forward) > 0.0f) { forward = vec3_normalize(forward); }
 
@@ -343,10 +348,7 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	if (input_key_pressed(input, INPUT_KEY_R)) {
-		if (hitscan_weapon_reload(&game_state->weapon)) {
-			(void)audio_system_play(engine_get_audio_system(engine),
-						game_state->reload_sound, NULL);
-		}
+		(void)sandbox_pistol_reload(&game_state->pistol);
 	}
 
 	if (input_key_pressed(input, INPUT_KEY_F3)) {
@@ -391,22 +393,24 @@ static void
 fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	game_state_t *game_state;
 	character_move_input_t move_input = {0};
+	vec3_t horizontal_velocity;
 	float wish_speed;
-	hitscan_weapon_config_t weapon_config;
 
 	game_state = user_data;
 
 	if (game_state == NULL || game_state->world == NULL) { return; }
 
-	hitscan_weapon_update(&game_state->weapon, delta_time);
+	horizontal_velocity = player_get_velocity(game_state->player);
+	horizontal_velocity.y = 0.0f;
+	sandbox_pistol_update(&game_state->pistol, delta_time,
+			      vec3_length(horizontal_velocity),
+			      player_get_ground_entity_id(game_state->player) != 0);
 	if (game_state->fire_requested && player_is_alive(game_state->player)) {
-		if (hitscan_weapon_fire(&game_state->weapon, game_state->world,
-					player_get_entity(game_state->player),
-					game_state->camera.position,
-					game_state->camera.forward, NULL)) {
-			(void)audio_system_play(engine_get_audio_system(engine),
-						game_state->fire_sound, NULL);
-		}
+		(void)sandbox_pistol_fire(&game_state->pistol,
+					  game_state->world,
+					  player_get_entity(game_state->player),
+					  game_state->camera.position,
+					  game_state->camera.forward, NULL);
 	}
 	game_state->fire_requested = false;
 
@@ -438,9 +442,7 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 		if (game_state->respawn_requested) {
 			if (player_respawn(game_state->player,
 					   game_state->player_spawn_position)) {
-				weapon_config = hitscan_weapon_config_create();
-				(void)hitscan_weapon_initialize(
-					&game_state->weapon, &weapon_config);
+				(void)sandbox_pistol_reset(&game_state->pistol);
 				sandbox_hud_reset(
 					&game_state->hud,
 					player_get_health(game_state->player));
@@ -534,6 +536,9 @@ static void render(engine_t *engine, void *user_data) {
 
 		renderer_flush_debug_lines(renderer, &render_view);
 	}
+	if (player_is_alive(game_state->player)) {
+		sandbox_pistol_draw(&game_state->pistol, renderer, &render_view);
+	}
 
 	debug_hud_draw(&game_state->debug_hud, renderer, game_state->world,
 		       player_get_position(game_state->player),
@@ -541,9 +546,9 @@ static void render(engine_t *engine, void *user_data) {
 		       player_get_ground_entity_id(game_state->player) != 0,
 		       1.0f / 120.0f);
 	hud_values.health = (int)player_get_health(game_state->player);
-	hud_values.ammunition = hitscan_weapon_get_ammo(&game_state->weapon);
+	hud_values.ammunition = sandbox_pistol_get_ammo(&game_state->pistol);
 	hud_values.reserve_ammunition =
-		hitscan_weapon_get_reserve_ammo(&game_state->weapon);
+		sandbox_pistol_get_reserve_ammo(&game_state->pistol);
 	hud_values.alive = player_is_alive(game_state->player);
 	sandbox_hud_draw(&game_state->hud, renderer, game_state->hud_font,
 			 width, height, &hud_values);
@@ -561,18 +566,15 @@ static void destroy_game_resources(game_state_t *game_state) {
 	audio_system_stop_all(world_get_audio_system(game_state->world));
 	renderer_font_destroy(game_state->hud_font);
 	world_destroy(game_state->world);
+	sandbox_pistol_destroy(&game_state->pistol);
 	audio_sound_destroy(game_state->button_sound);
 	audio_sound_destroy(game_state->door_sound);
-	audio_sound_destroy(game_state->reload_sound);
-	audio_sound_destroy(game_state->fire_sound);
 	asset_manager_destroy(game_state->assets);
 
 	game_state->mesh_entity = NULL;
 	game_state->environment_light = NULL;
 	game_state->player = NULL;
 	game_state->hud_font = NULL;
-	game_state->fire_sound = NULL;
-	game_state->reload_sound = NULL;
 	game_state->door_sound = NULL;
 	game_state->button_sound = NULL;
 	game_state->world = NULL;

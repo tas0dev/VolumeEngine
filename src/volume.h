@@ -24,8 +24,8 @@
 #include "entity/prop_breakable.h"
 #include "entity/trigger_hurt.h"
 #include "entity/world.h"
+#include "fps/recoil.h"
 #include "game/game.h"
-#include "game/hitscan_weapon.h"
 #include "input/input.h"
 #include "map/spawn.h"
 #include "math/mat4.h"
@@ -36,6 +36,7 @@
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"
+#include "weapon/hitscan_weapon.h"
 #include <stdbool.h>
 
 typedef struct engine_config {

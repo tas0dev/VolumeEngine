@@ -214,6 +214,16 @@ audio_test = executable(
     install : false,
 )
 
+recoil_test = executable(
+    'recoil-test',
+    [
+        'common.c',
+        'recoil_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -312,4 +322,9 @@ test(
 test(
     'audio',
     audio_test
+)
+
+test(
+    'recoil',
+    recoil_test
 )

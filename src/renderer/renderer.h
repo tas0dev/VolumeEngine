@@ -88,6 +88,42 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const material_t *material,
 			const mat4_t *model,
 			const render_view_t *view);
+/// FPS用ViewModel描画パスを開始する。
+///
+/// ワールドの深度を消去し、ViewModel同士だけで深度判定する。
+/// ワールドと3Dデバッグ描画の後に呼び出す必要がある。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `float field_of_view`: ViewModelの垂直視野角。単位は度。
+/// - `float near_plane`: 近クリップ面。
+/// - `float far_plane`: 遠クリップ面。
+///
+/// ### Returns
+/// - `true`: 描画パスを開始した。
+/// - `false`: 設定または描画領域が不正だった。
+bool renderer_begin_view_model_pass(renderer_t *renderer,
+				    float field_of_view,
+				    float near_plane,
+				    float far_plane);
+/// 現在のViewModelパスへカメラローカル座標のメッシュを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `const mesh_t *mesh`: 描画するメッシュ。
+/// - `const material_t *material`: 使用するマテリアル。
+/// - `const mat4_t *model`: カメラローカルのモデル変換。
+/// - `const render_view_t *world_view`: 流用するワールド光源設定。
+void renderer_draw_view_model_mesh(renderer_t *renderer,
+				   const mesh_t *mesh,
+				   const material_t *material,
+				   const mat4_t *model,
+				   const render_view_t *world_view);
+/// FPS用ViewModel描画パスを終了する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+void renderer_end_view_model_pass(renderer_t *renderer);
 /// 新しい描画フレームを開始して描画先を初期化する。
 ///
 /// ### Args

@@ -15,6 +15,7 @@ executable(
     [
         'main.c',
         'hud.c',
+        'pistol.c',
     ],
     dependencies : volume_dependency,
     install : false,

@@ -22,6 +22,7 @@ uniform float specular_strength;
 uniform float shininess;
 uniform float bloom_threshold;
 uniform float bloom_knee;
+uniform int shadows_enabled;
 
 layout(location = 0) out vec4 output_color;
 layout(location = 1) out vec4 output_brightness;
@@ -230,11 +231,13 @@ void main(void) {
         );
     }
 
-    shadow = calculate_shadow(
+    shadow = shadows_enabled != 0
+    ? calculate_shadow(
             fragment_light_position,
             geometric_normal,
             light
-    );
+    )
+    : 0.0;
 
     ambient =
     ambient_strength * light_color;

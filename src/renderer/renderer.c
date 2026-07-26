@@ -10,6 +10,7 @@
 #include "core/log.h"
 #include "core/path.h"
 #include "math/mat4.h"
+#include "math/math.h"
 #include "platform/platform.h"
 #include "renderer/bloom_buffer.h"
 #include "renderer/hdr_buffer.h"
@@ -20,6 +21,7 @@
 #include "shadow_map.h"
 #include <SDL3/SDL.h>
 #include <epoxy/gl.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -55,11 +57,19 @@ struct renderer {
 	debug_line_vertex_t *debug_line_vertices;
 	size_t debug_line_vertex_count;
 	size_t debug_line_vertex_capacity;
+	mat4_t view_model_projection;
+	bool view_model_pass_active;
 };
 
 static bool renderer_create_debug_lines(renderer_t *renderer);
 static bool renderer_reserve_debug_line_vertices(renderer_t *renderer,
 						 size_t capacity);
+static void renderer_draw_mesh_internal(renderer_t *renderer,
+					const mesh_t *mesh,
+					const material_t *material,
+					const mat4_t *model,
+					const render_view_t *view,
+					bool shadows_enabled);
 
 static bool renderer_create_screen_quad(renderer_t *renderer) {
 	static const float vertices[] = {
@@ -360,6 +370,7 @@ void renderer_begin_frame(renderer_t *renderer) {
 	renderer->framebuffer_width = width;
 	renderer->framebuffer_height = height;
 	renderer->frame_stats = (renderer_frame_stats_t){0};
+	renderer->view_model_pass_active = false;
 	ui_renderer_begin_frame(renderer->ui_renderer);
 
 	hdr_buffer_bind(renderer->hdr_buffer);
@@ -507,12 +518,71 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const material_t *material,
 			const mat4_t *model,
 			const render_view_t *view) {
-	vec3_t light_color;
-
 	if (renderer == NULL || mesh == NULL || material == NULL ||
 	    model == NULL || view == NULL) {
 		return;
 	}
+	renderer_draw_mesh_internal(renderer, mesh, material, model, view,
+				    true);
+}
+
+bool renderer_begin_view_model_pass(renderer_t *renderer,
+				    const float field_of_view,
+				    const float near_plane,
+				    const float far_plane) {
+	float aspect_ratio;
+
+	if (renderer == NULL || !isfinite(field_of_view) ||
+	    field_of_view <= 1.0f || field_of_view >= 179.0f ||
+	    !isfinite(near_plane) || !isfinite(far_plane) ||
+	    near_plane <= 0.0f || far_plane <= near_plane ||
+	    renderer->framebuffer_width <= 0 ||
+	    renderer->framebuffer_height <= 0) {
+		return false;
+	}
+	aspect_ratio = (float)renderer->framebuffer_width /
+		       (float)renderer->framebuffer_height;
+	renderer->view_model_projection =
+		mat4_perspective(field_of_view * PI / 180.0f, aspect_ratio,
+				 near_plane, far_plane);
+	renderer->view_model_pass_active = true;
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	return true;
+}
+
+void renderer_draw_view_model_mesh(renderer_t *renderer,
+				   const mesh_t *mesh,
+				   const material_t *material,
+				   const mat4_t *model,
+				   const render_view_t *world_view) {
+	render_view_t view;
+
+	if (renderer == NULL || !renderer->view_model_pass_active ||
+	    world_view == NULL) {
+		return;
+	}
+	view = *world_view;
+	view.view = mat4_identity();
+	view.projection = renderer->view_model_projection;
+	view.light_view_projection = mat4_identity();
+	renderer_draw_mesh_internal(renderer, mesh, material, model, &view,
+				    false);
+}
+
+void renderer_end_view_model_pass(renderer_t *renderer) {
+	if (renderer == NULL) { return; }
+	renderer->view_model_pass_active = false;
+}
+
+static void renderer_draw_mesh_internal(renderer_t *renderer,
+					const mesh_t *mesh,
+					const material_t *material,
+					const mat4_t *model,
+					const render_view_t *view,
+					const bool shadows_enabled) {
+	vec3_t light_color;
 
 	light_color = vec3_scale(view->light_color, view->light_intensity);
 
@@ -534,6 +604,8 @@ void renderer_draw_mesh(renderer_t *renderer,
 	shader_set_float(renderer->shader, "specular_strength",
 			 material->specular_strength);
 	shader_set_float(renderer->shader, "shininess", material->shininess);
+	shader_set_int(renderer->shader, "shadows_enabled",
+		       shadows_enabled ? 1 : 0);
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D,

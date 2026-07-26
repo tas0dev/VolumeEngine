@@ -5,8 +5,8 @@
  * Created by tas0dev
  */
 
-#ifndef VOLUME_GAME_HITSCAN_WEAPON_H
-#define VOLUME_GAME_HITSCAN_WEAPON_H
+#ifndef VOLUME_WEAPON_HITSCAN_WEAPON_H
+#define VOLUME_WEAPON_HITSCAN_WEAPON_H
 
 #include "collision/collision_world.h"
 #include "entity/damage.h"
@@ -29,17 +29,13 @@ typedef struct hitscan_weapon {
 	int reserve_ammo;
 } hitscan_weapon_t;
 
-/// 既定のピストル設定を作成する。
+/// 指定設定でhitscan武器の状態を初期化する。
 ///
-/// ### Returns
-/// - `hitscan_weapon_config_t`: 既定の武器設定。
-hitscan_weapon_config_t hitscan_weapon_config_create(void);
-
-/// hitscan武器を初期化する。
+/// 武器固有の既定値は持たず、ゲームが全設定を指定する。
 ///
 /// ### Args
 /// - `hitscan_weapon_t *weapon`: 初期化する武器。
-/// - `const hitscan_weapon_config_t *config`: 武器設定。
+/// - `const hitscan_weapon_config_t *config`: ゲームが指定する武器設定。
 ///
 /// ### Returns
 /// - `true`: 初期化に成功した。

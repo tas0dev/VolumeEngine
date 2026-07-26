@@ -5,22 +5,11 @@
  * Created by tas0dev
  */
 
-#include "game/hitscan_weapon.h"
+#include "weapon/hitscan_weapon.h"
 #include "entity/entity.h"
 #include "entity/world.h"
 #include <math.h>
 #include <stddef.h>
-
-hitscan_weapon_config_t hitscan_weapon_config_create(void) {
-	hitscan_weapon_config_t config;
-
-	config.damage = 20.0f;
-	config.range = 100.0f;
-	config.fire_interval = 0.2f;
-	config.magazine_size = 12;
-	config.reserve_ammo = 48;
-	return config;
-}
 
 bool hitscan_weapon_initialize(hitscan_weapon_t *weapon,
 			       const hitscan_weapon_config_t *config) {

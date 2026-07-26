@@ -73,7 +73,9 @@ static void renderer_draw_mesh_internal(renderer_t *renderer,
 					const material_t *material,
 					const mat4_t *model,
 					const render_view_t *view,
-					bool shadows_enabled);
+					bool shadows_enabled,
+					const mat4_t *bone_matrices,
+					size_t bone_count);
 static void renderer_draw_sprite_internal(renderer_t *renderer,
 					  vec3_t position,
 					  vec3_t right,
@@ -577,7 +579,8 @@ void renderer_draw_mesh(renderer_t *renderer,
 		return;
 	}
 	renderer_draw_mesh_internal(renderer, mesh, material, model, view,
-				    true);
+				    true,
+				    NULL, 0);
 }
 
 bool renderer_begin_view_model_pass(renderer_t *renderer,
@@ -622,7 +625,35 @@ void renderer_draw_view_model_mesh(renderer_t *renderer,
 	view.projection = renderer->view_model_projection;
 	view.light_view_projection = mat4_identity();
 	renderer_draw_mesh_internal(renderer, mesh, material, model, &view,
-				    false);
+				    false, NULL, 0);
+}
+
+void renderer_draw_view_model_animated_mesh(renderer_t *renderer,
+					    const mesh_t *mesh,
+					    const material_t *material,
+					    const mat4_t *model,
+					    const render_view_t *world_view,
+					    const animator_t *animator) {
+	render_view_t view;
+	const mat4_t *bone_matrices;
+	size_t bone_count;
+
+	if (renderer == NULL || !renderer->view_model_pass_active ||
+	    mesh == NULL || material == NULL || model == NULL ||
+	    world_view == NULL || animator == NULL) {
+		return;
+	}
+	bone_matrices = animator_get_bone_matrices(animator, &bone_count);
+	if (bone_matrices == NULL || bone_count == 0 ||
+	    bone_count > ANIMATION_MAX_BONES) {
+		return;
+	}
+	view = *world_view;
+	view.view = mat4_identity();
+	view.projection = renderer->view_model_projection;
+	view.light_view_projection = mat4_identity();
+	renderer_draw_mesh_internal(renderer, mesh, material, model, &view,
+				    false, bone_matrices, bone_count);
 }
 
 void renderer_end_view_model_pass(renderer_t *renderer) {
@@ -740,7 +771,9 @@ static void renderer_draw_mesh_internal(renderer_t *renderer,
 					const material_t *material,
 					const mat4_t *model,
 					const render_view_t *view,
-					const bool shadows_enabled) {
+					const bool shadows_enabled,
+					const mat4_t *bone_matrices,
+					const size_t bone_count) {
 	vec3_t light_color;
 
 	light_color = vec3_scale(view->light_color, view->light_intensity);
@@ -765,6 +798,12 @@ static void renderer_draw_mesh_internal(renderer_t *renderer,
 	shader_set_float(renderer->shader, "shininess", material->shininess);
 	shader_set_int(renderer->shader, "shadows_enabled",
 		       shadows_enabled ? 1 : 0);
+	shader_set_int(renderer->shader, "skinning_enabled",
+		       bone_matrices != NULL && bone_count > 0);
+	if (bone_matrices != NULL && bone_count > 0) {
+		shader_set_mat4_array(renderer->shader, "bone_matrices[0]",
+				      bone_matrices, bone_count);
+	}
 
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D,

@@ -19,7 +19,14 @@ struct mesh {
 	GLsizei index_count;
 	aabb_t bounds;
 	triangle_mesh_collider_t *collision_mesh;
+	animation_set_t *animations;
 };
+
+static mesh_t *mesh_create_internal(const mesh_vertex_t *vertices,
+				    size_t vertex_count,
+				    const unsigned int *indices,
+				    size_t index_count,
+				    animation_set_t *animations);
 
 static triangle_mesh_collider_t *
 create_collision_mesh(const mesh_vertex_t *vertices,
@@ -98,6 +105,25 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		    const size_t vertex_count,
 		    const unsigned int *indices,
 		    const size_t index_count) {
+	return mesh_create_internal(vertices, vertex_count, indices,
+				    index_count, NULL);
+}
+
+mesh_t *mesh_create_animated(const mesh_vertex_t *vertices,
+			     const size_t vertex_count,
+			     const unsigned int *indices,
+			     const size_t index_count,
+			     animation_set_t *animations) {
+	if (animations == NULL) { return NULL; }
+	return mesh_create_internal(vertices, vertex_count, indices,
+				    index_count, animations);
+}
+
+static mesh_t *mesh_create_internal(const mesh_vertex_t *vertices,
+				    const size_t vertex_count,
+				    const unsigned int *indices,
+				    const size_t index_count,
+				    animation_set_t *animations) {
 	mesh_t *mesh;
 
 	if (vertices == NULL || vertex_count == 0 || indices == NULL ||
@@ -129,6 +155,7 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 	}
 
 	mesh->index_count = (GLsizei)index_count;
+	mesh->animations = animations;
 
 	glGenVertexArrays(1, &mesh->vertex_array);
 	glBindVertexArray(mesh->vertex_array);
@@ -170,6 +197,16 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 			      (const void *)offsetof(mesh_vertex_t, bitangent));
 	glEnableVertexAttribArray(5);
 
+	glVertexAttribIPointer(
+		6, 4, GL_INT, sizeof(mesh_vertex_t),
+		(const void *)offsetof(mesh_vertex_t, bone_indices));
+	glEnableVertexAttribArray(6);
+
+	glVertexAttribPointer(
+		7, 4, GL_FLOAT, GL_FALSE, sizeof(mesh_vertex_t),
+		(const void *)offsetof(mesh_vertex_t, bone_weights));
+	glEnableVertexAttribArray(7);
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
@@ -180,6 +217,7 @@ void mesh_destroy(mesh_t *mesh) {
 	if (mesh == NULL) { return; }
 
 	triangle_mesh_collider_destroy(mesh->collision_mesh);
+	animation_set_destroy(mesh->animations);
 
 	if (mesh->index_buffer != 0) {
 		glDeleteBuffers(1, &mesh->index_buffer);
@@ -216,4 +254,8 @@ const triangle_mesh_collider_t *mesh_get_collision_mesh(const mesh_t *mesh) {
 	if (mesh == NULL) { return NULL; }
 
 	return mesh->collision_mesh;
+}
+
+const animation_set_t *mesh_get_animation_set(const mesh_t *mesh) {
+	return mesh == NULL ? NULL : mesh->animations;
 }

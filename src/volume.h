@@ -9,6 +9,7 @@
 #define VOLUME_ENGINE_H
 
 // ReSharper disable CppUnusedIncludeDirective
+#include "animation/animation.h"
 #include "audio/audio.h"
 #include "audio/sound.h"
 #include "asset/manager.h"

@@ -124,6 +124,21 @@ void renderer_draw_view_model_mesh(renderer_t *renderer,
 				   const material_t *material,
 				   const mat4_t *model,
 				   const render_view_t *world_view);
+/// 現在のViewModelパスへGPU Skinningされたメッシュを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `const mesh_t *mesh`: Animation Setを持つメッシュ。
+/// - `const material_t *material`: 使用するマテリアル。
+/// - `const mat4_t *model`: カメラローカルのモデル変換。
+/// - `const render_view_t *world_view`: 流用するワールド光源設定。
+/// - `const animator_t *animator`: Bone行列を提供するAnimator。
+void renderer_draw_view_model_animated_mesh(renderer_t *renderer,
+					    const mesh_t *mesh,
+					    const material_t *material,
+					    const mat4_t *model,
+					    const render_view_t *world_view,
+					    const animator_t *animator);
 /// FPS用ViewModel描画パスを終了する。
 ///
 /// ### Args

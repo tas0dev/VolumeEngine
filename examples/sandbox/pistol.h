@@ -26,6 +26,8 @@ typedef struct sandbox_pistol {
 	const material_t *view_model_material;
 	fps_effect_system_t *effects;
 	fps_recoil_t recoil;
+	animator_t animator;
+	bool has_animator;
 	float muzzle_flash_time;
 	float bob_time;
 	float bob_amount;

@@ -219,6 +219,24 @@ void shader_set_mat4(const shader_t *shader,
 	glUniformMatrix4fv(location, 1, GL_FALSE, mat4_data(matrix));
 }
 
+void shader_set_mat4_array(const shader_t *shader,
+			   const char *name,
+			   const mat4_t *matrices,
+			   const size_t count) {
+	GLint location;
+
+	if (shader == NULL || name == NULL || matrices == NULL || count == 0) {
+		return;
+	}
+	location = glGetUniformLocation(shader->program, name);
+	if (location < 0) {
+		log_error("Shader uniform not found: %s", name);
+		return;
+	}
+	glUniformMatrix4fv(location, (GLsizei)count, GL_FALSE,
+			   mat4_data(matrices));
+}
+
 void shader_set_vec3(const shader_t *shader,
 		     const char *name,
 		     const vec3_t value) {

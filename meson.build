@@ -40,6 +40,7 @@ volume_sources = files(
         'src/audio/audio.c',
         'src/audio/sound.c',
         'src/audio/mp3.c',
+        'src/animation/animation.c',
         'src/weapon/hitscan_weapon.c',
         'src/fps/effects.c',
         'src/fps/recoil.c',

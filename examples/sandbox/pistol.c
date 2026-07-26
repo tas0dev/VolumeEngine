@@ -65,7 +65,12 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 	*pistol = (sandbox_pistol_t){0};
 	pistol->audio = audio;
 	pistol->view_model_mesh = asset_manager_load_mesh(
-		assets, "models/wepons/pistol/pistol.obj", error, error_size);
+		assets, "models/wepons/pistol/pistol.glb", error, error_size);
+	if (pistol->view_model_mesh == NULL) {
+		pistol->view_model_mesh = asset_manager_load_mesh(
+			assets, "models/wepons/pistol/pistol.obj", error,
+			error_size);
+	}
 	pistol->view_model_material = asset_manager_load_material(
 		assets, "materials/pistol.volmat", error, error_size);
 	pistol->fire_sound = asset_manager_load_sound(assets, "audio/fire.mp3",
@@ -86,6 +91,12 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 		return false;
 	}
 	pistol->recoil_direction = 1.0f;
+	pistol->has_animator = animator_initialize(
+		&pistol->animator,
+		mesh_get_animation_set(pistol->view_model_mesh));
+	if (pistol->has_animator) {
+		(void)animator_play(&pistol->animator, "idle", true);
+	}
 	return true;
 }
 
@@ -99,6 +110,12 @@ void sandbox_pistol_update(sandbox_pistol_t *pistol,
 	if (pistol == NULL) { return; }
 	hitscan_weapon_update(&pistol->weapon, delta_time);
 	fps_recoil_update(&pistol->recoil, delta_time);
+	if (pistol->has_animator) {
+		animator_update(&pistol->animator, delta_time);
+		if (!animator_is_playing(&pistol->animator)) {
+			(void)animator_play(&pistol->animator, "idle", true);
+		}
+	}
 	fps_effect_system_update(pistol->effects, delta_time);
 	pistol->muzzle_flash_time =
 		fmaxf(0.0f, pistol->muzzle_flash_time - delta_time);
@@ -141,6 +158,9 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 	fps_recoil_add_impulse(&pistol->recoil, 2.4f,
 			       0.55f * pistol->recoil_direction);
 	pistol->recoil_direction = -pistol->recoil_direction;
+	if (pistol->has_animator) {
+		(void)animator_play(&pistol->animator, "fire", false);
+	}
 	return true;
 }
 
@@ -150,6 +170,9 @@ bool sandbox_pistol_reload(sandbox_pistol_t *pistol) {
 	}
 	pistol->reload_voice =
 		audio_system_play(pistol->audio, pistol->reload_sound, NULL);
+	if (pistol->has_animator) {
+		(void)animator_play(&pistol->animator, "reload", false);
+	}
 	return true;
 }
 
@@ -165,6 +188,9 @@ bool sandbox_pistol_reset(sandbox_pistol_t *pistol) {
 	pistol->recoil_direction = 1.0f;
 	pistol->muzzle_flash_time = 0.0f;
 	fps_effect_system_clear(pistol->effects);
+	if (pistol->has_animator) {
+		(void)animator_play(&pistol->animator, "idle", true);
+	}
 	return hitscan_weapon_initialize(&pistol->weapon, &config);
 }
 
@@ -206,9 +232,16 @@ void sandbox_pistol_draw(const sandbox_pistol_t *pistol,
 	if (!renderer_begin_view_model_pass(renderer, 75.0f, 0.01f, 5.0f)) {
 		return;
 	}
-	renderer_draw_view_model_mesh(renderer, pistol->view_model_mesh,
-				      pistol->view_model_material, &model,
-				      world_view);
+	if (pistol->has_animator) {
+		renderer_draw_view_model_animated_mesh(
+			renderer, pistol->view_model_mesh,
+			pistol->view_model_material, &model, world_view,
+			&pistol->animator);
+	} else {
+		renderer_draw_view_model_mesh(renderer, pistol->view_model_mesh,
+					      pistol->view_model_material,
+					      &model, world_view);
+	}
 	if (pistol->muzzle_flash_time > 0.0f) {
 		flash_amount = pistol->muzzle_flash_time / 0.045f;
 		muzzle_position = mat4_transform_point(

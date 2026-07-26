@@ -239,6 +239,16 @@ effects_test = executable(
     install : false,
 )
 
+animation_test = executable(
+    'animation-test',
+    [
+        'common.c',
+        'animation_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -347,4 +357,9 @@ test(
 test(
     'effects',
     effects_test
+)
+
+test(
+    'animation',
+    animation_test
 )

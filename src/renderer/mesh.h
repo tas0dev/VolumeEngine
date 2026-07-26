@@ -7,6 +7,7 @@
 
 #ifndef VOLUME_RENDERER_MESH_H
 #define VOLUME_RENDERER_MESH_H
+#include "animation/animation.h"
 #include "collision/aabb.h"
 #include "collision/triangle_mesh_collider.h"
 
@@ -20,6 +21,8 @@ typedef struct mesh_vertex {
 	float texture_coordinate[2];
 	float tangent[3];
 	float bitangent[3];
+	int bone_indices[4];
+	float bone_weights[4];
 } mesh_vertex_t;
 
 typedef struct mesh mesh_t;
@@ -38,6 +41,24 @@ mesh_t *mesh_create(const mesh_vertex_t *vertices,
 		    size_t vertex_count,
 		    const unsigned int *indices,
 		    size_t index_count);
+/// 頂点データとAnimation SetからSkinned Meshを作成する。
+///
+/// 成功時はMeshがAnimation Setの所有権を取得する。
+///
+/// ### Args
+/// - `const mesh_vertex_t *vertices`: Bone Weightを含む頂点配列。
+/// - `size_t vertex_count`: 頂点数。
+/// - `const unsigned int *indices`: インデックス配列。
+/// - `size_t index_count`: インデックス数。
+/// - `animation_set_t *animations`: 所有権を渡すAnimation Set。
+///
+/// ### Returns
+/// - `mesh_t *`: 作成したSkinned Mesh。失敗時は`NULL`。
+mesh_t *mesh_create_animated(const mesh_vertex_t *vertices,
+			     size_t vertex_count,
+			     const unsigned int *indices,
+			     size_t index_count,
+			     animation_set_t *animations);
 /// 描画メッシュとGPUリソースを破棄する。
 ///
 /// ### Args
@@ -66,5 +87,13 @@ bool mesh_get_bounds(const mesh_t *mesh, aabb_t *bounds);
 /// ### Returns
 /// - `const triangle_mesh_collider_t *`: 衝突メッシュ。存在しない場合は`NULL`。
 const triangle_mesh_collider_t *mesh_get_collision_mesh(const mesh_t *mesh);
+/// Meshに格納されたAnimation Setを取得する。
+///
+/// ### Args
+/// - `const mesh_t *mesh`: 対象のMesh。
+///
+/// ### Returns
+/// - `const animation_set_t *`: Animation Set。静的Meshの場合は`NULL`。
+const animation_set_t *mesh_get_animation_set(const mesh_t *mesh);
 
 #endif

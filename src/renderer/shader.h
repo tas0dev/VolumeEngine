@@ -10,6 +10,7 @@
 
 #include "math/mat4.h"
 #include "math/vec3.h"
+#include <stddef.h>
 
 typedef struct shader shader_t;
 
@@ -43,6 +44,17 @@ void shader_unbind(void);
 void shader_set_mat4(const shader_t *shader,
 		     const char *name,
 		     const mat4_t *matrix);
+/// シェーダーの4x4行列uniform配列を設定する。
+///
+/// ### Args
+/// - `const shader_t *shader`: 対象のシェーダー。
+/// - `const char *name`: 配列uniform名。
+/// - `const mat4_t *matrices`: 行列配列。
+/// - `size_t count`: 行列数。
+void shader_set_mat4_array(const shader_t *shader,
+			   const char *name,
+			   const mat4_t *matrices,
+			   size_t count);
 /// シェーダーの3次元ベクトルuniformを設定する。
 ///
 /// ### Args

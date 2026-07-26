@@ -384,6 +384,7 @@ audio_sound_t *asset_manager_load_sound(asset_manager_t *manager,
 	audio_sound_t *sound;
 	char *full_path;
 	char loader_error[512];
+	const char *extension;
 
 	if (error != NULL && error_size > 0) { error[0] = '\0'; }
 	if (manager == NULL || path == NULL || path[0] == '\0') {
@@ -406,8 +407,14 @@ audio_sound_t *asset_manager_load_sound(asset_manager_t *manager,
 			  "failed to build sound path: \"%s\"", path);
 		return NULL;
 	}
-	sound = audio_sound_load_wav(full_path, loader_error,
-				     sizeof(loader_error));
+	extension = strrchr(path, '.');
+	if (extension != NULL && strcmp(extension, ".mp3") == 0) {
+		sound = audio_sound_load_mp3(full_path, loader_error,
+					     sizeof(loader_error));
+	} else {
+		sound = audio_sound_load_wav(full_path, loader_error,
+					     sizeof(loader_error));
+	}
 	free(full_path);
 	if (sound == NULL) {
 		set_error(error, error_size, "failed to load sound \"%s\": %s",

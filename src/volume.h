@@ -24,6 +24,7 @@
 #include "entity/prop_breakable.h"
 #include "entity/trigger_hurt.h"
 #include "entity/world.h"
+#include "fps/effects.h"
 #include "fps/recoil.h"
 #include "game/game.h"
 #include "input/input.h"

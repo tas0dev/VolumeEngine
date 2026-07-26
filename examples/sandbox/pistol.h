@@ -10,6 +10,7 @@
 
 #include "asset/manager.h"
 #include "audio/audio.h"
+#include "fps/effects.h"
 #include "fps/recoil.h"
 #include "renderer/renderer.h"
 #include "weapon/hitscan_weapon.h"
@@ -23,7 +24,9 @@ typedef struct sandbox_pistol {
 	audio_voice_id_t reload_voice;
 	const mesh_t *view_model_mesh;
 	const material_t *view_model_material;
+	fps_effect_system_t *effects;
 	fps_recoil_t recoil;
+	float muzzle_flash_time;
 	float bob_time;
 	float bob_amount;
 	float sway_pitch;
@@ -42,7 +45,7 @@ typedef struct sandbox_pistol {
 ///
 /// ### Returns
 /// - `true`: 初期化に成功した。
-/// - `false`: 武器設定または効果音の作成に失敗した。
+/// - `false`: 武器設定またはゲームアセットの読み込みに失敗した。
 bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 			       asset_manager_t *assets,
 			       audio_system_t *audio,
@@ -148,7 +151,7 @@ int sandbox_pistol_get_ammo(const sandbox_pistol_t *pistol);
 /// - `int`: 予備弾薬数。
 int sandbox_pistol_get_reserve_ammo(const sandbox_pistol_t *pistol);
 
-/// ピストル固有の効果音を破棄する。
+/// ピストル固有の実行時リソースを破棄する。
 ///
 /// ### Args
 /// - `sandbox_pistol_t *pistol`: 破棄するピストル。

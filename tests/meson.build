@@ -211,6 +211,11 @@ audio_test = executable(
         'audio_test.c',
     ],
     dependencies : volume_dependency,
+    c_args : [
+        '-DTEST_MP3_FILE="@0@"'.format(
+            meson.project_source_root() / 'assets/game/audio/fire.mp3'
+        ),
+    ],
     install : false,
 )
 
@@ -219,6 +224,16 @@ recoil_test = executable(
     [
         'common.c',
         'recoil_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
+effects_test = executable(
+    'effects-test',
+    [
+        'common.c',
+        'effects_test.c',
     ],
     dependencies : volume_dependency,
     install : false,
@@ -327,4 +342,9 @@ test(
 test(
     'recoil',
     recoil_test
+)
+
+test(
+    'effects',
+    effects_test
 )

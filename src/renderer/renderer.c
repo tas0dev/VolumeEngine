@@ -54,6 +54,9 @@ struct renderer {
 	shader_t *debug_line_shader;
 	GLuint debug_line_vertex_array;
 	GLuint debug_line_vertex_buffer;
+	shader_t *sprite_shader;
+	GLuint sprite_vertex_array;
+	GLuint sprite_vertex_buffer;
 	debug_line_vertex_t *debug_line_vertices;
 	size_t debug_line_vertex_count;
 	size_t debug_line_vertex_capacity;
@@ -62,6 +65,7 @@ struct renderer {
 };
 
 static bool renderer_create_debug_lines(renderer_t *renderer);
+static bool renderer_create_sprite(renderer_t *renderer);
 static bool renderer_reserve_debug_line_vertices(renderer_t *renderer,
 						 size_t capacity);
 static void renderer_draw_mesh_internal(renderer_t *renderer,
@@ -70,6 +74,15 @@ static void renderer_draw_mesh_internal(renderer_t *renderer,
 					const mat4_t *model,
 					const render_view_t *view,
 					bool shadows_enabled);
+static void renderer_draw_sprite_internal(renderer_t *renderer,
+					  vec3_t position,
+					  vec3_t right,
+					  vec3_t up,
+					  float size,
+					  renderer_color_t color,
+					  renderer_blend_mode_t blend_mode,
+					  const mat4_t *view,
+					  const mat4_t *projection);
 
 static bool renderer_create_screen_quad(renderer_t *renderer) {
 	static const float vertices[] = {
@@ -153,6 +166,34 @@ static bool renderer_create_debug_lines(renderer_t *renderer) {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 
+	return true;
+}
+
+static bool renderer_create_sprite(renderer_t *renderer) {
+	static const float vertices[] = {
+		-1.0f, -1.0f, 0.0f, 0.0f, 1.0f, -1.0f, 1.0f, 0.0f,
+		-1.0f, 1.0f,  0.0f, 1.0f, 1.0f, 1.0f,  1.0f, 1.0f,
+	};
+
+	if (renderer == NULL) { return false; }
+	glGenVertexArrays(1, &renderer->sprite_vertex_array);
+	glGenBuffers(1, &renderer->sprite_vertex_buffer);
+	if (renderer->sprite_vertex_array == 0 ||
+	    renderer->sprite_vertex_buffer == 0) {
+		return false;
+	}
+	glBindVertexArray(renderer->sprite_vertex_array);
+	glBindBuffer(GL_ARRAY_BUFFER, renderer->sprite_vertex_buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices,
+		     GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+			      (const void *)0);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float),
+			      (const void *)(2 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
 	return true;
 }
 
@@ -295,6 +336,14 @@ renderer_t *renderer_create(platform_t *platform) {
 		renderer_destroy(renderer);
 		return NULL;
 	}
+	renderer->sprite_shader =
+		renderer_load_shader("assets/engine/shaders/sprite.vert",
+				     "assets/engine/shaders/sprite.frag");
+	if (renderer->sprite_shader == NULL ||
+	    !renderer_create_sprite(renderer)) {
+		renderer_destroy(renderer);
+		return NULL;
+	}
 
 	renderer->ui_renderer = ui_renderer_create();
 	if (renderer->ui_renderer == NULL) {
@@ -332,8 +381,13 @@ void renderer_destroy(renderer_t *renderer) {
 
 	free(renderer->debug_line_vertices);
 	shader_destroy(renderer->debug_line_shader);
-
-	shader_destroy(renderer->debug_line_shader);
+	if (renderer->sprite_vertex_buffer != 0) {
+		glDeleteBuffers(1, &renderer->sprite_vertex_buffer);
+	}
+	if (renderer->sprite_vertex_array != 0) {
+		glDeleteVertexArrays(1, &renderer->sprite_vertex_array);
+	}
+	shader_destroy(renderer->sprite_shader);
 
 	ui_renderer_destroy(renderer->ui_renderer);
 
@@ -574,6 +628,111 @@ void renderer_draw_view_model_mesh(renderer_t *renderer,
 void renderer_end_view_model_pass(renderer_t *renderer) {
 	if (renderer == NULL) { return; }
 	renderer->view_model_pass_active = false;
+}
+
+void renderer_draw_world_billboard(renderer_t *renderer,
+				   const vec3_t position,
+				   const float size,
+				   const renderer_color_t color,
+				   const renderer_blend_mode_t blend_mode,
+				   const render_view_t *view) {
+	vec3_t right;
+	vec3_t up;
+
+	if (view == NULL) { return; }
+	right = vec3_create(view->view.elements[0], view->view.elements[4],
+			    view->view.elements[8]);
+	up = vec3_create(view->view.elements[1], view->view.elements[5],
+			 view->view.elements[9]);
+	renderer_draw_sprite_internal(renderer, position, right, up, size,
+				      color, blend_mode, &view->view,
+				      &view->projection);
+}
+
+void renderer_draw_world_sprite(renderer_t *renderer,
+				const vec3_t position,
+				const vec3_t right,
+				const vec3_t up,
+				const float size,
+				const renderer_color_t color,
+				const renderer_blend_mode_t blend_mode,
+				const render_view_t *view) {
+	if (view == NULL) { return; }
+	renderer_draw_sprite_internal(renderer, position, right, up, size,
+				      color, blend_mode, &view->view,
+				      &view->projection);
+}
+
+void renderer_draw_view_model_sprite(renderer_t *renderer,
+				     const vec3_t position,
+				     const float size,
+				     const renderer_color_t color,
+				     const renderer_blend_mode_t blend_mode) {
+	mat4_t view;
+
+	if (renderer == NULL || !renderer->view_model_pass_active) { return; }
+	view = mat4_identity();
+	renderer_draw_sprite_internal(
+		renderer, position, vec3_create(1.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 1.0f, 0.0f), size, color, blend_mode, &view,
+		&renderer->view_model_projection);
+}
+
+static void
+renderer_draw_sprite_internal(renderer_t *renderer,
+			      const vec3_t position,
+			      vec3_t right,
+			      vec3_t up,
+			      const float size,
+			      const renderer_color_t color,
+			      const renderer_blend_mode_t blend_mode,
+			      const mat4_t *view,
+			      const mat4_t *projection) {
+	GLboolean blend_enabled;
+	GLboolean depth_test_enabled;
+	GLboolean depth_mask;
+	GLint previous_blend_source;
+	GLint previous_blend_destination;
+
+	if (renderer == NULL || renderer->sprite_shader == NULL ||
+	    view == NULL || projection == NULL || !isfinite(size) ||
+	    size <= 0.0f || vec3_length(right) <= 0.000001f ||
+	    vec3_length(up) <= 0.000001f) {
+		return;
+	}
+	right = vec3_normalize(right);
+	up = vec3_normalize(up);
+	blend_enabled = glIsEnabled(GL_BLEND);
+	depth_test_enabled = glIsEnabled(GL_DEPTH_TEST);
+	glGetBooleanv(GL_DEPTH_WRITEMASK, &depth_mask);
+	glGetIntegerv(GL_BLEND_SRC_RGB, &previous_blend_source);
+	glGetIntegerv(GL_BLEND_DST_RGB, &previous_blend_destination);
+	glEnable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
+	glBlendFunc(GL_SRC_ALPHA, blend_mode == RENDERER_BLEND_ADDITIVE
+					  ? GL_ONE
+					  : GL_ONE_MINUS_SRC_ALPHA);
+	shader_bind(renderer->sprite_shader);
+	shader_set_mat4(renderer->sprite_shader, "view", view);
+	shader_set_mat4(renderer->sprite_shader, "projection", projection);
+	shader_set_vec3(renderer->sprite_shader, "center", position);
+	shader_set_vec3(renderer->sprite_shader, "right", right);
+	shader_set_vec3(renderer->sprite_shader, "up", up);
+	shader_set_float(renderer->sprite_shader, "size", size);
+	shader_set_vec3(renderer->sprite_shader, "sprite_color",
+			vec3_create(color.r, color.g, color.b));
+	shader_set_float(renderer->sprite_shader, "sprite_alpha", color.a);
+	shader_set_float(renderer->sprite_shader, "bloom_strength",
+			 blend_mode == RENDERER_BLEND_ADDITIVE ? 1.5f : 0.0f);
+	glBindVertexArray(renderer->sprite_vertex_array);
+	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glBindVertexArray(0);
+	shader_unbind();
+	glBlendFunc(previous_blend_source, previous_blend_destination);
+	glDepthMask(depth_mask);
+	if (!blend_enabled) { glDisable(GL_BLEND); }
+	if (!depth_test_enabled) { glDisable(GL_DEPTH_TEST); }
 }
 
 static void renderer_draw_mesh_internal(renderer_t *renderer,

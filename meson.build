@@ -26,11 +26,22 @@ volume_dependencies = [
         math,
 ]
 
+if host_machine.system() == 'windows'
+        volume_dependencies += [
+                cc.find_library('mfplat', required : true),
+                cc.find_library('mfreadwrite', required : true),
+                cc.find_library('mfuuid', required : true),
+                cc.find_library('ole32', required : true),
+        ]
+endif
+
 volume_sources = files(
         'src/volume.c',
         'src/audio/audio.c',
         'src/audio/sound.c',
+        'src/audio/mp3.c',
         'src/weapon/hitscan_weapon.c',
+        'src/fps/effects.c',
         'src/fps/recoil.c',
         'src/platform/platform.c',
         'src/core/log.c',

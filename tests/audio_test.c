@@ -20,6 +20,18 @@ static bool test_tone_validation(void) {
 	return true;
 }
 
+#ifdef TEST_MP3_FILE
+static bool test_mp3_loading(void) {
+	audio_sound_t *sound;
+	char error[512];
+
+	sound = audio_sound_load_mp3(TEST_MP3_FILE, error, sizeof(error));
+	CHECK(sound != NULL);
+	audio_sound_destroy(sound);
+	return true;
+}
+#endif
+
 static bool test_ambient_generic_inputs(void) {
 	const char *source = "world\n"
 			     "{\n"
@@ -76,6 +88,9 @@ static bool test_ambient_generic_inputs(void) {
 int main(void) {
 	static const test_case_t tests[] = {
 		{"tone validation",	    test_tone_validation	},
+#ifdef TEST_MP3_FILE
+		{"MP3 loading",		test_mp3_loading		},
+#endif
 		{"ambient_generic inputs", test_ambient_generic_inputs},
 	};
 

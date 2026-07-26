@@ -24,6 +24,18 @@ typedef struct audio_sound audio_sound_t;
 audio_sound_t *
 audio_sound_load_wav(const char *path, char *error, size_t error_size);
 
+/// MP3ファイルを読み込み、エンジンの再生形式へ変換する。
+///
+/// ### Args
+/// - `const char *path`: 読み込むMP3ファイルのパス。
+/// - `char *error`: エラーメッセージの格納先。
+/// - `size_t error_size`: エラー格納先のバイト数。
+///
+/// ### Returns
+/// - `audio_sound_t *`: 作成したサウンド。失敗時は`NULL`。
+audio_sound_t *
+audio_sound_load_mp3(const char *path, char *error, size_t error_size);
+
 /// 短い正弦波サウンドを作成する。
 ///
 /// ゲーム固有の仮効果音や音声システムの確認に使用できる。

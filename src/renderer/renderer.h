@@ -28,6 +28,11 @@ typedef struct renderer_frame_stats {
 	size_t shadow_draw_calls;
 } renderer_frame_stats_t;
 
+typedef enum renderer_blend_mode {
+	RENDERER_BLEND_ALPHA = 0,
+	RENDERER_BLEND_ADDITIVE = 1,
+} renderer_blend_mode_t;
+
 /// プラットフォームの描画コンテキストを使用してレンダラーを作成する。
 ///
 /// ### Args
@@ -124,6 +129,53 @@ void renderer_draw_view_model_mesh(renderer_t *renderer,
 /// ### Args
 /// - `renderer_t *renderer`: 対象のレンダラー。
 void renderer_end_view_model_pass(renderer_t *renderer);
+/// ワールド空間にカメラ正対の円形Billboardを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `vec3_t position`: Billboard中心のワールド座標。
+/// - `float size`: 一辺の半分の長さ。
+/// - `renderer_color_t color`: 色と最大不透明度。
+/// - `renderer_blend_mode_t blend_mode`: 合成方法。
+/// - `const render_view_t *view`: 描画に使用するビュー。
+void renderer_draw_world_billboard(renderer_t *renderer,
+				   vec3_t position,
+				   float size,
+				   renderer_color_t color,
+				   renderer_blend_mode_t blend_mode,
+				   const render_view_t *view);
+/// ワールド空間の指定平面に円形Spriteを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `vec3_t position`: Sprite中心のワールド座標。
+/// - `vec3_t right`: 平面の右方向。
+/// - `vec3_t up`: 平面の上方向。
+/// - `float size`: 一辺の半分の長さ。
+/// - `renderer_color_t color`: 色と最大不透明度。
+/// - `renderer_blend_mode_t blend_mode`: 合成方法。
+/// - `const render_view_t *view`: 描画に使用するビュー。
+void renderer_draw_world_sprite(renderer_t *renderer,
+				vec3_t position,
+				vec3_t right,
+				vec3_t up,
+				float size,
+				renderer_color_t color,
+				renderer_blend_mode_t blend_mode,
+				const render_view_t *view);
+/// 現在のViewModelパスにカメラローカルの円形Spriteを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `vec3_t position`: カメラローカルの中心座標。
+/// - `float size`: 一辺の半分の長さ。
+/// - `renderer_color_t color`: 色と最大不透明度。
+/// - `renderer_blend_mode_t blend_mode`: 合成方法。
+void renderer_draw_view_model_sprite(renderer_t *renderer,
+				     vec3_t position,
+				     float size,
+				     renderer_color_t color,
+				     renderer_blend_mode_t blend_mode);
 /// 新しい描画フレームを開始して描画先を初期化する。
 ///
 /// ### Args

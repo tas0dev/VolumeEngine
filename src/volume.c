@@ -6,6 +6,7 @@
  */
 
 #include "volume.h"
+#include "audio/audio.h"
 #include "core/log.h"
 #include "entity/builtin.h"
 #include "entity/entity.h"
@@ -17,6 +18,7 @@
 struct volumeEngine {
 	platform_t *platform;
 	renderer_t *renderer;
+	audio_system_t *audio;
 	input_t *input;
 	const game_t *game;
 	bool running;
@@ -68,8 +70,18 @@ engine_t *engine_create(const engine_config_t *config) {
 		return NULL;
 	}
 
+	engine->audio = audio_system_create();
+	if (engine->audio == NULL) {
+		input_destroy(engine->input);
+		platform_destroy(engine->platform);
+		entity_registry_shutdown();
+		free(engine);
+		return NULL;
+	}
+
 	engine->renderer = renderer_create(engine->platform);
 	if (engine->renderer == NULL) {
+		audio_system_destroy(engine->audio);
 		input_destroy(engine->input);
 		platform_destroy(engine->platform);
 		entity_registry_shutdown();
@@ -85,6 +97,7 @@ engine_t *engine_create(const engine_config_t *config) {
 	if (engine->game->initialize != NULL &&
 	    !engine->game->initialize(engine, engine->game->user_data)) {
 		renderer_destroy(engine->renderer);
+		audio_system_destroy(engine->audio);
 		input_destroy(engine->input);
 		platform_destroy(engine->platform);
 		entity_registry_shutdown();
@@ -111,6 +124,7 @@ void engine_destroy(engine_t *engine) {
 	}
 
 	renderer_destroy(engine->renderer);
+	audio_system_destroy(engine->audio);
 	input_destroy(engine->input);
 	platform_destroy(engine->platform);
 	entity_registry_shutdown();
@@ -208,4 +222,8 @@ bool engine_is_mouse_captured(const engine_t *engine) {
 	if (engine == NULL) { return false; }
 
 	return platform_is_mouse_captured(engine->platform);
+}
+
+audio_system_t *engine_get_audio_system(engine_t *engine) {
+	return engine == NULL ? NULL : engine->audio;
 }

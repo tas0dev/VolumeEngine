@@ -142,7 +142,20 @@ entity
 	"move_offset" "0 3.5 0"
 	"speed" "2"
 	"wait" "-1"
+	"OnOpen" "example_door_sound,PlaySound,,0,-1"
+	"OnClose" "example_door_sound,PlaySound,,0,-1"
 	"OnFullyOpen" "!self,Close,,2,-1"
+}
+
+entity
+{
+	"classname" "ambient_generic"
+	"targetname" "example_door_sound"
+	"message" "sounds/door.wav"
+	"origin" "0 0.6 -2"
+	"StartSilent" "1"
+	"spatial" "1"
+	"maximum_distance" "12"
 }
 
 entity
@@ -185,6 +198,18 @@ entity
 	"speed" "0.5"
 	"wait" "1"
 	"OnPressed" "example_door,Open,,0,-1"
+	"OnPressed" "example_button_sound,PlaySound,,0,-1"
+}
+
+entity
+{
+	"classname" "ambient_generic"
+	"targetname" "example_button_sound"
+	"message" "sounds/button.wav"
+	"origin" "-1.35 0.4 -1.7"
+	"StartSilent" "1"
+	"spatial" "1"
+	"maximum_distance" "8"
 }
 
 entity
@@ -202,6 +227,19 @@ entity
 	"move_offset" "0 3 0"
 	"speed" "1"
 	"wait" "2"
+	"OnOpen" "elevator_sound,PlaySound,,0,-1"
+	"OnClose" "elevator_sound,PlaySound,,0,-1"
+}
+
+entity
+{
+	"classname" "ambient_generic"
+	"targetname" "elevator_sound"
+	"message" "sounds/door.wav"
+	"origin" "-3 -0.75 2"
+	"StartSilent" "1"
+	"spatial" "1"
+	"maximum_distance" "12"
 }
 
 entity
@@ -220,6 +258,18 @@ entity
 	"speed" "0.5"
 	"wait" "1"
 	"OnPressed" "example_elevator,Open,,0,-1"
+	"OnPressed" "elevator_button_sound,PlaySound,,0,-1"
+}
+
+entity
+{
+	"classname" "ambient_generic"
+	"targetname" "elevator_button_sound"
+	"message" "sounds/button.wav"
+	"origin" "-1.65 -0.55 2"
+	"StartSilent" "1"
+	"spatial" "1"
+	"maximum_distance" "8"
 }
 
 entity

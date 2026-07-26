@@ -25,6 +25,10 @@ typedef struct game_state {
 	bool fire_requested;
 	bool respawn_requested;
 	hitscan_weapon_t weapon;
+	audio_sound_t *fire_sound;
+	audio_sound_t *reload_sound;
+	audio_sound_t *door_sound;
+	audio_sound_t *button_sound;
 	renderer_font_t *hud_font;
 	sandbox_hud_t hud;
 	debug_hud_t debug_hud;
@@ -105,6 +109,24 @@ static bool initialize(engine_t *engine, void *user_data) {
 		free(map_path);
 		return false;
 	}
+	game_state->fire_sound = audio_sound_create_tone(145.0f, 0.07f);
+	game_state->reload_sound = audio_sound_create_tone(520.0f, 0.09f);
+	game_state->door_sound = audio_sound_create_tone(180.0f, 0.16f);
+	game_state->button_sound = audio_sound_create_tone(780.0f, 0.05f);
+	if (game_state->fire_sound == NULL ||
+	    game_state->reload_sound == NULL ||
+	    game_state->door_sound == NULL ||
+	    game_state->button_sound == NULL ||
+	    !asset_manager_register_sound(game_state->assets, "sounds/door.wav",
+					  game_state->door_sound) ||
+	    !asset_manager_register_sound(game_state->assets,
+					  "sounds/button.wav",
+					  game_state->button_sound)) {
+		log_error("Failed to create sandbox sounds");
+		free(map_path);
+		destroy_game_resources(game_state);
+		return false;
+	}
 
 	game_state->world = world_create();
 
@@ -113,6 +135,8 @@ static bool initialize(engine_t *engine, void *user_data) {
 		destroy_game_resources(game_state);
 		return false;
 	}
+	world_set_audio_system(game_state->world,
+			       engine_get_audio_system(engine));
 
 	if (!world_load_map(game_state->world, game_state->assets, map_path,
 			    error, sizeof(error))) {
@@ -202,7 +226,6 @@ static bool initialize(engine_t *engine, void *user_data) {
 		destroy_game_resources(game_state);
 		return false;
 	}
-
 	debug_hud_initialize(&game_state->debug_hud);
 
 	game_state->camera =
@@ -320,7 +343,10 @@ static void update(engine_t *engine, const float delta_time, void *user_data) {
 	}
 
 	if (input_key_pressed(input, INPUT_KEY_R)) {
-		(void)hitscan_weapon_reload(&game_state->weapon);
+		if (hitscan_weapon_reload(&game_state->weapon)) {
+			(void)audio_system_play(engine_get_audio_system(engine),
+						game_state->reload_sound, NULL);
+		}
 	}
 
 	if (input_key_pressed(input, INPUT_KEY_F3)) {
@@ -374,11 +400,13 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 
 	hitscan_weapon_update(&game_state->weapon, delta_time);
 	if (game_state->fire_requested && player_is_alive(game_state->player)) {
-		(void)hitscan_weapon_fire(&game_state->weapon,
-					  game_state->world,
-					  player_get_entity(game_state->player),
-					  game_state->camera.position,
-					  game_state->camera.forward, NULL);
+		if (hitscan_weapon_fire(&game_state->weapon, game_state->world,
+					player_get_entity(game_state->player),
+					game_state->camera.position,
+					game_state->camera.forward, NULL)) {
+			(void)audio_system_play(engine_get_audio_system(engine),
+						game_state->fire_sound, NULL);
+		}
 	}
 	game_state->fire_requested = false;
 
@@ -425,6 +453,9 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 
 	game_state->camera.position =
 		player_get_view_position(game_state->player);
+	audio_system_set_listener(
+		engine_get_audio_system(engine), game_state->camera.position,
+		game_state->camera.forward, game_state->camera.up);
 }
 
 static void render(engine_t *engine, void *user_data) {
@@ -527,14 +558,23 @@ static void shutdown(engine_t *engine, void *user_data) {
 static void destroy_game_resources(game_state_t *game_state) {
 	if (game_state == NULL) { return; }
 
+	audio_system_stop_all(world_get_audio_system(game_state->world));
 	renderer_font_destroy(game_state->hud_font);
 	world_destroy(game_state->world);
+	audio_sound_destroy(game_state->button_sound);
+	audio_sound_destroy(game_state->door_sound);
+	audio_sound_destroy(game_state->reload_sound);
+	audio_sound_destroy(game_state->fire_sound);
 	asset_manager_destroy(game_state->assets);
 
 	game_state->mesh_entity = NULL;
 	game_state->environment_light = NULL;
 	game_state->player = NULL;
 	game_state->hud_font = NULL;
+	game_state->fire_sound = NULL;
+	game_state->reload_sound = NULL;
+	game_state->door_sound = NULL;
+	game_state->button_sound = NULL;
 	game_state->world = NULL;
 	game_state->assets = NULL;
 }

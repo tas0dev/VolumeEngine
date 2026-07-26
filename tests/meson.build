@@ -204,6 +204,16 @@ sandbox_hud_test = executable(
     install : false,
 )
 
+audio_test = executable(
+    'audio-test',
+    [
+        'common.c',
+        'audio_test.c',
+    ],
+    dependencies : volume_dependency,
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -297,4 +307,9 @@ test(
 test(
     'sandbox-hud',
     sandbox_hud_test
+)
+
+test(
+    'audio',
+    audio_test
 )

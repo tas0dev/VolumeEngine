@@ -151,6 +151,22 @@ collision_world_t *world_get_collision_world(world_t *world);
 /// ### Returns
 /// - `const collision_world_t *`: 衝突ワールド。引数が`NULL`の場合は`NULL`。
 const collision_world_t *world_get_const_collision_world(const world_t *world);
+/// ワールドでエンティティが使用する音声システムを設定する。
+///
+/// ワールドは音声システムを所有しない。
+///
+/// ### Args
+/// - `world_t *world`: 対象のワールド。
+/// - `audio_system_t *audio`: 使用する音声システム。
+void world_set_audio_system(world_t *world, audio_system_t *audio);
+/// ワールドに設定された音声システムを取得する。
+///
+/// ### Args
+/// - `world_t *world`: 対象のワールド。
+///
+/// ### Returns
+/// - `audio_system_t *`: 音声システム。未設定時は`NULL`。
+audio_system_t *world_get_audio_system(world_t *world);
 /// ターゲット名に一致するエンティティへ入力を送る。
 ///
 /// ### Args

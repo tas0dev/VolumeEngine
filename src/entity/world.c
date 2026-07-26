@@ -25,6 +25,7 @@ struct world {
 	size_t capacity;
 	entity_id_t next_entity_id;
 	collision_world_t *collision_world;
+	audio_system_t *audio;
 	entity_io_event_t *events;
 	size_t event_count;
 	size_t event_capacity;
@@ -139,6 +140,15 @@ void world_destroy(world_t *world) {
 	free(world->events);
 	free(world->entities);
 	free(world);
+}
+
+void world_set_audio_system(world_t *world, audio_system_t *audio) {
+	if (world == NULL) { return; }
+	world->audio = audio;
+}
+
+audio_system_t *world_get_audio_system(world_t *world) {
+	return world == NULL ? NULL : world->audio;
 }
 entity_t *world_spawn_entity(world_t *world,
 			     const char *classname,

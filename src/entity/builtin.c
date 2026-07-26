@@ -6,6 +6,7 @@
  */
 
 #include "entity/builtin.h"
+#include "entity/ambient_generic.h"
 #include "entity/func_door.h"
 #include "entity/func_button.h"
 #include "entity/func_ladder.h"
@@ -21,6 +22,7 @@
 #include "entity/trigger_hurt.h"
 
 bool entity_register_builtin_classes(void) {
+	if (!ambient_generic_register()) { return false; }
 	if (!func_door_register()) { return false; }
 	if (!func_button_register()) { return false; }
 	if (!func_ladder_register()) { return false; }

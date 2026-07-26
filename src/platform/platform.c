@@ -22,7 +22,7 @@ platform_t *platform_create(const platform_config_t *config) {
 		return NULL;
 	}
 
-	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO)) {
 		log_error("SDL initialization failed: %s", SDL_GetError());
 		return NULL;
 	}

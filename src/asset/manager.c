@@ -31,6 +31,7 @@ struct asset_manager {
 	asset_table_t meshes;
 	asset_table_t materials;
 	asset_table_t textures;
+	asset_table_t sounds;
 	char *root_path;
 };
 
@@ -48,6 +49,7 @@ static bool asset_table_register(asset_table_t *table,
 static void *asset_table_find(const asset_table_t *table, const char *path);
 static void destroy_material_asset(void *asset);
 static void destroy_texture_asset(void *asset);
+static void destroy_sound_asset(void *asset);
 
 static char *duplicate_string(const char *string) {
 	char *copy;
@@ -174,6 +176,7 @@ void asset_manager_destroy(asset_manager_t *manager) {
 	asset_table_destroy(&manager->materials, destroy_material_asset);
 	asset_table_destroy(&manager->textures, destroy_texture_asset);
 	asset_table_destroy(&manager->meshes, destroy_mesh_asset);
+	asset_table_destroy(&manager->sounds, destroy_sound_asset);
 
 	free(manager->root_path);
 	free(manager);
@@ -193,6 +196,13 @@ bool asset_manager_register_material(asset_manager_t *manager,
 	if (manager == NULL) { return false; }
 
 	return asset_table_register(&manager->materials, path, material, false);
+}
+
+bool asset_manager_register_sound(asset_manager_t *manager,
+				  const char *path,
+				  audio_sound_t *sound) {
+	if (manager == NULL) { return false; }
+	return asset_table_register(&manager->sounds, path, sound, false);
 }
 
 mesh_t *asset_manager_load_mesh(asset_manager_t *manager,
@@ -361,6 +371,58 @@ material_t *asset_manager_get_material(const asset_manager_t *manager,
 	return asset_table_find(&manager->materials, path);
 }
 
+audio_sound_t *asset_manager_get_sound(const asset_manager_t *manager,
+				       const char *path) {
+	if (manager == NULL) { return NULL; }
+	return asset_table_find(&manager->sounds, path);
+}
+
+audio_sound_t *asset_manager_load_sound(asset_manager_t *manager,
+					const char *path,
+					char *error,
+					const size_t error_size) {
+	audio_sound_t *sound;
+	char *full_path;
+	char loader_error[512];
+
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+	if (manager == NULL || path == NULL || path[0] == '\0') {
+		set_error(error, error_size,
+			  "invalid asset manager or sound path");
+		return NULL;
+	}
+	sound = asset_manager_get_sound(manager, path);
+	if (sound != NULL) { return sound; }
+	if (manager->root_path == NULL) {
+		set_error(error, error_size,
+			  "sound asset not found: \"%s\" "
+			  "(asset root is not configured)",
+			  path);
+		return NULL;
+	}
+	full_path = build_asset_path(manager->root_path, path);
+	if (full_path == NULL) {
+		set_error(error, error_size,
+			  "failed to build sound path: \"%s\"", path);
+		return NULL;
+	}
+	sound = audio_sound_load_wav(full_path, loader_error,
+				     sizeof(loader_error));
+	free(full_path);
+	if (sound == NULL) {
+		set_error(error, error_size, "failed to load sound \"%s\": %s",
+			  path, loader_error);
+		return NULL;
+	}
+	if (!asset_table_register(&manager->sounds, path, sound, true)) {
+		audio_sound_destroy(sound);
+		set_error(error, error_size,
+			  "failed to cache sound asset: \"%s\"", path);
+		return NULL;
+	}
+	return sound;
+}
+
 texture_t *asset_manager_get_texture(const asset_manager_t *manager,
 				     const char *path) {
 	if (manager == NULL) { return NULL; }
@@ -476,3 +538,5 @@ static void destroy_mesh_asset(void *asset) { mesh_destroy(asset); }
 static void destroy_material_asset(void *asset) { free(asset); }
 
 static void destroy_texture_asset(void *asset) { texture_destroy(asset); }
+
+static void destroy_sound_asset(void *asset) { audio_sound_destroy(asset); }

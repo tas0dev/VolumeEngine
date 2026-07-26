@@ -9,12 +9,15 @@
 #define VOLUME_ENGINE_H
 
 // ReSharper disable CppUnusedIncludeDirective
+#include "audio/audio.h"
+#include "audio/sound.h"
 #include "asset/manager.h"
 #include "core/log.h"
 #include "core/path.h"
 #include "core/types.h"
 #include "debug/debug_draw.h"
 #include "debug/hud.h"
+#include "entity/ambient_generic.h"
 #include "entity/info_player_start.h"
 #include "entity/light_environment.h"
 #include "entity/player.h"
@@ -82,6 +85,14 @@ renderer_t *engine_get_renderer(engine_t *engine);
 /// ### Returns
 /// - `input_t *`: 入力オブジェクト。引数が`NULL`の場合は`NULL`。
 input_t *engine_get_input(engine_t *engine);
+/// エンジンが所有する音声システムを取得する。
+///
+/// ### Args
+/// - `engine_t *engine`: 対象のエンジン。
+///
+/// ### Returns
+/// - `audio_system_t *`: 音声システム。引数が`NULL`の場合は`NULL`。
+audio_system_t *engine_get_audio_system(engine_t *engine);
 /// エンジンウィンドウのマウスキャプチャ状態を設定する。
 ///
 /// ### Args

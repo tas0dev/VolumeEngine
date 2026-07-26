@@ -14,6 +14,7 @@ typedef struct volumeEngine engine_t;
 typedef struct renderer renderer_t;
 typedef struct platform platform_t;
 typedef struct input input_t;
+typedef struct audio_system audio_system_t;
 typedef struct world world_t;
 typedef struct entity entity_t;
 

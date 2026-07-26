@@ -8,6 +8,7 @@
 #ifndef VOLUME_ASSET_MANAGER_H
 #define VOLUME_ASSET_MANAGER_H
 
+#include "audio/sound.h"
 #include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/texture.h"
@@ -52,6 +53,31 @@ bool asset_manager_register_mesh(asset_manager_t *manager,
 bool asset_manager_register_material(asset_manager_t *manager,
 				     const char *path,
 				     material_t *material);
+/// パスとサウンドをマネージャーへ登録する。
+///
+/// マネージャーはサウンドの所有権を取得しない。
+///
+/// ### Args
+/// - `asset_manager_t *manager`: 登録先のマネージャー。
+/// - `const char *path`: 検索に使用する論理パス。
+/// - `audio_sound_t *sound`: 登録するサウンド。
+///
+/// ### Returns
+/// - `true`: 登録に成功した。
+/// - `false`: パス重複、引数不正、またはメモリ不足で失敗した。
+bool asset_manager_register_sound(asset_manager_t *manager,
+				  const char *path,
+				  audio_sound_t *sound);
+/// 登録済みサウンドをパスから取得する。
+///
+/// ### Args
+/// - `const asset_manager_t *manager`: 検索するマネージャー。
+/// - `const char *path`: 論理アセットパス。
+///
+/// ### Returns
+/// - `audio_sound_t *`: 登録済みサウンド。存在しない場合は`NULL`。
+audio_sound_t *asset_manager_get_sound(const asset_manager_t *manager,
+				       const char *path);
 /// 登録済みメッシュをパスから取得する。
 ///
 /// ### Args
@@ -105,6 +131,20 @@ mesh_t *asset_manager_load_mesh(asset_manager_t *manager,
 /// ### Returns
 /// - `material_t *`: 読み込み済みまたは新規マテリアル。失敗時は`NULL`。
 material_t *asset_manager_load_material(asset_manager_t *manager,
+					const char *path,
+					char *error,
+					size_t error_size);
+/// WAVサウンドを読み込み、キャッシュへ登録して取得する。
+///
+/// ### Args
+/// - `asset_manager_t *manager`: 使用するマネージャー。
+/// - `const char *path`: ルートからのアセットパス。
+/// - `char *error`: エラーメッセージの格納先。
+/// - `size_t error_size`: エラー格納先のバイト数。
+///
+/// ### Returns
+/// - `audio_sound_t *`: 読み込み済みまたは新規サウンド。失敗時は`NULL`。
+audio_sound_t *asset_manager_load_sound(asset_manager_t *manager,
 					const char *path,
 					char *error,
 					size_t error_size);

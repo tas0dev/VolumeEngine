@@ -28,11 +28,14 @@ volume_dependencies = [
 
 volume_sources = files(
         'src/volume.c',
+        'src/audio/audio.c',
+        'src/audio/sound.c',
         'src/game/hitscan_weapon.c',
         'src/platform/platform.c',
         'src/core/log.c',
         'src/core/path.c',
         'src/entity/entity.c',
+        'src/entity/ambient_generic.c',
         'src/entity/damage.c',
         'src/entity/health.c',
         'src/entity/mover.c',

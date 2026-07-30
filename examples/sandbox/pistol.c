@@ -9,6 +9,7 @@
 #include "scene/transform.h"
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 static hitscan_weapon_config_t create_pistol_config(void) {
 	hitscan_weapon_config_t config;
@@ -19,6 +20,16 @@ static hitscan_weapon_config_t create_pistol_config(void) {
 	config.magazine_size = 12;
 	config.reserve_ammo = 48;
 	return config;
+}
+
+static void pistol_animation_event(void *user_data, const char *event_name) {
+	sandbox_pistol_t *pistol = user_data;
+
+	if (pistol == NULL || event_name == NULL) { return; }
+	if (strcmp(event_name, "reload_sound") == 0) {
+		pistol->reload_voice = audio_system_play(
+			pistol->audio, pistol->reload_sound, NULL);
+	}
 }
 
 static void spawn_shot_effects(sandbox_pistol_t *pistol,
@@ -95,6 +106,10 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 		&pistol->animator,
 		mesh_get_animation_set(pistol->view_model_mesh));
 	if (pistol->has_animator) {
+		animator_set_event_callback(&pistol->animator,
+					    pistol_animation_event, pistol);
+		pistol->reload_sound_event = animator_add_event(
+			&pistol->animator, "reload", "reload_sound", 0.12f);
 		(void)animator_play(&pistol->animator, "idle", true);
 	}
 	return true;
@@ -113,7 +128,8 @@ void sandbox_pistol_update(sandbox_pistol_t *pistol,
 	if (pistol->has_animator) {
 		animator_update(&pistol->animator, delta_time);
 		if (!animator_is_playing(&pistol->animator)) {
-			(void)animator_play(&pistol->animator, "idle", true);
+			(void)animator_play_blended(&pistol->animator, "idle",
+						    true, 0.12f);
 		}
 	}
 	fps_effect_system_update(pistol->effects, delta_time);
@@ -159,7 +175,8 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 			       0.55f * pistol->recoil_direction);
 	pistol->recoil_direction = -pistol->recoil_direction;
 	if (pistol->has_animator) {
-		(void)animator_play(&pistol->animator, "fire", false);
+		(void)animator_play_blended(&pistol->animator, "fire", false,
+					    0.035f);
 	}
 	return true;
 }
@@ -168,10 +185,15 @@ bool sandbox_pistol_reload(sandbox_pistol_t *pistol) {
 	if (pistol == NULL || !hitscan_weapon_reload(&pistol->weapon)) {
 		return false;
 	}
-	pistol->reload_voice =
-		audio_system_play(pistol->audio, pistol->reload_sound, NULL);
-	if (pistol->has_animator) {
-		(void)animator_play(&pistol->animator, "reload", false);
+	if (pistol->has_animator &&
+	    animator_play_blended(&pistol->animator, "reload", false, 0.08f)) {
+		if (!pistol->reload_sound_event) {
+			pistol->reload_voice = audio_system_play(
+				pistol->audio, pistol->reload_sound, NULL);
+		}
+	} else {
+		pistol->reload_voice = audio_system_play(
+			pistol->audio, pistol->reload_sound, NULL);
 	}
 	return true;
 }
@@ -189,7 +211,8 @@ bool sandbox_pistol_reset(sandbox_pistol_t *pistol) {
 	pistol->muzzle_flash_time = 0.0f;
 	fps_effect_system_clear(pistol->effects);
 	if (pistol->has_animator) {
-		(void)animator_play(&pistol->animator, "idle", true);
+		(void)animator_play_blended(&pistol->animator, "idle", true,
+					    0.1f);
 	}
 	return hitscan_weapon_initialize(&pistol->weapon, &config);
 }

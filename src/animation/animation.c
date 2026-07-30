@@ -23,7 +23,22 @@ static void decompose_transform(mat4_t transform,
 				vec3_t *position,
 				animation_quaternion_t *rotation,
 				vec3_t *scale);
+static void sample_pose(const animator_t *animator,
+			const animation_clip_t *clip,
+			float time,
+			animation_pose_transform_t *pose);
+static animation_pose_transform_t
+blend_transform(animation_pose_transform_t first,
+		animation_pose_transform_t second,
+		float amount);
 static void animator_evaluate(animator_t *animator);
+static void animator_dispatch_events(animator_t *animator,
+				     const animation_clip_t *clip,
+				     float previous_time,
+				     float current_time,
+				     float duration,
+				     bool wrapped,
+				     bool start_pending);
 
 void animation_set_destroy(animation_set_t *set) {
 	size_t clip_index;
@@ -91,47 +106,129 @@ bool animator_initialize(animator_t *animator, const animation_set_t *set) {
 bool animator_play(animator_t *animator,
 		   const char *clip_name,
 		   const bool looping) {
+	return animator_play_blended(animator, clip_name, looping, 0.0f);
+}
+
+bool animator_play_blended(animator_t *animator,
+			   const char *clip_name,
+			   const bool looping,
+			   const float blend_duration) {
 	const animation_clip_t *clip;
 
-	if (animator == NULL || animator->set == NULL) { return false; }
+	if (animator == NULL || animator->set == NULL ||
+	    !isfinite(blend_duration) || blend_duration < 0.0f) {
+		return false;
+	}
 	clip = animation_set_find_clip(animator->set, clip_name);
 	if (clip == NULL || !isfinite(clip->duration) ||
 	    clip->duration <= 0.0f || !isfinite(clip->ticks_per_second) ||
 	    clip->ticks_per_second <= 0.0f) {
 		return false;
 	}
+	memcpy(animator->blend_source_pose, animator->local_pose,
+	       animator->set->node_count * sizeof(*animator->local_pose));
 	animator->clip = clip;
 	animator->time = 0.0f;
 	animator->looping = looping;
 	animator->playing = true;
+	animator->blending = blend_duration > 0.0f;
+	animator->blend_duration = blend_duration;
+	animator->blend_time = 0.0f;
+	animator->event_start_pending = true;
 	animator_evaluate(animator);
 	return true;
 }
 
 void animator_update(animator_t *animator, const float delta_time) {
 	float duration_seconds;
+	float previous_time;
+	bool wrapped = false;
+	bool start_pending;
 
-	if (animator == NULL || !animator->playing || animator->clip == NULL ||
+	if (animator == NULL || animator->clip == NULL ||
+	    (!animator->playing && !animator->blending) ||
 	    !isfinite(delta_time) || delta_time <= 0.0f) {
 		return;
 	}
 	duration_seconds =
 		animator->clip->duration / animator->clip->ticks_per_second;
-	animator->time += delta_time;
-	if (animator->time >= duration_seconds) {
+	previous_time = animator->time;
+	if (animator->playing) { animator->time += delta_time; }
+	if (animator->playing && animator->time >= duration_seconds) {
 		if (animator->looping && duration_seconds > 0.0f) {
 			animator->time =
 				fmodf(animator->time, duration_seconds);
+			wrapped = true;
 		} else {
 			animator->time = duration_seconds;
 			animator->playing = false;
 		}
 	}
+	if (animator->blending) {
+		animator->blend_time += delta_time;
+		if (animator->blend_time >= animator->blend_duration) {
+			animator->blend_time = animator->blend_duration;
+			animator->blending = false;
+		}
+	}
 	animator_evaluate(animator);
+	start_pending = animator->event_start_pending;
+	animator->event_start_pending = false;
+	animator_dispatch_events(animator, animator->clip, previous_time,
+				 animator->time, duration_seconds, wrapped,
+				 start_pending);
 }
 
 bool animator_is_playing(const animator_t *animator) {
 	return animator != NULL && animator->playing;
+}
+
+bool animator_add_event(animator_t *animator,
+			const char *clip_name,
+			const char *event_name,
+			const float normalized_time) {
+	const animation_clip_t *clip;
+	animation_registered_event_t *event;
+	size_t index;
+	size_t name_length;
+
+	if (animator == NULL || animator->set == NULL || clip_name == NULL ||
+	    event_name == NULL || !isfinite(normalized_time) ||
+	    normalized_time < 0.0f || normalized_time > 1.0f ||
+	    animator->event_count >= ANIMATION_MAX_EVENTS) {
+		return false;
+	}
+	name_length = strlen(event_name);
+	if (name_length == 0 || name_length >= ANIMATION_EVENT_NAME_SIZE) {
+		return false;
+	}
+	clip = animation_set_find_clip(animator->set, clip_name);
+	if (clip == NULL) { return false; }
+	for (index = 0; index < animator->event_count; index++) {
+		if (animator->events[index].clip == clip &&
+		    animator->events[index].normalized_time ==
+			    normalized_time &&
+		    strcmp(animator->events[index].name, event_name) == 0) {
+			return false;
+		}
+	}
+	event = &animator->events[animator->event_count++];
+	event->clip = clip;
+	event->normalized_time = normalized_time;
+	memcpy(event->name, event_name, name_length + 1);
+	return true;
+}
+
+void animator_set_event_callback(animator_t *animator,
+				 const animation_event_callback_t callback,
+				 void *user_data) {
+	if (animator == NULL) { return; }
+	animator->event_callback = callback;
+	animator->event_user_data = user_data;
+}
+
+bool animator_is_blending(const animator_t *animator) {
+	return animator != NULL && animator->blending;
 }
 
 const mat4_t *animator_get_bone_matrices(const animator_t *animator,
@@ -149,48 +246,24 @@ const mat4_t *animator_get_bone_matrices(const animator_t *animator,
 static void animator_evaluate(animator_t *animator) {
 	mat4_t local;
 	mat4_t global;
-	const animation_channel_t *channel;
-	float tick_time;
+	float blend_amount;
 	size_t node_index;
-	size_t channel_index;
 	int bone_index;
-	vec3_t bind_position;
-	vec3_t bind_scale;
-	animation_quaternion_t bind_rotation;
 
-	tick_time = animator->clip == NULL
-			    ? 0.0f
-			    : animator->time * animator->clip->ticks_per_second;
+	sample_pose(animator, animator->clip, animator->time,
+		    animator->target_pose);
+	blend_amount = animator->blending && animator->blend_duration > 0.0f
+			       ? animator->blend_time / animator->blend_duration
+			       : 1.0f;
 	for (node_index = 0; node_index < animator->set->node_count;
 	     node_index++) {
-		local = animator->set->nodes[node_index].bind_transform;
-		if (animator->clip != NULL) {
-			decompose_transform(local, &bind_position,
-					    &bind_rotation, &bind_scale);
-			for (channel_index = 0;
-			     channel_index < animator->clip->channel_count;
-			     channel_index++) {
-				channel = &animator->clip
-						   ->channels[channel_index];
-				if (channel->node_index != node_index) {
-					continue;
-				}
-				local = compose_transform(
-					sample_vector(channel->positions,
-						      channel->position_count,
-						      tick_time, bind_position),
-					channel->rotation_count == 0
-						? bind_rotation
-						: sample_rotation(
-							  channel->rotations,
-							  channel->rotation_count,
-							  tick_time),
-					sample_vector(channel->scales,
-						      channel->scale_count,
-						      tick_time, bind_scale));
-				break;
-			}
-		}
+		animator->local_pose[node_index] = blend_transform(
+			animator->blend_source_pose[node_index],
+			animator->target_pose[node_index], blend_amount);
+		local = compose_transform(
+			animator->local_pose[node_index].position,
+			animator->local_pose[node_index].rotation,
+			animator->local_pose[node_index].scale);
 		if (animator->set->nodes[node_index].parent_index >= 0) {
 			global = mat4_multiply(
 				animator->global_transforms
@@ -209,6 +282,97 @@ static void animator_evaluate(animator_t *animator) {
 					global,
 					animator->set->inverse_bind_matrices
 						[bone_index]));
+		}
+	}
+}
+
+static void sample_pose(const animator_t *animator,
+			const animation_clip_t *clip,
+			const float time,
+			animation_pose_transform_t *pose) {
+	const animation_channel_t *channel;
+	float tick_time;
+	size_t node_index;
+	size_t channel_index;
+
+	tick_time = clip == NULL ? 0.0f : time * clip->ticks_per_second;
+	for (node_index = 0; node_index < animator->set->node_count;
+	     node_index++) {
+		decompose_transform(
+			animator->set->nodes[node_index].bind_transform,
+			&pose[node_index].position, &pose[node_index].rotation,
+			&pose[node_index].scale);
+		if (clip == NULL) { continue; }
+		for (channel_index = 0; channel_index < clip->channel_count;
+		     channel_index++) {
+			channel = &clip->channels[channel_index];
+			if (channel->node_index != node_index) { continue; }
+			pose[node_index].position = sample_vector(
+				channel->positions, channel->position_count,
+				tick_time, pose[node_index].position);
+			if (channel->rotation_count > 0) {
+				pose[node_index].rotation = sample_rotation(
+					channel->rotations,
+					channel->rotation_count, tick_time);
+			}
+			pose[node_index].scale = sample_vector(
+				channel->scales, channel->scale_count,
+				tick_time, pose[node_index].scale);
+			break;
+		}
+	}
+}
+
+static animation_pose_transform_t
+blend_transform(const animation_pose_transform_t first,
+		const animation_pose_transform_t second,
+		const float amount) {
+	animation_pose_transform_t result;
+	animation_rotation_key_t rotations[2];
+
+	result.position = vec3_add(
+		first.position,
+		vec3_scale(vec3_subtract(second.position, first.position),
+			   amount));
+	result.scale = vec3_add(
+		first.scale,
+		vec3_scale(vec3_subtract(second.scale, first.scale), amount));
+	rotations[0].time = 0.0f;
+	rotations[0].value = first.rotation;
+	rotations[1].time = 1.0f;
+	rotations[1].value = second.rotation;
+	result.rotation = sample_rotation(rotations, 2, amount);
+	return result;
+}
+
+static void animator_dispatch_events(animator_t *animator,
+				     const animation_clip_t *clip,
+				     const float previous_time,
+				     const float current_time,
+				     const float duration,
+				     const bool wrapped,
+				     const bool start_pending) {
+	const animation_registered_event_t *event;
+	float event_time;
+	bool crossed;
+	size_t index;
+
+	if (animator->event_callback == NULL || clip == NULL ||
+	    duration <= 0.0f) {
+		return;
+	}
+	for (index = 0; index < animator->event_count; index++) {
+		event = &animator->events[index];
+		if (event->clip != clip) { continue; }
+		event_time = event->normalized_time * duration;
+		crossed = wrapped ? event_time > previous_time ||
+					    event_time <= current_time
+				  : event_time > previous_time &&
+					    event_time <= current_time;
+		if (start_pending && event_time == 0.0f) { crossed = true; }
+		if (crossed) {
+			animator->event_callback(animator->event_user_data,
+						 event->name);
 		}
 	}
 }

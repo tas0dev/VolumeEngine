@@ -28,6 +28,7 @@ typedef struct sandbox_pistol {
 	fps_recoil_t recoil;
 	animator_t animator;
 	bool has_animator;
+	bool reload_sound_event;
 	float muzzle_flash_time;
 	float bob_time;
 	float bob_amount;

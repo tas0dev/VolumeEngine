@@ -15,6 +15,8 @@
 
 #define ANIMATION_MAX_BONES 64
 #define ANIMATION_MAX_NODES 256
+#define ANIMATION_MAX_EVENTS 64
+#define ANIMATION_EVENT_NAME_SIZE 64
 
 typedef struct animation_quaternion {
 	float x;
@@ -68,14 +70,40 @@ typedef struct animation_set {
 	size_t clip_count;
 } animation_set_t;
 
+typedef struct animation_pose_transform {
+	vec3_t position;
+	animation_quaternion_t rotation;
+	vec3_t scale;
+} animation_pose_transform_t;
+
+typedef struct animation_registered_event {
+	const animation_clip_t *clip;
+	char name[ANIMATION_EVENT_NAME_SIZE];
+	float normalized_time;
+} animation_registered_event_t;
+
+typedef void (*animation_event_callback_t)(void *user_data,
+					   const char *event_name);
+
 typedef struct animator {
 	const animation_set_t *set;
 	const animation_clip_t *clip;
 	float time;
 	bool looping;
 	bool playing;
+	bool blending;
+	bool event_start_pending;
+	float blend_duration;
+	float blend_time;
 	mat4_t bone_matrices[ANIMATION_MAX_BONES];
 	mat4_t global_transforms[ANIMATION_MAX_NODES];
+	animation_pose_transform_t local_pose[ANIMATION_MAX_NODES];
+	animation_pose_transform_t blend_source_pose[ANIMATION_MAX_NODES];
+	animation_pose_transform_t target_pose[ANIMATION_MAX_NODES];
+	animation_registered_event_t events[ANIMATION_MAX_EVENTS];
+	size_t event_count;
+	animation_event_callback_t event_callback;
+	void *event_user_data;
 } animator_t;
 
 /// Animation Setが所有する階層・Clipデータを破棄する。
@@ -118,6 +146,22 @@ bool animator_initialize(animator_t *animator, const animation_set_t *set);
 /// - `false`: Clipが存在しない、または引数が不正だった。
 bool animator_play(animator_t *animator, const char *clip_name, bool looping);
 
+/// 現在Poseから指定Clipへクロスフェードして再生する。
+///
+/// ### Args
+/// - `animator_t *animator`: 対象のAnimator。
+/// - `const char *clip_name`: 遷移先のClip名。
+/// - `bool looping`: 遷移先をループ再生する場合は`true`。
+/// - `float blend_duration`: クロスフェード時間。単位は秒。
+///
+/// ### Returns
+/// - `true`: Clipを見つけて遷移を開始した。
+/// - `false`: Clipまたは引数が不正だった。
+bool animator_play_blended(animator_t *animator,
+			   const char *clip_name,
+			   bool looping,
+			   float blend_duration);
+
 /// Animatorの再生時刻とBone行列を更新する。
 ///
 /// ### Args
@@ -134,6 +178,42 @@ void animator_update(animator_t *animator, float delta_time);
 /// - `true`: Clipを再生中。
 /// - `false`: 停止中または引数が不正。
 bool animator_is_playing(const animator_t *animator);
+
+/// Clip上の正規化時刻にAnimation Eventを登録する。
+///
+/// ### Args
+/// - `animator_t *animator`: 登録先のAnimator。
+/// - `const char *clip_name`: Eventを置くClip名。
+/// - `const char *event_name`: コールバックへ渡すイベント名。
+/// - `float normalized_time`: Clip先頭を0、末尾を1とした発火時刻。
+///
+/// ### Returns
+/// - `true`: Eventを登録した。
+/// - `false`: Clipまたは引数が不正、もしくは登録上限に達した。
+bool animator_add_event(animator_t *animator,
+			const char *clip_name,
+			const char *event_name,
+			float normalized_time);
+
+/// Animation Eventの通知先を設定する。
+///
+/// ### Args
+/// - `animator_t *animator`: 対象のAnimator。
+/// - `animation_event_callback_t callback`: Event受信関数。解除時は`NULL`。
+/// - `void *user_data`: コールバックへ渡す任意データ。
+void animator_set_event_callback(animator_t *animator,
+				 animation_event_callback_t callback,
+				 void *user_data);
+
+/// 現在クロスフェード中かを取得する。
+///
+/// ### Args
+/// - `const animator_t *animator`: 対象のAnimator。
+///
+/// ### Returns
+/// - `true`: クロスフェード中。
+/// - `false`: 通常再生中、停止中、または引数が不正。
+bool animator_is_blending(const animator_t *animator);
 
 /// GPU Skinning用Bone行列配列を取得する。
 ///

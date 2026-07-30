@@ -18,12 +18,18 @@ static char *copy_text(const char *text) {
 	return copy;
 }
 
+static void count_event(void *user_data, const char *event_name) {
+	int *count = user_data;
+	if (count != NULL && strcmp(event_name, "impact") == 0) { (*count)++; }
+}
+
 static bool test_animator_interpolation(void) {
 	animation_set_t *set;
 	animation_channel_t *channel;
 	animator_t animator;
 	const mat4_t *matrices;
 	size_t count;
+	int event_count = 0;
 
 	set = calloc(1, sizeof(*set));
 	CHECK(set != NULL);
@@ -67,14 +73,34 @@ static bool test_animator_interpolation(void) {
 		(animation_quaternion_t){0.0f, 0.0f, 0.0f, 1.0f};
 	channel->scales[0].value = vec3_create(1.0f, 1.0f, 1.0f);
 	CHECK(animator_initialize(&animator, set));
+	animator_set_event_callback(&animator, count_event, &event_count);
+	CHECK(animator_add_event(&animator, "fire", "impact", 0.5f));
+	CHECK(!animator_add_event(&animator, "fire", "impact", 0.5f));
 	CHECK(animator_play(&animator, "fire", false));
-	animator_update(&animator, 0.5f);
+	animator_update(&animator, 0.4f);
+	CHECK(event_count == 0);
+	animator_update(&animator, 0.1f);
+	CHECK(event_count == 1);
 	matrices = animator_get_bone_matrices(&animator, &count);
 	CHECK(matrices != NULL);
 	CHECK(count == 1);
 	CHECK(fabsf(matrices[0].elements[12] - 1.0f) < 0.0001f);
-	animator_update(&animator, 0.5f);
+	CHECK(animator_play_blended(&animator, "fire", false, 1.0f));
+	CHECK(animator_is_blending(&animator));
+	animator_update(&animator, 0.25f);
+	matrices = animator_get_bone_matrices(&animator, NULL);
+	CHECK(fabsf(matrices[0].elements[12] - 0.875f) < 0.0001f);
+	animator_update(&animator, 0.75f);
+	CHECK(event_count == 2);
+	CHECK(!animator_is_blending(&animator));
 	CHECK(!animator_is_playing(&animator));
+	CHECK(animator_play(&animator, "fire", true));
+	animator_update(&animator, 0.6f);
+	CHECK(event_count == 3);
+	animator_update(&animator, 0.6f);
+	CHECK(event_count == 3);
+	animator_update(&animator, 0.4f);
+	CHECK(event_count == 4);
 	animation_set_destroy(set);
 	return true;
 }

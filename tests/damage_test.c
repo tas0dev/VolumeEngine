@@ -76,9 +76,30 @@ static bool test_hitscan_breaks_prop_and_reloads(void) {
 				  vec3_create(0.0f, 0.0f, -1.0f), NULL));
 	CHECK(target->pending_destroy);
 	CHECK(hitscan_weapon_get_ammo(&weapon) == 10);
-	CHECK(hitscan_weapon_reload(&weapon));
+	hitscan_weapon_update(&weapon, config.fire_interval);
+	CHECK(hitscan_weapon_start_reload(&weapon, 1.0f));
+	CHECK(hitscan_weapon_is_busy(&weapon));
+	CHECK(hitscan_weapon_is_reloading(&weapon));
+	CHECK(hitscan_weapon_get_ammo(&weapon) == 10);
+	hitscan_weapon_update(&weapon, 0.5f);
+	CHECK(hitscan_weapon_get_ammo(&weapon) == 10);
+	CHECK(hitscan_weapon_get_reserve_ammo(&weapon) == 48);
+	CHECK(hitscan_weapon_get_action_time_remaining(&weapon) > 0.49f);
+	CHECK(!hitscan_weapon_fire_timed(
+		&weapon, world, NULL, vec3_create(0.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 0.0f, -1.0f), 0.6f, NULL));
+	hitscan_weapon_update(&weapon, 0.5f);
+	CHECK(!hitscan_weapon_is_reloading(&weapon));
 	CHECK(hitscan_weapon_get_ammo(&weapon) == 12);
 	CHECK(hitscan_weapon_get_reserve_ammo(&weapon) == 46);
+	CHECK(hitscan_weapon_fire_timed(
+		&weapon, world, NULL, vec3_create(0.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 0.0f, -1.0f), 0.6f, NULL));
+	CHECK(hitscan_weapon_is_busy(&weapon));
+	hitscan_weapon_update(&weapon, 0.2f);
+	CHECK(hitscan_weapon_is_busy(&weapon));
+	hitscan_weapon_update(&weapon, 0.41f);
+	CHECK(!hitscan_weapon_is_busy(&weapon));
 	world_update(world, 0.0f);
 	CHECK(world_get_entity_count(world) == 0);
 

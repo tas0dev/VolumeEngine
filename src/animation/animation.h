@@ -123,6 +123,15 @@ void animation_set_destroy(animation_set_t *set);
 const animation_clip_t *animation_set_find_clip(const animation_set_t *set,
 						const char *name);
 
+/// Animation Clipの再生時間を秒で取得する。
+///
+/// ### Args
+/// - `const animation_clip_t *clip`: 対象のClip。
+///
+/// ### Returns
+/// - `float`: 再生時間。Clipが不正な場合は0。
+float animation_clip_get_duration_seconds(const animation_clip_t *clip);
+
 /// AnimatorをAnimation SetのBind Poseで初期化する。
 ///
 /// ### Args
@@ -214,6 +223,17 @@ void animator_set_event_callback(animator_t *animator,
 /// - `true`: クロスフェード中。
 /// - `false`: 通常再生中、停止中、または引数が不正。
 bool animator_is_blending(const animator_t *animator);
+
+/// 名前を指定してAnimation Clipの再生時間を取得する。
+///
+/// ### Args
+/// - `const animator_t *animator`: 対象のAnimator。
+/// - `const char *clip_name`: 取得するClip名。
+///
+/// ### Returns
+/// - `float`: 再生時間。Clipが存在しない場合は0。
+float animator_get_clip_duration(const animator_t *animator,
+				 const char *clip_name);
 
 /// GPU Skinning用Bone行列配列を取得する。
 ///

@@ -29,6 +29,8 @@ typedef struct sandbox_pistol {
 	animator_t animator;
 	bool has_animator;
 	bool reload_sound_event;
+	float fire_action_duration;
+	float reload_action_duration;
 	float muzzle_flash_time;
 	float bob_time;
 	float bob_amount;
@@ -55,7 +57,7 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 			       char *error,
 			       size_t error_size);
 
-/// ピストルの発射クールダウンを更新する。
+/// ピストルの発射・リロード時間とViewModel状態を更新する。
 ///
 /// ### Args
 /// - `sandbox_pistol_t *pistol`: 更新するピストル。
@@ -97,7 +99,7 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 			 vec3_t direction,
 			 collision_trace_t *trace);
 
-/// ピストルをリロードし、成功時にゲーム固有の効果音を再生する。
+/// ピストルの時間制リロードと対応Animation Clipを開始する。
 ///
 /// ### Args
 /// - `sandbox_pistol_t *pistol`: リロードするピストル。

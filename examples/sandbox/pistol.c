@@ -77,16 +77,12 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 	pistol->audio = audio;
 	pistol->view_model_mesh = asset_manager_load_mesh(
 		assets, "models/wepons/pistol/pistol.glb", error, error_size);
-	if (pistol->view_model_mesh == NULL) {
-		pistol->view_model_mesh = asset_manager_load_mesh(
-			assets, "models/wepons/pistol/pistol.obj", error,
-			error_size);
-	}
 	pistol->view_model_material = asset_manager_load_material(
 		assets, "materials/pistol.volmat", error, error_size);
 	pistol->fire_sound = asset_manager_load_sound(assets, "audio/fire.mp3",
 						      error, error_size);
-	pistol->reload_sound = audio_sound_create_tone(520.0f, 0.09f);
+	pistol->reload_sound = asset_manager_load_sound(
+		assets, "audio/reload.mp3", error, error_size);
 	pistol->effects = fps_effect_system_create();
 	config = create_pistol_config();
 	recoil_config.return_strength = 48.0f;
@@ -102,14 +98,28 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 		return false;
 	}
 	pistol->recoil_direction = 1.0f;
+	pistol->fire_action_duration = config.fire_interval;
+	pistol->reload_action_duration = 1.0f;
 	pistol->has_animator = animator_initialize(
 		&pistol->animator,
 		mesh_get_animation_set(pistol->view_model_mesh));
 	if (pistol->has_animator) {
+		float clip_duration;
+
+		clip_duration =
+			animator_get_clip_duration(&pistol->animator, "fire");
+		if (clip_duration > 0.0f) {
+			pistol->fire_action_duration = clip_duration;
+		}
+		clip_duration =
+			animator_get_clip_duration(&pistol->animator, "reload");
+		if (clip_duration > 0.0f) {
+			pistol->reload_action_duration = clip_duration;
+		}
 		animator_set_event_callback(&pistol->animator,
 					    pistol_animation_event, pistol);
 		pistol->reload_sound_event = animator_add_event(
-			&pistol->animator, "reload", "reload_sound", 0.12f);
+			&pistol->animator, "reload", "reload_sound", 0.0f);
 		(void)animator_play(&pistol->animator, "idle", true);
 	}
 	return true;
@@ -162,8 +172,9 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 	collision_trace_t result = {0};
 
 	if (pistol == NULL ||
-	    !hitscan_weapon_fire(&pistol->weapon, world, owner, origin,
-				 direction, &result)) {
+	    !hitscan_weapon_fire_timed(&pistol->weapon, world, owner, origin,
+				       direction, pistol->fire_action_duration,
+				       &result)) {
 		return false;
 	}
 	if (trace != NULL) { *trace = result; }
@@ -182,19 +193,20 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 }
 
 bool sandbox_pistol_reload(sandbox_pistol_t *pistol) {
-	if (pistol == NULL || !hitscan_weapon_reload(&pistol->weapon)) {
+	if (pistol == NULL ||
+	    !hitscan_weapon_start_reload(&pistol->weapon,
+					 pistol->reload_action_duration)) {
 		return false;
 	}
-	if (pistol->has_animator &&
-	    animator_play_blended(&pistol->animator, "reload", false, 0.08f)) {
-		if (!pistol->reload_sound_event) {
-			pistol->reload_voice = audio_system_play(
-				pistol->audio, pistol->reload_sound, NULL);
+	if (pistol->has_animator) {
+		if (animator_play_blended(&pistol->animator, "reload", false,
+					  0.08f) &&
+		    pistol->reload_sound_event) {
+			return true;
 		}
-	} else {
-		pistol->reload_voice = audio_system_play(
-			pistol->audio, pistol->reload_sound, NULL);
 	}
+	pistol->reload_voice =
+		audio_system_play(pistol->audio, pistol->reload_sound, NULL);
 	return true;
 }
 
@@ -292,7 +304,6 @@ void sandbox_pistol_destroy(sandbox_pistol_t *pistol) {
 	if (pistol == NULL) { return; }
 	audio_system_stop(pistol->audio, pistol->reload_voice);
 	audio_system_stop(pistol->audio, pistol->fire_voice);
-	audio_sound_destroy(pistol->reload_sound);
 	fps_effect_system_destroy(pistol->effects);
 	*pistol = (sandbox_pistol_t){0};
 }

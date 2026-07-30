@@ -215,6 +215,9 @@ audio_test = executable(
         '-DTEST_MP3_FILE="@0@"'.format(
             meson.project_source_root() / 'assets/game/audio/fire.mp3'
         ),
+        '-DTEST_RELOAD_MP3_FILE="@0@"'.format(
+            meson.project_source_root() / 'assets/game/audio/reload.mp3'
+        ),
     ],
     install : false,
 )

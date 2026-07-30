@@ -28,6 +28,12 @@ static bool test_mp3_loading(void) {
 	sound = audio_sound_load_mp3(TEST_MP3_FILE, error, sizeof(error));
 	CHECK(sound != NULL);
 	audio_sound_destroy(sound);
+#ifdef TEST_RELOAD_MP3_FILE
+	sound = audio_sound_load_mp3(TEST_RELOAD_MP3_FILE, error,
+				     sizeof(error));
+	CHECK(sound != NULL);
+	audio_sound_destroy(sound);
+#endif
 	return true;
 }
 #endif

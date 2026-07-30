@@ -37,7 +37,7 @@ static void write_tangent_basis(const struct aiMesh *mesh,
 				size_t vertex_index,
 				const struct aiVector3D *normal,
 				mesh_vertex_t *vertex);
-static bool scene_has_bones(const struct aiScene *scene);
+static bool scene_has_animation_data(const struct aiScene *scene);
 static animation_set_t *
 load_animation_set(const struct aiScene *scene, char *error, size_t error_size);
 static size_t count_nodes(const struct aiNode *node);
@@ -46,6 +46,11 @@ static bool copy_nodes(const struct aiNode *node,
 		       animation_set_t *set,
 		       size_t *next_index);
 static int find_node(const animation_set_t *set, const char *name);
+static const struct aiNode *find_mesh_node(const struct aiNode *node,
+					   unsigned int mesh_index);
+static int find_source_node_index(const struct aiNode *node,
+				  const struct aiNode *target,
+				  size_t *next_index);
 static mat4_t convert_matrix(const struct aiMatrix4x4 *matrix);
 static char *duplicate_string(const char *text);
 static void
@@ -244,6 +249,37 @@ static bool copy_mesh_data(const struct aiScene *scene,
 		}
 
 		if (animations != NULL) {
+			if (mesh->mNumBones == 0) {
+				const struct aiNode *mesh_node = find_mesh_node(
+					scene->mRootNode,
+					(unsigned int)mesh_index);
+				if (mesh_node == NULL) {
+					node_index = -1;
+				} else {
+					size_t source_node_index = 0;
+					node_index = find_source_node_index(
+						scene->mRootNode, mesh_node,
+						&source_node_index);
+				}
+				mapped_bone_index =
+					node_index < 0
+						? -1
+						: animations->nodes[node_index]
+							  .bone_index;
+				if (mapped_bone_index >= 0) {
+					for (vertex_index = 0;
+					     vertex_index < mesh->mNumVertices;
+					     vertex_index++) {
+						vertices[vertex_offset +
+							 vertex_index]
+							.bone_indices[0] =
+							mapped_bone_index;
+						vertices[vertex_offset +
+							 vertex_index]
+							.bone_weights[0] = 1.0f;
+					}
+				}
+			}
 			for (bone_index = 0; bone_index < mesh->mNumBones;
 			     bone_index++) {
 				node_index = find_node(
@@ -418,7 +454,7 @@ mesh_t *mesh_load(const char *path, char *error, const size_t error_size) {
 		aiReleaseImport(scene);
 		return NULL;
 	}
-	if (!scene_has_bones(scene)) {
+	if (!scene_has_animation_data(scene)) {
 		aiReleaseImport(scene);
 		flags |= aiProcess_PreTransformVertices;
 		scene = aiImportFile(path, flags);
@@ -487,9 +523,10 @@ mesh_t *mesh_load(const char *path, char *error, const size_t error_size) {
 	return mesh;
 }
 
-static bool scene_has_bones(const struct aiScene *scene) {
+static bool scene_has_animation_data(const struct aiScene *scene) {
 	size_t index;
 
+	if (scene->mNumAnimations > 0) { return true; }
 	for (index = 0; index < scene->mNumMeshes; index++) {
 		if (scene->mMeshes[index]->mNumBones > 0) { return true; }
 	}
@@ -511,6 +548,7 @@ static animation_set_t *load_animation_set(const struct aiScene *scene,
 	int bone_index;
 	const struct aiAnimation *source_clip;
 	const struct aiNodeAnim *source_channel;
+	const struct aiNode *mesh_node;
 	animation_channel_t *channel;
 	mat4_t root_transform;
 
@@ -560,6 +598,31 @@ static animation_set_t *load_animation_set(const struct aiScene *scene,
 					 ->mBones[source_bone_index]
 					 ->mOffsetMatrix);
 		}
+	}
+	for (mesh_index = 0; mesh_index < scene->mNumMeshes; mesh_index++) {
+		if (scene->mMeshes[mesh_index]->mNumBones > 0) { continue; }
+		mesh_node = find_mesh_node(scene->mRootNode,
+					   (unsigned int)mesh_index);
+		if (mesh_node == NULL) { continue; }
+		{
+			size_t source_node_index = 0;
+			node_index = find_source_node_index(scene->mRootNode,
+							    mesh_node,
+							    &source_node_index);
+		}
+		if (node_index < 0 || set->nodes[node_index].bone_index >= 0) {
+			continue;
+		}
+		if (set->bone_count >= ANIMATION_MAX_BONES) {
+			set_error(error, error_size,
+				  "model exceeds the %d bone limit",
+				  ANIMATION_MAX_BONES);
+			animation_set_destroy(set);
+			return NULL;
+		}
+		bone_index = (int)set->bone_count++;
+		set->nodes[node_index].bone_index = bone_index;
+		set->inverse_bind_matrices[bone_index] = mat4_identity();
 	}
 	set->clip_count = scene->mNumAnimations;
 	if (set->clip_count == 0) { return set; }
@@ -721,6 +784,38 @@ static int find_node(const animation_set_t *set, const char *name) {
 		if (strcmp(set->nodes[index].name, name) == 0) {
 			return (int)index;
 		}
+	}
+	return -1;
+}
+
+static const struct aiNode *find_mesh_node(const struct aiNode *node,
+					   const unsigned int mesh_index) {
+	size_t index;
+	const struct aiNode *found;
+
+	for (index = 0; index < node->mNumMeshes; index++) {
+		if (node->mMeshes[index] == mesh_index) { return node; }
+	}
+	for (index = 0; index < node->mNumChildren; index++) {
+		found = find_mesh_node(node->mChildren[index], mesh_index);
+		if (found != NULL) { return found; }
+	}
+	return NULL;
+}
+
+static int find_source_node_index(const struct aiNode *node,
+				  const struct aiNode *target,
+				  size_t *next_index) {
+	size_t own_index;
+	size_t child_index;
+	int found;
+
+	own_index = (*next_index)++;
+	if (node == target) { return (int)own_index; }
+	for (child_index = 0; child_index < node->mNumChildren; child_index++) {
+		found = find_source_node_index(node->mChildren[child_index],
+					       target, next_index);
+		if (found >= 0) { return found; }
 	}
 	return -1;
 }

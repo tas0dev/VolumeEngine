@@ -86,6 +86,15 @@ const animation_clip_t *animation_set_find_clip(const animation_set_t *set,
 	return NULL;
 }
 
+float animation_clip_get_duration_seconds(const animation_clip_t *clip) {
+	if (clip == NULL || !isfinite(clip->duration) ||
+	    clip->duration <= 0.0f || !isfinite(clip->ticks_per_second) ||
+	    clip->ticks_per_second <= 0.0f) {
+		return 0.0f;
+	}
+	return clip->duration / clip->ticks_per_second;
+}
+
 bool animator_initialize(animator_t *animator, const animation_set_t *set) {
 	size_t index;
 
@@ -229,6 +238,13 @@ void animator_set_event_callback(animator_t *animator,
 
 bool animator_is_blending(const animator_t *animator) {
 	return animator != NULL && animator->blending;
+}
+
+float animator_get_clip_duration(const animator_t *animator,
+				 const char *clip_name) {
+	if (animator == NULL || animator->set == NULL) { return 0.0f; }
+	return animation_clip_get_duration_seconds(
+		animation_set_find_clip(animator->set, clip_name));
 }
 
 const mat4_t *animator_get_bone_matrices(const animator_t *animator,

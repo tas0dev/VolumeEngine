@@ -73,6 +73,9 @@ static bool test_animator_interpolation(void) {
 		(animation_quaternion_t){0.0f, 0.0f, 0.0f, 1.0f};
 	channel->scales[0].value = vec3_create(1.0f, 1.0f, 1.0f);
 	CHECK(animator_initialize(&animator, set));
+	CHECK(fabsf(animator_get_clip_duration(&animator, "fire") - 1.0f) <
+	      0.0001f);
+	CHECK(animator_get_clip_duration(&animator, "missing") == 0.0f);
 	animator_set_event_callback(&animator, count_event, &event_count);
 	CHECK(animator_add_event(&animator, "fire", "impact", 0.5f));
 	CHECK(!animator_add_event(&animator, "fire", "impact", 0.5f));

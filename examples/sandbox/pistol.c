@@ -260,7 +260,7 @@ void sandbox_pistol_draw(const sandbox_pistol_t *pistol,
 			    -0.27f - bob_y + pistol->sway_pitch * 0.25f,
 			    -0.58f + recoil.pitch * 0.35f);
 	transform.rotation = vec3_create(
-		-0.08f - recoil.pitch * 1.8f + pistol->sway_pitch,
+		-0.08f + recoil.pitch * 1.8f + pistol->sway_pitch,
 		0.08f - recoil.yaw + pistol->sway_yaw, -0.06f + bob_x * 1.5f);
 	transform.scale = vec3_create(1.8f, 1.8f, 1.8f);
 	model = transform_get_matrix(&transform);

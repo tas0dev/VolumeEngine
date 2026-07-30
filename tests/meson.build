@@ -23,6 +23,21 @@ map_test = executable(
     install : false,
 )
 
+map_document_test = executable(
+    'map-document-test',
+    [
+        'common.c',
+        'map_document_test.c',
+    ],
+    dependencies : volume_dependency,
+    c_args : [
+        '-DTEST_MAP_DOCUMENT_FILE="@0@"'.format(
+            meson.current_build_dir() / 'map-document-save.volmap'
+        ),
+    ],
+    install : false,
+)
+
 asset_manager_test = executable(
     'asset-manager-test',
     [
@@ -282,6 +297,11 @@ test(
 test(
     'map',
     map_test,
+)
+
+test(
+    'map-document',
+    map_document_test,
 )
 
 test(

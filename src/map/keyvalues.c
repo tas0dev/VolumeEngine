@@ -39,6 +39,17 @@ static char *duplicate_string(const char *string);
 static keyvalues_node_t *node_create(const char *key, const char *value);
 static void node_destroy(keyvalues_node_t *node);
 static bool node_add_child(keyvalues_node_t *node, keyvalues_node_t *child);
+typedef struct string_builder {
+	char *data;
+	size_t length;
+	size_t capacity;
+} string_builder_t;
+static bool builder_append(string_builder_t *builder, const char *text);
+static bool builder_append_character(string_builder_t *builder, char character);
+static bool serialize_node(string_builder_t *builder,
+			   const keyvalues_node_t *node,
+			   size_t depth);
+static bool serialize_quoted(string_builder_t *builder, const char *text);
 static void parser_skip_ignored(parser_t *parser);
 static bool
 token_append(char **buffer, size_t *length, size_t *capacity, char character);
@@ -445,16 +456,9 @@ keyvalues_parse(const char *source, char *error, const size_t error_size) {
 		return NULL;
 	}
 
-	document = calloc(1, sizeof(*document));
+	document = keyvalues_create();
 	if (document == NULL) {
 		set_error(error, error_size, "out of memory");
-		return NULL;
-	}
-
-	document->root = node_create(NULL, NULL);
-	if (document->root == NULL) {
-		set_error(error, error_size, "out of memory");
-		free(document);
 		return NULL;
 	}
 
@@ -469,6 +473,19 @@ keyvalues_parse(const char *source, char *error, const size_t error_size) {
 		return NULL;
 	}
 
+	return document;
+}
+
+keyvalues_document_t *keyvalues_create(void) {
+	keyvalues_document_t *document;
+
+	document = calloc(1, sizeof(*document));
+	if (document == NULL) { return NULL; }
+	document->root = node_create(NULL, NULL);
+	if (document->root == NULL) {
+		free(document);
+		return NULL;
+	}
 	return document;
 }
 
@@ -549,6 +566,51 @@ keyvalues_get_root(const keyvalues_document_t *document) {
 	return document->root;
 }
 
+keyvalues_node_t *keyvalues_get_mutable_root(keyvalues_document_t *document) {
+	return document == NULL ? NULL : document->root;
+}
+
+keyvalues_node_t *keyvalues_node_create(const char *key, const char *value) {
+	if (key == NULL || key[0] == '\0') { return NULL; }
+	return node_create(key, value);
+}
+
+void keyvalues_node_destroy(keyvalues_node_t *node) { node_destroy(node); }
+
+bool keyvalues_node_add_child(keyvalues_node_t *parent,
+			      keyvalues_node_t *child) {
+	if (parent == NULL || child == NULL ||
+	    !keyvalues_node_is_block(parent)) {
+		return false;
+	}
+	return node_add_child(parent, child);
+}
+
+bool keyvalues_node_remove_child(keyvalues_node_t *parent, const size_t index) {
+	if (parent == NULL || index >= parent->child_count) { return false; }
+	node_destroy(parent->children[index]);
+	if (index + 1 < parent->child_count) {
+		memmove(&parent->children[index], &parent->children[index + 1],
+			(parent->child_count - index - 1) *
+				sizeof(*parent->children));
+	}
+	parent->child_count--;
+	return true;
+}
+
+bool keyvalues_node_set_value(keyvalues_node_t *node, const char *value) {
+	char *copy;
+
+	if (node == NULL || node->value == NULL || value == NULL) {
+		return false;
+	}
+	copy = duplicate_string(value);
+	if (copy == NULL) { return false; }
+	free(node->value);
+	node->value = copy;
+	return true;
+}
+
 const char *keyvalues_node_get_key(const keyvalues_node_t *node) {
 	if (node == NULL) { return NULL; }
 
@@ -594,4 +656,151 @@ const keyvalues_node_t *keyvalues_node_find_child(const keyvalues_node_t *node,
 	}
 
 	return NULL;
+}
+
+keyvalues_node_t *keyvalues_node_get_mutable_child(keyvalues_node_t *node,
+						   const size_t index) {
+	if (node == NULL || index >= node->child_count) { return NULL; }
+	return node->children[index];
+}
+
+char *keyvalues_serialize(const keyvalues_document_t *document) {
+	string_builder_t builder = {0};
+	const keyvalues_node_t *root;
+	size_t index;
+
+	root = keyvalues_get_root(document);
+	if (root == NULL) { return NULL; }
+	for (index = 0; index < root->child_count; index++) {
+		if (!serialize_node(&builder, root->children[index], 0)) {
+			free(builder.data);
+			return NULL;
+		}
+	}
+	if (builder.data == NULL) { builder.data = calloc(1, 1); }
+	return builder.data;
+}
+
+bool keyvalues_save(const keyvalues_document_t *document,
+		    const char *path,
+		    char *error,
+		    const size_t error_size) {
+	char *source;
+	FILE *file;
+	size_t length;
+	size_t written;
+
+	if (document == NULL || path == NULL) {
+		set_error(error, error_size, "invalid save arguments");
+		return false;
+	}
+	source = keyvalues_serialize(document);
+	if (source == NULL) {
+		set_error(error, error_size, "failed to serialize %s", path);
+		return false;
+	}
+	file = fopen(path, "wb");
+	if (file == NULL) {
+		set_error(error, error_size, "failed to open %s", path);
+		free(source);
+		return false;
+	}
+	length = strlen(source);
+	written = fwrite(source, 1, length, file);
+	if (fclose(file) != 0 || written != length) {
+		set_error(error, error_size, "failed to write %s", path);
+		free(source);
+		return false;
+	}
+	free(source);
+	if (error != NULL && error_size > 0) { error[0] = '\0'; }
+	return true;
+}
+
+static bool builder_append(string_builder_t *builder, const char *text) {
+	size_t required;
+	size_t length;
+	size_t capacity;
+	char *data;
+
+	length = strlen(text);
+	if (length > SIZE_MAX - builder->length - 1) { return false; }
+	required = builder->length + length + 1;
+	if (required > builder->capacity) {
+		capacity = builder->capacity == 0 ? 256 : builder->capacity;
+		while (capacity < required) {
+			if (capacity > SIZE_MAX / 2) { return false; }
+			capacity *= 2;
+		}
+		data = realloc(builder->data, capacity);
+		if (data == NULL) { return false; }
+		builder->data = data;
+		builder->capacity = capacity;
+	}
+	memcpy(builder->data + builder->length, text, length + 1);
+	builder->length += length;
+	return true;
+}
+
+static bool builder_append_character(string_builder_t *builder,
+				     const char character) {
+	char text[2] = {character, '\0'};
+	return builder_append(builder, text);
+}
+
+static bool serialize_quoted(string_builder_t *builder, const char *text) {
+	const char *escaped;
+
+	if (!builder_append_character(builder, '"')) { return false; }
+	for (; *text != '\0'; text++) {
+		escaped = NULL;
+		switch (*text) {
+		case '"': escaped = "\\\""; break;
+		case '\\': escaped = "\\\\"; break;
+		case '\n': escaped = "\\n"; break;
+		case '\r': escaped = "\\r"; break;
+		case '\t': escaped = "\\t"; break;
+		default: break;
+		}
+		if (escaped != NULL) {
+			if (!builder_append(builder, escaped)) { return false; }
+		} else if (!builder_append_character(builder, *text)) {
+			return false;
+		}
+	}
+	return builder_append_character(builder, '"');
+}
+
+static bool serialize_node(string_builder_t *builder,
+			   const keyvalues_node_t *node,
+			   const size_t depth) {
+	size_t index;
+
+	for (index = 0; index < depth; index++) {
+		if (!builder_append(builder, "\t")) { return false; }
+	}
+	if (node->value != NULL) {
+		return serialize_quoted(builder, node->key) &&
+		       builder_append(builder, " ") &&
+		       serialize_quoted(builder, node->value) &&
+		       builder_append(builder, "\n");
+	}
+	if (!builder_append(builder, node->key) ||
+	    !builder_append(builder, "\n")) {
+		return false;
+	}
+	for (index = 0; index < depth; index++) {
+		if (!builder_append(builder, "\t")) { return false; }
+	}
+	if (!builder_append(builder, "{\n")) { return false; }
+	for (index = 0; index < node->child_count; index++) {
+		if (!serialize_node(builder, node->children[index],
+				    depth + 1)) {
+			return false;
+		}
+	}
+	for (index = 0; index < depth; index++) {
+		if (!builder_append(builder, "\t")) { return false; }
+	}
+	return builder_append(builder, "}\n\n");
 }

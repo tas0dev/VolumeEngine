@@ -30,6 +30,7 @@
 #include "game/game.h"
 #include "input/input.h"
 #include "map/spawn.h"
+#include "map/document.h"
 #include "math/mat4.h"
 #include "math/math.h"
 #include "math/vec3.h"
@@ -38,6 +39,7 @@
 #include "renderer/renderer.h"
 #include "scene/camera.h"
 #include "scene/transform.h"
+#include "ui/ui.h"
 #include "weapon/hitscan_weapon.h"
 #include <stdbool.h>
 

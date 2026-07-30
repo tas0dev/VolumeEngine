@@ -581,6 +581,19 @@ void renderer_draw_mesh(renderer_t *renderer,
 				    NULL, 0);
 }
 
+void renderer_draw_mesh_unshadowed(renderer_t *renderer,
+				   const mesh_t *mesh,
+				   const material_t *material,
+				   const mat4_t *model,
+				   const render_view_t *view) {
+	if (renderer == NULL || mesh == NULL || material == NULL ||
+	    model == NULL || view == NULL) {
+		return;
+	}
+	renderer_draw_mesh_internal(renderer, mesh, material, model, view,
+				    false, NULL, 0);
+}
+
 bool renderer_begin_view_model_pass(renderer_t *renderer,
 				    const float field_of_view,
 				    const float near_plane,

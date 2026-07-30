@@ -93,6 +93,21 @@ void renderer_draw_mesh(renderer_t *renderer,
 			const material_t *material,
 			const mat4_t *model,
 			const render_view_t *view);
+/// Shadow Mapを参照せずにメイン描画パスへメッシュを描画する。
+///
+/// エディタPreviewなど、Shadow Passを持たない描画で使用する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `const mesh_t *mesh`: 描画するメッシュ。
+/// - `const material_t *material`: 使用するマテリアル。
+/// - `const mat4_t *model`: モデル変換行列。
+/// - `const render_view_t *view`: カメラと光源のビュー情報。
+void renderer_draw_mesh_unshadowed(renderer_t *renderer,
+				   const mesh_t *mesh,
+				   const material_t *material,
+				   const mat4_t *model,
+				   const render_view_t *view);
 /// FPS用ViewModel描画パスを開始する。
 ///
 /// ワールドの深度を消去し、ViewModel同士だけで深度判定する。

@@ -100,6 +100,39 @@ void renderer_font_destroy(renderer_font_t *font) {
 	free(font);
 }
 
+float renderer_font_measure_text(const renderer_font_t *font,
+				 const float height,
+				 const char *text) {
+	float maximum_width;
+	float line_width;
+	float scale;
+	unsigned char character;
+
+	if (font == NULL || height <= 0.0f || text == NULL) { return 0.0f; }
+	maximum_width = 0.0f;
+	line_width = 0.0f;
+	scale = height / font->baked_height;
+	while (*text != '\0') {
+		character = (unsigned char)*text++;
+		if (character == '\n') {
+			if (line_width > maximum_width) {
+				maximum_width = line_width;
+			}
+			line_width = 0.0f;
+			continue;
+		}
+		if (character < RENDERER_FONT_FIRST_CHARACTER ||
+		    character >= 128) {
+			character = '?';
+		}
+		line_width +=
+			font->glyphs[character - RENDERER_FONT_FIRST_CHARACTER]
+				.x_advance *
+			scale;
+	}
+	return line_width > maximum_width ? line_width : maximum_width;
+}
+
 static unsigned char *read_file(const char *path, size_t *size) {
 	unsigned char *data;
 	long length;

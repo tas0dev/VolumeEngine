@@ -89,6 +89,7 @@ volume_sources = files(
     'src/input/input.c',
     'src/map/keyvalues.c',
     'src/map/map.c',
+    'src/map/document.c',
     'src/map/spawn.c',
     'src/asset/manager.c',
     'src/asset/mesh_loader.c',
@@ -115,11 +116,20 @@ volume_library = static_library(
     install : false,
 )
 
+volume_ui_library = static_library(
+    'volumeui',
+    'src/ui/ui.c',
+    dependencies : volume_dependencies,
+    include_directories : volume_include,
+    install : false,
+)
+
 volume_dependency = declare_dependency(
-    link_with : volume_library,
+    link_with : [volume_library, volume_ui_library],
     dependencies : volume_dependencies,
     include_directories : volume_include,
 )
 
 subdir('examples')
+subdir('tools')
 subdir('tests')

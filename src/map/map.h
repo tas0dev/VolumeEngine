@@ -15,6 +15,12 @@
 typedef struct map map_t;
 typedef struct map_entity map_entity_t;
 
+/// worldspawnだけを含む空の編集可能マップを作成する。
+///
+/// ### Returns
+/// - `map_t *`: 作成したマップ。失敗時は`NULL`。
+map_t *map_create(void);
+
 /// 文字列からVolumeEngineマップを解析する。
 ///
 /// ### Args
@@ -65,6 +71,45 @@ size_t map_get_entity_count(const map_t *map);
 /// ### Returns
 /// - `const map_entity_t *`: 対応するエンティティ。範囲外の場合は`NULL`。
 const map_entity_t *map_get_entity(const map_t *map, size_t index);
+/// 編集可能なworldブロックを取得する。
+///
+/// ### Args
+/// - `map_t *map`: 対象のマップ。
+///
+/// ### Returns
+/// - `map_entity_t *`: worldブロック。存在しない場合は`NULL`。
+map_entity_t *map_get_mutable_world(map_t *map);
+
+/// 指定添字の編集可能なマップエンティティを取得する。
+///
+/// ### Args
+/// - `map_t *map`: 対象のマップ。
+/// - `size_t index`: 取得するエンティティの添字。
+///
+/// ### Returns
+/// - `map_entity_t *`: 対応するエンティティ。範囲外の場合は`NULL`。
+map_entity_t *map_get_mutable_entity(map_t *map, size_t index);
+
+/// 指定クラスのエンティティをマップ末尾へ追加する。
+///
+/// ### Args
+/// - `map_t *map`: 追加先マップ。
+/// - `const char *classname`: 新しいエンティティのクラス名。
+///
+/// ### Returns
+/// - `map_entity_t *`: 追加したエンティティ。失敗時は`NULL`。
+map_entity_t *map_add_entity(map_t *map, const char *classname);
+
+/// 指定添字のエンティティを削除する。
+///
+/// ### Args
+/// - `map_t *map`: 対象のマップ。
+/// - `size_t index`: 削除するエンティティの添字。
+///
+/// ### Returns
+/// - `true`: 削除した。
+/// - `false`: 添字または引数が不正だった。
+bool map_remove_entity(map_t *map, size_t index);
 /// マップエンティティから指定キーの文字列値を取得する。
 ///
 /// ### Args
@@ -98,6 +143,46 @@ bool map_entity_get_property_at(const map_entity_t *entity,
 				size_t index,
 				const char **key,
 				const char **value);
+/// 最初に一致するプロパティを変更し、存在しなければ末尾へ追加する。
+///
+/// ### Args
+/// - `map_entity_t *entity`: 編集するエンティティ。
+/// - `const char *key`: プロパティ名。
+/// - `const char *value`: 新しい値。
+///
+/// ### Returns
+/// - `true`: 変更または追加に成功した。
+/// - `false`: 引数不正またはメモリ不足。
+bool map_entity_set_property(map_entity_t *entity,
+			     const char *key,
+			     const char *value);
+
+/// 同名キーを許可してプロパティを末尾へ追加する。
+///
+/// Output接続のように同じキーを複数保持する場合に使用する。
+///
+/// ### Args
+/// - `map_entity_t *entity`: 編集するエンティティ。
+/// - `const char *key`: プロパティ名。
+/// - `const char *value`: 値。
+///
+/// ### Returns
+/// - `true`: 追加に成功した。
+/// - `false`: 引数不正またはメモリ不足。
+bool map_entity_add_property(map_entity_t *entity,
+			     const char *key,
+			     const char *value);
+
+/// 指定添字のプロパティを削除する。
+///
+/// ### Args
+/// - `map_entity_t *entity`: 編集するエンティティ。
+/// - `size_t index`: 削除するプロパティの添字。
+///
+/// ### Returns
+/// - `true`: 削除した。
+/// - `false`: 添字または引数が不正だった。
+bool map_entity_remove_property_at(map_entity_t *entity, size_t index);
 /// 指定プロパティを3次元ベクトルとして取得する。
 ///
 /// ### Args
@@ -137,5 +222,30 @@ bool map_entity_get_bool(const map_entity_t *entity,
 bool map_entity_get_float(const map_entity_t *entity,
 			  const char *key,
 			  float *value);
+
+/// マップを正規化された`.volmap`文字列へ変換する。
+///
+/// ### Args
+/// - `const map_t *map`: 対象のマップ。
+///
+/// ### Returns
+/// - `char *`: `free`で解放する文字列。失敗時は`NULL`。
+char *map_serialize(const map_t *map);
+
+/// マップを`.volmap`ファイルへ保存する。
+///
+/// ### Args
+/// - `const map_t *map`: 保存するマップ。
+/// - `const char *path`: 保存先パス。
+/// - `char *error`: エラーメッセージの格納先。
+/// - `size_t error_size`: エラー格納先のバイト数。
+///
+/// ### Returns
+/// - `true`: 保存に成功した。
+/// - `false`: 変換または書き込みに失敗した。
+bool map_save(const map_t *map,
+	      const char *path,
+	      char *error,
+	      size_t error_size);
 
 #endif

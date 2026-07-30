@@ -34,7 +34,8 @@ info_player_start_t *info_player_start_from_entity(entity_t *entity);
 /// - `const entity_t *entity`: 変換するエンティティ。
 ///
 /// ### Returns
-/// - `const info_player_start_t *`: 対応するスポーン地点。型が異なる場合は`NULL`。
+/// - `const info_player_start_t *`:
+/// 対応するスポーン地点。型が異なる場合は`NULL`。
 const info_player_start_t *
 info_player_start_from_const_entity(const entity_t *entity);
 

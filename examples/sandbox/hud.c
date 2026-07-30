@@ -70,9 +70,11 @@ void sandbox_hud_draw(const sandbox_hud_t *hud,
 			renderer, 0.0f, 0.0f, (float)width, (float)height,
 			(renderer_color_t){0.22f, 0.0f, 0.0f, 0.68f});
 		draw_text(renderer, font, (float)width * 0.5f - 90.0f,
-			  (float)height * 0.5f - 20.0f, 36.0f, hud_color, "YOU DIED");
+			  (float)height * 0.5f - 20.0f, 36.0f, hud_color,
+			  "YOU DIED");
 		draw_text(renderer, font, (float)width * 0.5f - 155.0f,
-			  (float)height * 0.5f + 24.0f, 18.0f, hud_color, "CLICK TO RESPAWN");
+			  (float)height * 0.5f + 24.0f, 18.0f, hud_color,
+			  "CLICK TO RESPAWN");
 		return;
 	}
 	if (hud->damage_flash_time > 0.0f) {

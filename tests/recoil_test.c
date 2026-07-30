@@ -105,9 +105,9 @@ static bool test_pattern_recoil_advances_and_recovers(void) {
 
 int main(void) {
 	static const test_case_t tests[] = {
-		{"recoil impulse recovers",	    test_recoil_impulse_recovers},
+		{"recoil impulse recovers",		    test_recoil_impulse_recovers},
 		{"recoil rejects invalid config",
-		 test_recoil_rejects_invalid_config			   },
+		 test_recoil_rejects_invalid_config				   },
 		{"pattern recoil advances and recovers",
 		 test_pattern_recoil_advances_and_recovers				  },
 	};

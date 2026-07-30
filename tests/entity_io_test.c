@@ -268,11 +268,11 @@ static bool test_set_parent_and_clear_parent_inputs(void) {
 int main(void) {
 	static const test_case_t tests[] = {
 		{"map output delay and fire count",
-		 test_map_output_delay_and_fire_count },
+		 test_map_output_delay_and_fire_count   },
 		{"generic inputs and deferred kill",
-		 test_generic_inputs_and_deferred_kill},
+		 test_generic_inputs_and_deferred_kill  },
 		{"invalid map output rolls back",
-		 test_invalid_map_output_rolls_back   },
+		 test_invalid_map_output_rolls_back	   },
 		{"SetParent and ClearParent inputs",
 		 test_set_parent_and_clear_parent_inputs},
 	};

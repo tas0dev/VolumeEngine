@@ -96,7 +96,8 @@ void entity_update(entity_t *entity, const float delta_time) {
 
 void entity_draw_shadow(entity_t *entity, renderer_t *renderer) {
 	if (entity == NULL || renderer == NULL || !entity->activated ||
-	    !entity->active || entity->class == NULL || entity->class->draw_shadow == NULL) {
+	    !entity->active || entity->class == NULL ||
+	    entity->class->draw_shadow == NULL) {
 		return;
 	}
 
@@ -333,7 +334,7 @@ bool entity_set_parent(entity_t *entity,
 		if ((entity->world != NULL || parent->world != NULL) &&
 		    entity->world != parent->world) {
 			return false;
-		    }
+		}
 	}
 
 	if (entity->parent == parent) { return true; }
@@ -457,7 +458,6 @@ bool entity_get_world_collider(const entity_t *entity, collider_t *collider) {
 		return collider->type == COLLIDER_TYPE_TRIANGLE_MESH;
 
 	case COLLIDER_TYPE_NONE:
-	default:
-		return false;
+	default: return false;
 	}
 }

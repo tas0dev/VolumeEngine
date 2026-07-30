@@ -116,10 +116,8 @@ collider_t collider_create_box_transformed(const vec3_t center,
 	collider_t collider = {0};
 
 	collider.type = COLLIDER_TYPE_BOX;
-	collider.shape.box =
-		box_collider_create_transformed(center,
-					       half_extents,
-					       transform);
+	collider.shape.box = box_collider_create_transformed(
+		center, half_extents, transform);
 
 	return collider;
 }

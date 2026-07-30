@@ -165,7 +165,7 @@ static bool test_hitscan_accuracy_uses_player_state_and_recovers(void) {
 int main(void) {
 	static const test_case_t tests[] = {
 		{"hitscan breaks prop and reloads",
-		 test_hitscan_breaks_prop_and_reloads},
+		 test_hitscan_breaks_prop_and_reloads		     },
 		{"hitscan accuracy uses player state and recovers",
 		 test_hitscan_accuracy_uses_player_state_and_recovers},
 	};

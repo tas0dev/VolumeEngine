@@ -150,7 +150,7 @@ static bool renderer_create_debug_lines(renderer_t *renderer) {
 	if (renderer->debug_line_vertex_array == 0 ||
 	    renderer->debug_line_vertex_buffer == 0) {
 		return false;
-	    }
+	}
 
 	glBindVertexArray(renderer->debug_line_vertex_array);
 	glBindBuffer(GL_ARRAY_BUFFER, renderer->debug_line_vertex_buffer);
@@ -160,9 +160,7 @@ static bool renderer_create_debug_lines(renderer_t *renderer) {
 			      (const void *)0);
 	glEnableVertexAttribArray(0);
 
-	glVertexAttribPointer(1,
-			      4,
-			      GL_FLOAT, GL_FALSE, stride,
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, stride,
 			      (const void *)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
@@ -579,8 +577,7 @@ void renderer_draw_mesh(renderer_t *renderer,
 	    model == NULL || view == NULL) {
 		return;
 	}
-	renderer_draw_mesh_internal(renderer, mesh, material, model, view,
-				    true,
+	renderer_draw_mesh_internal(renderer, mesh, material, model, view, true,
 				    NULL, 0);
 }
 
@@ -1022,15 +1019,12 @@ void renderer_flush_debug_lines(renderer_t *renderer,
 
 	shader_bind(renderer->debug_line_shader);
 	shader_set_mat4(renderer->debug_line_shader, "view", &view->view);
-	shader_set_mat4(renderer->debug_line_shader,
-			"projection",
+	shader_set_mat4(renderer->debug_line_shader, "projection",
 			&view->projection);
 
 	glBindVertexArray(renderer->debug_line_vertex_array);
 	glBindBuffer(GL_ARRAY_BUFFER, renderer->debug_line_vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER,
-		     data_size,
-		     renderer->debug_line_vertices,
+	glBufferData(GL_ARRAY_BUFFER, data_size, renderer->debug_line_vertices,
 		     GL_DYNAMIC_DRAW);
 
 	glDrawArrays(GL_LINES, 0, (GLsizei)renderer->debug_line_vertex_count);
@@ -1041,11 +1035,9 @@ void renderer_flush_debug_lines(renderer_t *renderer,
 
 	glBlendFunc(previous_blend_source, previous_blend_destination);
 
-	if (!blend_enabled) {
-		glDisable(GL_BLEND); }
+	if (!blend_enabled) { glDisable(GL_BLEND); }
 
-	if (!depth_test_enabled) { glDisable(GL_DEPTH_TEST);
-	}
+	if (!depth_test_enabled) { glDisable(GL_DEPTH_TEST); }
 
 	renderer->debug_line_vertex_count = 0;
 }

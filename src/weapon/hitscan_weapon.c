@@ -243,8 +243,7 @@ static bool hitscan_weapon_fire_internal(hitscan_weapon_t *weapon,
 	vec3_t normalized_direction;
 	vec3_t end;
 
-	if (!can_fire(weapon, world, direction)) { return false;
-	}
+	if (!can_fire(weapon, world, direction)) { return false; }
 	normalized_direction = vec3_normalize(direction);
 	end = vec3_add(origin, vec3_scale(normalized_direction, weapon->range));
 	filter.layer =

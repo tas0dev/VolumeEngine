@@ -10,8 +10,8 @@
 
 #include "core/types.h"
 #include "math/mat4.h"
-#include "renderer/material.h"
 #include "renderer/font.h"
+#include "renderer/material.h"
 #include "renderer/mesh.h"
 #include "renderer/view.h"
 #include <stddef.h>

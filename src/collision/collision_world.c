@@ -352,7 +352,7 @@ static bool resolve_box_entry(const collision_entry_t *entry,
 	if (!get_aabb_obb_collision(moving_bounds, &entry->collider.shape.box,
 				    entry->position, &collision)) {
 		return false;
-		    }
+	}
 
 	correction = vec3_scale(collision.normal, collision.depth);
 	*position = vec3_add(*position, correction);
@@ -559,8 +559,7 @@ bool collision_world_trace_aabb_filtered_ignoring(
 			break;
 
 		case COLLIDER_TYPE_NONE:
-		default:
-			continue;
+		default: continue;
 		}
 
 		if (candidate.started_inside) {
@@ -568,8 +567,7 @@ bool collision_world_trace_aabb_filtered_ignoring(
 			return true;
 		}
 
-		if (!trace->hit ||
-		    candidate.fraction < trace->fraction) {
+		if (!trace->hit || candidate.fraction < trace->fraction) {
 			*trace = candidate;
 		}
 	}
@@ -936,18 +934,16 @@ static bool test_sat_axis(const vec3_t axis,
 
 	normalized_axis = vec3_scale(axis, 1.0f / length);
 
-	aabb_radius =
-		aabb_half_extents.x * fabsf(normalized_axis.x) +
-		aabb_half_extents.y * fabsf(normalized_axis.y) +
-		aabb_half_extents.z * fabsf(normalized_axis.z);
+	aabb_radius = aabb_half_extents.x * fabsf(normalized_axis.x) +
+		      aabb_half_extents.y * fabsf(normalized_axis.y) +
+		      aabb_half_extents.z * fabsf(normalized_axis.z);
 
-	box_radius =
-		box_half_extents.x *
-			fabsf(vec3_dot(normalized_axis, box_axes[0])) +
-		box_half_extents.y *
-			fabsf(vec3_dot(normalized_axis, box_axes[1])) +
-		box_half_extents.z *
-			fabsf(vec3_dot(normalized_axis, box_axes[2]));
+	box_radius = box_half_extents.x *
+			     fabsf(vec3_dot(normalized_axis, box_axes[0])) +
+		     box_half_extents.y *
+			     fabsf(vec3_dot(normalized_axis, box_axes[1])) +
+		     box_half_extents.z *
+			     fabsf(vec3_dot(normalized_axis, box_axes[2]));
 
 	distance = vec3_dot(center_difference, normalized_axis);
 	depth = aabb_radius + box_radius - fabsf(distance);
@@ -956,8 +952,7 @@ static bool test_sat_axis(const vec3_t axis,
 
 	if (depth < *minimum_depth) {
 		if (distance < 0.0f) {
-			normalized_axis =
-				vec3_scale(normalized_axis, -1.0f);
+			normalized_axis = vec3_scale(normalized_axis, -1.0f);
 		}
 
 		*minimum_depth = depth;
@@ -989,11 +984,8 @@ static bool get_aabb_obb_collision(const aabb_t aabb,
 
 	if (box == NULL || collision == NULL) { return false; }
 
-	if (!box_collider_get_world_box(*box,
-					box_position,
-					&box_center,
-					box_axes,
-					&box_half_extents)) {
+	if (!box_collider_get_world_box(*box, box_position, &box_center,
+					box_axes, &box_half_extents)) {
 		return false;
 	}
 
@@ -1004,49 +996,31 @@ static bool get_aabb_obb_collision(const aabb_t aabb,
 	minimum_depth = INFINITY;
 	minimum_axis = vec3_create(0.0f, 0.0f, 0.0f);
 
-	for (aabb_axis_index = 0;
-	     aabb_axis_index < 3;
-	     aabb_axis_index++) {
+	for (aabb_axis_index = 0; aabb_axis_index < 3; aabb_axis_index++) {
 		if (!test_sat_axis(aabb_axes[aabb_axis_index],
-				   center_difference,
-				   aabb_half_extents,
-				   box_axes,
-				   box_half_extents,
-				   &minimum_depth,
+				   center_difference, aabb_half_extents,
+				   box_axes, box_half_extents, &minimum_depth,
 				   &minimum_axis)) {
 			return false;
 		}
 	}
 
-	for (box_axis_index = 0;
-	     box_axis_index < 3;
-	     box_axis_index++) {
-		if (!test_sat_axis(box_axes[box_axis_index],
-				   center_difference,
-				   aabb_half_extents,
-				   box_axes,
-				   box_half_extents,
-				   &minimum_depth,
+	for (box_axis_index = 0; box_axis_index < 3; box_axis_index++) {
+		if (!test_sat_axis(box_axes[box_axis_index], center_difference,
+				   aabb_half_extents, box_axes,
+				   box_half_extents, &minimum_depth,
 				   &minimum_axis)) {
 			return false;
 		}
 	}
 
-	for (aabb_axis_index = 0;
-	     aabb_axis_index < 3;
-	     aabb_axis_index++) {
-		for (box_axis_index = 0;
-		     box_axis_index < 3;
-		     box_axis_index++) {
+	for (aabb_axis_index = 0; aabb_axis_index < 3; aabb_axis_index++) {
+		for (box_axis_index = 0; box_axis_index < 3; box_axis_index++) {
 			if (!test_sat_axis(
-				    vec3_cross(
-					    aabb_axes[aabb_axis_index],
-					    box_axes[box_axis_index]),
-				    center_difference,
-				    aabb_half_extents,
-				    box_axes,
-				    box_half_extents,
-				    &minimum_depth,
+				    vec3_cross(aabb_axes[aabb_axis_index],
+					       box_axes[box_axis_index]),
+				    center_difference, aabb_half_extents,
+				    box_axes, box_half_extents, &minimum_depth,
 				    &minimum_axis)) {
 				return false;
 			}
@@ -1059,17 +1033,16 @@ static bool get_aabb_obb_collision(const aabb_t aabb,
 	return true;
 }
 
-static bool update_box_sweep_axis(
-	vec3_t axis,
-	const vec3_t start_center,
-	const vec3_t movement,
-	const vec3_t moving_half_extents,
-	const vec3_t box_center,
-	const vec3_t box_axes[3],
-	const vec3_t box_half_extents,
-	float *entry_time,
-	float *exit_time,
-	vec3_t *normal) {
+static bool update_box_sweep_axis(vec3_t axis,
+				  const vec3_t start_center,
+				  const vec3_t movement,
+				  const vec3_t moving_half_extents,
+				  const vec3_t box_center,
+				  const vec3_t box_axes[3],
+				  const vec3_t box_half_extents,
+				  float *entry_time,
+				  float *exit_time,
+				  vec3_t *normal) {
 	const float epsilon = 0.000001f;
 	float axis_length;
 	float moving_center;
@@ -1093,19 +1066,15 @@ static bool update_box_sweep_axis(
 	axis = vec3_scale(axis, 1.0f / axis_length);
 
 	moving_center = vec3_dot(start_center, axis);
-	moving_radius =
-		moving_half_extents.x * fabsf(axis.x) +
-		moving_half_extents.y * fabsf(axis.y) +
-		moving_half_extents.z * fabsf(axis.z);
+	moving_radius = moving_half_extents.x * fabsf(axis.x) +
+			moving_half_extents.y * fabsf(axis.y) +
+			moving_half_extents.z * fabsf(axis.z);
 
 	static_center = vec3_dot(box_center, axis);
 	static_radius =
-		box_half_extents.x *
-			fabsf(vec3_dot(box_axes[0], axis)) +
-		box_half_extents.y *
-			fabsf(vec3_dot(box_axes[1], axis)) +
-		box_half_extents.z *
-			fabsf(vec3_dot(box_axes[2], axis));
+		box_half_extents.x * fabsf(vec3_dot(box_axes[0], axis)) +
+		box_half_extents.y * fabsf(vec3_dot(box_axes[1], axis)) +
+		box_half_extents.z * fabsf(vec3_dot(box_axes[2], axis));
 
 	moving_minimum = moving_center - moving_radius;
 	moving_maximum = moving_center + moving_radius;
@@ -1119,35 +1088,28 @@ static bool update_box_sweep_axis(
 		       moving_minimum <= static_maximum;
 	}
 
-	first_time =
-		(static_minimum - moving_maximum) / axis_movement;
-	second_time =
-		(static_maximum - moving_minimum) / axis_movement;
+	first_time = (static_minimum - moving_maximum) / axis_movement;
+	second_time = (static_maximum - moving_minimum) / axis_movement;
 
 	axis_entry = fminf(first_time, second_time);
 	axis_exit = fmaxf(first_time, second_time);
 
 	if (axis_entry > *entry_time) {
 		*entry_time = axis_entry;
-		*normal = axis_movement > 0.0f
-				  ? vec3_scale(axis, -1.0f)
-				  : axis;
+		*normal = axis_movement > 0.0f ? vec3_scale(axis, -1.0f) : axis;
 	}
 
-	if (axis_exit < *exit_time) {
-		*exit_time = axis_exit;
-	}
+	if (axis_exit < *exit_time) { *exit_time = axis_exit; }
 
 	return *entry_time <= *exit_time;
 }
 
-static bool trace_aabb_against_box(
-	const aabb_t local_bounds,
-	const vec3_t start,
-	const vec3_t end,
-	const box_collider_t *box,
-	const vec3_t box_position,
-	collision_trace_t *trace) {
+static bool trace_aabb_against_box(const aabb_t local_bounds,
+				   const vec3_t start,
+				   const vec3_t end,
+				   const box_collider_t *box,
+				   const vec3_t box_position,
+				   collision_trace_t *trace) {
 	const vec3_t aabb_axes[3] = {
 		{1.0f, 0.0f, 0.0f},
 		{0.0f, 1.0f, 0.0f},
@@ -1172,10 +1134,7 @@ static bool trace_aabb_against_box(
 
 	start_bounds = aabb_translate(local_bounds, start);
 
-	if (get_aabb_obb_collision(start_bounds,
-				   box,
-				   box_position,
-				   &overlap)) {
+	if (get_aabb_obb_collision(start_bounds, box, box_position, &overlap)) {
 		trace->hit = true;
 		trace->started_inside = true;
 		trace->fraction = 0.0f;
@@ -1184,96 +1143,62 @@ static bool trace_aabb_against_box(
 		return true;
 	}
 
-	if (!box_collider_get_world_box(*box,
-					box_position,
-					&box_center,
-					box_axes,
-					&box_half_extents)) {
+	if (!box_collider_get_world_box(*box, box_position, &box_center,
+					box_axes, &box_half_extents)) {
 		return false;
 	}
 
 	start_center = aabb_get_center(start_bounds);
-	moving_half_extents =
-		aabb_get_half_extents(start_bounds);
+	moving_half_extents = aabb_get_half_extents(start_bounds);
 	movement = vec3_subtract(end, start);
 
 	entry_time = -INFINITY;
 	exit_time = INFINITY;
 	normal = vec3_create(0.0f, 0.0f, 0.0f);
 
-	for (aabb_axis_index = 0;
-	     aabb_axis_index < 3;
-	     aabb_axis_index++) {
-		if (!update_box_sweep_axis(
-			    aabb_axes[aabb_axis_index],
-			    start_center,
-			    movement,
-			    moving_half_extents,
-			    box_center,
-			    box_axes,
-			    box_half_extents,
-			    &entry_time,
-			    &exit_time,
-			    &normal)) {
+	for (aabb_axis_index = 0; aabb_axis_index < 3; aabb_axis_index++) {
+		if (!update_box_sweep_axis(aabb_axes[aabb_axis_index],
+					   start_center, movement,
+					   moving_half_extents, box_center,
+					   box_axes, box_half_extents,
+					   &entry_time, &exit_time, &normal)) {
 			return false;
 		}
 	}
 
-	for (box_axis_index = 0;
-	     box_axis_index < 3;
-	     box_axis_index++) {
-		if (!update_box_sweep_axis(
-			    box_axes[box_axis_index],
-			    start_center,
-			    movement,
-			    moving_half_extents,
-			    box_center,
-			    box_axes,
-			    box_half_extents,
-			    &entry_time,
-			    &exit_time,
-			    &normal)) {
+	for (box_axis_index = 0; box_axis_index < 3; box_axis_index++) {
+		if (!update_box_sweep_axis(box_axes[box_axis_index],
+					   start_center, movement,
+					   moving_half_extents, box_center,
+					   box_axes, box_half_extents,
+					   &entry_time, &exit_time, &normal)) {
 			return false;
 		}
 	}
 
-	for (aabb_axis_index = 0;
-	     aabb_axis_index < 3;
-	     aabb_axis_index++) {
-		for (box_axis_index = 0;
-		     box_axis_index < 3;
-		     box_axis_index++) {
-			axis = vec3_cross(
-				aabb_axes[aabb_axis_index],
-				box_axes[box_axis_index]);
+	for (aabb_axis_index = 0; aabb_axis_index < 3; aabb_axis_index++) {
+		for (box_axis_index = 0; box_axis_index < 3; box_axis_index++) {
+			axis = vec3_cross(aabb_axes[aabb_axis_index],
+					  box_axes[box_axis_index]);
 
 			if (!update_box_sweep_axis(
-				    axis,
-				    start_center,
-				    movement,
-				    moving_half_extents,
-				    box_center,
-				    box_axes,
-				    box_half_extents,
-				    &entry_time,
-				    &exit_time,
+				    axis, start_center, movement,
+				    moving_half_extents, box_center, box_axes,
+				    box_half_extents, &entry_time, &exit_time,
 				    &normal)) {
 				return false;
 			}
 		}
 	}
 
-	if (entry_time < 0.0f ||
-	    entry_time > 1.0f ||
-	    entry_time > exit_time) {
+	if (entry_time < 0.0f || entry_time > 1.0f || entry_time > exit_time) {
 		return false;
 	}
 
 	trace->hit = true;
 	trace->started_inside = false;
 	trace->fraction = entry_time;
-	trace->position =
-		vec3_add(start, vec3_scale(movement, entry_time));
+	trace->position = vec3_add(start, vec3_scale(movement, entry_time));
 	trace->normal = normal;
 
 	return true;

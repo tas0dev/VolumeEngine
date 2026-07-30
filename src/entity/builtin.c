@@ -7,8 +7,8 @@
 
 #include "entity/builtin.h"
 #include "entity/ambient_generic.h"
-#include "entity/func_door.h"
 #include "entity/func_button.h"
+#include "entity/func_door.h"
 #include "entity/func_ladder.h"
 #include "entity/info_player_start.h"
 #include "entity/light_environment.h"

@@ -8,8 +8,8 @@
 #ifndef VOLUME_RENDERER_UI_RENDERER_H
 #define VOLUME_RENDERER_UI_RENDERER_H
 
-#include "renderer/renderer.h"
 #include "renderer/font.h"
+#include "renderer/renderer.h"
 
 typedef struct ui_renderer ui_renderer_t;
 

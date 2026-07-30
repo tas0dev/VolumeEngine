@@ -312,9 +312,8 @@ static bool parse_integer(const char *text, int *value) {
 	return true;
 }
 
-static entity_t *resolve_parent_target(
-	entity_t *entity,
-	const entity_input_context_t *context) {
+static entity_t *resolve_parent_target(entity_t *entity,
+				       const entity_input_context_t *context) {
 	const char *parameter;
 
 	if (entity == NULL || context == NULL || context->world == NULL) {
@@ -327,13 +326,9 @@ static entity_t *resolve_parent_target(
 
 	if (strcmp(parameter, "!self") == 0) { return entity; }
 
-	if (strcmp(parameter, "!activator") == 0) {
-		return context->activator;
-	}
+	if (strcmp(parameter, "!activator") == 0) { return context->activator; }
 
-	if (strcmp(parameter, "!caller") == 0) {
-		return context->caller;
-	}
+	if (strcmp(parameter, "!caller") == 0) { return context->caller; }
 
 	if (parameter[0] == '!') { return NULL; }
 

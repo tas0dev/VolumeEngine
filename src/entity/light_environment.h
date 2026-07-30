@@ -32,7 +32,8 @@ light_environment_properties_t light_environment_properties_create(void);
 ///
 /// ### Args
 /// - `entity_id_t id`: 割り当てる一意なID。
-/// - `const light_environment_properties_t *properties`: 作成に使用するプロパティ。
+/// - `const light_environment_properties_t *properties`:
+/// 作成に使用するプロパティ。
 ///
 /// ### Returns
 /// - `light_environment_t *`: 作成した環境光源。失敗時は`NULL`。

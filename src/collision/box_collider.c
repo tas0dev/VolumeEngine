@@ -86,10 +86,9 @@ bool box_collider_get_world_box(const box_collider_t collider,
 	length_y = vec3_length(axis_y);
 	length_z = vec3_length(axis_z);
 
-	if (length_x <= epsilon || length_y <= epsilon ||
-	    length_z <= epsilon) {
+	if (length_x <= epsilon || length_y <= epsilon || length_z <= epsilon) {
 		return false;
-	    }
+	}
 
 	axes[0] = vec3_scale(axis_x, 1.0f / length_x);
 	axes[1] = vec3_scale(axis_y, 1.0f / length_y);
@@ -99,10 +98,9 @@ bool box_collider_get_world_box(const box_collider_t collider,
 		mat4_transform_point(collider.transform, collider.center),
 		position);
 
-	*half_extents = vec3_create(
-		collider.half_extents.x * length_x,
-		collider.half_extents.y * length_y,
-		collider.half_extents.z * length_z);
+	*half_extents = vec3_create(collider.half_extents.x * length_x,
+				    collider.half_extents.y * length_y,
+				    collider.half_extents.z * length_z);
 
 	return true;
 }

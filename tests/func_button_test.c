@@ -95,15 +95,13 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 	CHECK(world_send_input_to_entity(world, button_entity, "Use", "",
 					 player, player));
 	CHECK(func_button_is_pressed(button));
-	CHECK(func_button_get_state(button) ==
-	      FUNC_BUTTON_PRESSING);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
 	CHECK(entity_is_active(player));
 
 	world_update(world, 0.0f);
 
 	CHECK(!entity_is_active(player));
-	CHECK(func_button_get_state(button) ==
-	      FUNC_BUTTON_PRESSING);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_PRESSING);
 
 	world_update(world, 0.5f);
 
@@ -118,17 +116,14 @@ static bool test_raycast_uses_button_and_fires_output(void) {
 
 	world_update(world, 1.0f);
 
-	CHECK(func_button_get_state(button) ==
-	      FUNC_BUTTON_RELEASING);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_RELEASING);
 	CHECK(!entity_is_active(player));
 
 	world_update(world, 1.0f);
 
 	CHECK(!func_button_is_pressed(button));
-	CHECK(func_button_get_state(button) ==
-	      FUNC_BUTTON_IDLE);
-	CHECK(fabsf(
-		      button_entity->transform.position.z + 2.0f) < 0.0001f);
+	CHECK(func_button_get_state(button) == FUNC_BUTTON_IDLE);
+	CHECK(fabsf(button_entity->transform.position.z + 2.0f) < 0.0001f);
 
 	CHECK(world_send_input_to_entity(world, button_entity, "Lock", "",
 					 player, player));

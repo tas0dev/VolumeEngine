@@ -322,8 +322,7 @@ void world_update(world_t *world, const float delta_time) {
 
 		entity->linear_velocity =
 			delta_time > 0.0f
-				? vec3_scale(
-					  vec3_subtract(current_position,
+				? vec3_scale(vec3_subtract(current_position,
 							   previous_position),
 					     1.0f / delta_time)
 				: vec3_create(0.0f, 0.0f, 0.0f);

@@ -69,8 +69,7 @@ static void destroy_receiver(entity_t *entity) { free(entity); }
 
 static bool register_test_classes(void) {
 	return player_register() && trigger_once_register() &&
-	       trigger_multiple_register() &&
-	       trigger_hurt_register() &&
+	       trigger_multiple_register() && trigger_hurt_register() &&
 	       entity_register_class(&receiver_class);
 }
 

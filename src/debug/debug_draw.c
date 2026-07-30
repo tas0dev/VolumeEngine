@@ -39,14 +39,13 @@ void debug_draw_colliders(renderer_t *renderer,
 						  &collider, &position,
 						  &layer)) {
 			continue;
-						  }
+		}
 
 		color = get_collider_color(layer);
 
 		switch (collider.type) {
 		case COLLIDER_TYPE_BOX:
-			draw_box(renderer,
-				 &collider.shape.box, position,
+			draw_box(renderer, &collider.shape.box, position,
 				 color);
 			break;
 
@@ -188,11 +187,8 @@ static renderer_color_t get_collider_color(const collision_layer_t layer) {
 void debug_draw_character_contacts(renderer_t *renderer,
 				   const vec3_t origin,
 				   const character_debug_state_t *state) {
-	const renderer_color_t contact_color = {
-		1.0f, 0.2f, 0.15f, 1.0f
-	};
-	const renderer_color_t normal_color = {
-		1.0f, 0.85f, 0.1f, 1.0f};
+	const renderer_color_t contact_color = {1.0f, 0.2f, 0.15f, 1.0f};
+	const renderer_color_t normal_color = {1.0f, 0.85f, 0.1f, 1.0f};
 	const renderer_color_t correction_color = {0.2f, 0.8f, 1.0f, 1.0f};
 	const float contact_radius = 0.06f;
 	const float normal_length = 0.45f;
@@ -201,47 +197,40 @@ void debug_draw_character_contacts(renderer_t *renderer,
 	vec3_t correction_end;
 	size_t index;
 
-	if (renderer == NULL || state == NULL || !state->valid) {
-		return;
-	}
+	if (renderer == NULL || state == NULL || !state->valid) { return; }
 
 	for (index = 0; index < state->contact_count; index++) {
 		contact = state->contacts[index];
 
 		renderer_add_debug_line(
 			renderer,
-			vec3_add(
-				contact.position,
-				vec3_create(-contact_radius, 0.0f, 0.0f)),
-			vec3_add(
-				contact.position,
-				vec3_create(contact_radius, 0.0f, 0.0f)),
+			vec3_add(contact.position,
+				 vec3_create(-contact_radius, 0.0f, 0.0f)),
+			vec3_add(contact.position,
+				 vec3_create(contact_radius, 0.0f, 0.0f)),
 			contact_color);
 
 		renderer_add_debug_line(
 			renderer,
 			vec3_add(contact.position,
 				 vec3_create(0.0f, -contact_radius, 0.0f)),
-			vec3_add(
-				contact.position,
-				vec3_create(0.0f, contact_radius, 0.0f)),
+			vec3_add(contact.position,
+				 vec3_create(0.0f, contact_radius, 0.0f)),
 			contact_color);
 
 		renderer_add_debug_line(
 			renderer,
 			vec3_add(contact.position,
 				 vec3_create(0.0f, 0.0f, -contact_radius)),
-			vec3_add(
-				contact.position,
-				vec3_create(0.0f, 0.0f, contact_radius)),
+			vec3_add(contact.position,
+				 vec3_create(0.0f, 0.0f, contact_radius)),
 			contact_color);
 
 		contact_end =
 			vec3_add(contact.position,
 				 vec3_scale(contact.normal, normal_length));
 
-		renderer_add_debug_line(renderer, contact.position,
-			contact_end,
+		renderer_add_debug_line(renderer, contact.position, contact_end,
 					normal_color);
 	}
 
@@ -249,8 +238,6 @@ void debug_draw_character_contacts(renderer_t *renderer,
 
 	correction_end = vec3_add(origin, state->correction);
 
-	renderer_add_debug_line(renderer,
-		origin,
-		correction_end,
-		correction_color);
+	renderer_add_debug_line(renderer, origin, correction_end,
+				correction_color);
 }

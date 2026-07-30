@@ -39,12 +39,12 @@ static bool create_model_collider(const mesh_t *mesh,
 	if (mesh == NULL || transform == NULL || collider == NULL ||
 	    !mesh_get_bounds(mesh, &bounds)) {
 		return false;
-	    }
+	}
 
 	center = aabb_get_center(bounds);
-	    half_extents = aabb_get_half_extents(bounds);
+	half_extents = aabb_get_half_extents(bounds);
 
-	    *collider = collider_create_box(center, half_extents);
+	*collider = collider_create_box(center, half_extents);
 
 	return true;
 }

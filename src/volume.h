@@ -10,9 +10,9 @@
 
 // ReSharper disable CppUnusedIncludeDirective
 #include "animation/animation.h"
+#include "asset/manager.h"
 #include "audio/audio.h"
 #include "audio/sound.h"
-#include "asset/manager.h"
 #include "core/log.h"
 #include "core/path.h"
 #include "core/types.h"

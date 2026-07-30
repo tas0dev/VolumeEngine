@@ -6,6 +6,7 @@
  */
 
 #include "hud.h"
+#include "npc_enemy.h"
 #include "pistol.h"
 #include "volume.h"
 #include <math.h>
@@ -105,6 +106,12 @@ static bool initialize(engine_t *engine, void *user_data) {
 	if (game_state->assets == NULL) {
 		log_error("Failed to create asset manager");
 		free(map_path);
+		return false;
+	}
+	if (!sandbox_npc_enemy_register()) {
+		log_error("Failed to register sandbox npc_enemy class");
+		free(map_path);
+		destroy_game_resources(game_state);
 		return false;
 	}
 	game_state->door_sound = audio_sound_create_tone(180.0f, 0.16f);

@@ -252,6 +252,18 @@ animation_test = executable(
     install : false,
 )
 
+npc_enemy_test = executable(
+    'npc-enemy-test',
+    [
+        'common.c',
+        'npc_enemy_test.c',
+        '../examples/sandbox/npc_enemy.c',
+    ],
+    dependencies : volume_dependency,
+    include_directories : include_directories('../examples/sandbox'),
+    install : false,
+)
+
 test(
     'material-loader',
     material_loader_test,
@@ -365,4 +377,9 @@ test(
 test(
     'animation',
     animation_test
+)
+
+test(
+    'npc-enemy',
+    npc_enemy_test
 )

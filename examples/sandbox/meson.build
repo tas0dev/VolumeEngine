@@ -15,6 +15,7 @@ executable(
     [
         'main.c',
         'hud.c',
+        'npc_enemy.c',
         'pistol.c',
     ],
     dependencies : volume_dependency,

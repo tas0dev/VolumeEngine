@@ -25,6 +25,8 @@ int main(void) {
 	CHECK(fps_effect_system_spawn_billboard(system, &billboard));
 	tracer.start = vec3_create(0.0f, 0.0f, 0.0f);
 	tracer.end = vec3_create(0.0f, 0.0f, -10.0f);
+	tracer.start_width = 0.04f;
+	tracer.end_width = 0.01f;
 	tracer.lifetime = 0.1f;
 	tracer.start_color = (renderer_color_t){1.0f, 1.0f, 1.0f, 1.0f};
 	tracer.end_color = (renderer_color_t){1.0f, 1.0f, 1.0f, 0.0f};
@@ -37,6 +39,9 @@ int main(void) {
 	billboard.lifetime = 0.0f;
 	CHECK(!fps_effect_system_spawn_billboard(system, &billboard));
 	tracer.end = tracer.start;
+	CHECK(!fps_effect_system_spawn_tracer(system, &tracer));
+	tracer.end = vec3_create(0.0f, 0.0f, -10.0f);
+	tracer.start_width = -0.01f;
 	CHECK(!fps_effect_system_spawn_tracer(system, &tracer));
 	fps_effect_system_destroy(system);
 	return 0;

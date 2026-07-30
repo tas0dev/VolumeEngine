@@ -110,10 +110,64 @@ static bool test_hitscan_breaks_prop_and_reloads(void) {
 	return true;
 }
 
+static bool test_hitscan_accuracy_uses_player_state_and_recovers(void) {
+	hitscan_accuracy_config_t accuracy = {0};
+	hitscan_accuracy_context_t context = {0};
+	hitscan_shot_result_t first;
+	hitscan_shot_result_t second;
+	hitscan_weapon_config_t config;
+	hitscan_weapon_t weapon_a;
+	hitscan_weapon_t weapon_b;
+	world_t *world;
+
+	config.damage = 20.0f;
+	config.range = 100.0f;
+	config.fire_interval = 0.0f;
+	config.magazine_size = 12;
+	config.reserve_ammo = 0;
+	accuracy.standing_inaccuracy = 0.01f;
+	accuracy.moving_inaccuracy = 0.04f;
+	accuracy.airborne_inaccuracy = 0.1f;
+	accuracy.crouched_multiplier = 0.5f;
+	accuracy.firing_penalty_per_shot = 0.02f;
+	accuracy.maximum_firing_penalty = 0.06f;
+	accuracy.penalty_recovery_delay = 0.2f;
+	accuracy.penalty_recovery_rate = 0.1f;
+	accuracy.reference_move_speed = 4.0f;
+	accuracy.random_seed = 1234;
+	CHECK(hitscan_weapon_initialize(&weapon_a, &config));
+	CHECK(hitscan_weapon_initialize(&weapon_b, &config));
+	CHECK(hitscan_weapon_set_accuracy(&weapon_a, &accuracy));
+	CHECK(hitscan_weapon_set_accuracy(&weapon_b, &accuracy));
+	world = world_create();
+	CHECK(world != NULL);
+	context.grounded = true;
+	CHECK(hitscan_weapon_fire_accurate_timed(
+		&weapon_a, world, NULL, vec3_create(0.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 0.0f, -1.0f), &context, 0.0f, &first));
+	CHECK(first.inaccuracy == accuracy.standing_inaccuracy);
+	CHECK(hitscan_weapon_get_firing_penalty(&weapon_a) == 0.02f);
+	hitscan_weapon_update(&weapon_a, 0.1f);
+	CHECK(hitscan_weapon_get_firing_penalty(&weapon_a) == 0.02f);
+	hitscan_weapon_update(&weapon_a, 0.2f);
+	CHECK(hitscan_weapon_get_firing_penalty(&weapon_a) < 0.0001f);
+	context.grounded = false;
+	CHECK(hitscan_weapon_fire_accurate_timed(
+		&weapon_b, world, NULL, vec3_create(0.0f, 0.0f, 0.0f),
+		vec3_create(0.0f, 0.0f, -1.0f), &context, 0.0f, &second));
+	CHECK(second.inaccuracy == accuracy.airborne_inaccuracy);
+	CHECK(vec3_length(vec3_subtract(first.direction, second.direction)) >
+	      0.001f);
+	world_destroy(world);
+	return true;
+}
+
 int main(void) {
 	static const test_case_t tests[] = {
 		{"hitscan breaks prop and reloads",
 		 test_hitscan_breaks_prop_and_reloads},
+		{"hitscan accuracy uses player state and recovers",
+		 test_hitscan_accuracy_uses_player_state_and_recovers},
 	};
 
 	return test_run_all(tests, sizeof(tests) / sizeof(tests[0]));

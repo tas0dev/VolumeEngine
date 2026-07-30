@@ -11,6 +11,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const fps_recoil_pattern_point_t pistol_recoil_pattern[] = {
+	{0.010f, 0.000f  },
+	    {0.011f, -0.0015f},
+	{0.012f, 0.0020f },
+	{0.013f, -0.0025f},
+	    {0.014f, 0.0030f },
+	{0.014f, 0.0010f },
+	{0.015f, -0.0035f},
+	    {0.015f, -0.0015f},
+	{0.016f, 0.0038f },
+	{0.016f, 0.0018f },
+	    {0.017f, -0.0040f},
+	{0.017f, 0.0025f },
+};
+
 static hitscan_weapon_config_t create_pistol_config(void) {
 	hitscan_weapon_config_t config;
 
@@ -20,6 +35,25 @@ static hitscan_weapon_config_t create_pistol_config(void) {
 	config.magazine_size = 12;
 	config.reserve_ammo = 48;
 	return config;
+}
+
+static bool configure_pistol_weapon(sandbox_pistol_t *pistol) {
+	hitscan_accuracy_config_t accuracy = {0};
+	hitscan_weapon_config_t config;
+
+	config = create_pistol_config();
+	accuracy.standing_inaccuracy = 0.0022f;
+	accuracy.moving_inaccuracy = 0.018f;
+	accuracy.airborne_inaccuracy = 0.075f;
+	accuracy.crouched_multiplier = 0.72f;
+	accuracy.firing_penalty_per_shot = 0.0045f;
+	accuracy.maximum_firing_penalty = 0.032f;
+	accuracy.penalty_recovery_delay = 0.18f;
+	accuracy.penalty_recovery_rate = 0.028f;
+	accuracy.reference_move_speed = 4.0f;
+	accuracy.random_seed = UINT32_C(0x51a7c2d9);
+	return hitscan_weapon_initialize(&pistol->weapon, &config) &&
+	       hitscan_weapon_set_accuracy(&pistol->weapon, &accuracy);
 }
 
 static void pistol_animation_event(void *user_data, const char *event_name) {
@@ -47,9 +81,12 @@ static void spawn_shot_effects(sandbox_pistol_t *pistol,
 		trace->hit ? trace->position
 			   : vec3_add(origin, vec3_scale(normalized_direction,
 							 pistol->weapon.range));
-	tracer.lifetime = 0.055f;
-	tracer.start_color = (renderer_color_t){1.0f, 0.72f, 0.28f, 0.9f};
-	tracer.end_color = (renderer_color_t){1.0f, 0.35f, 0.08f, 0.0f};
+	tracer.start_width = 0.035f;
+	tracer.end_width = 0.012f;
+	tracer.lifetime = 0.13f;
+	tracer.start_color = (renderer_color_t){1.0f, 0.82f, 0.35f, 1.0f};
+	tracer.end_color = (renderer_color_t){1.0f, 0.42f, 0.08f, 0.0f};
+	tracer.blend_mode = RENDERER_BLEND_ADDITIVE;
 	(void)fps_effect_system_spawn_tracer(pistol->effects, &tracer);
 	if (!trace->hit || vec3_length(trace->normal) <= 0.000001f) { return; }
 	impact.position =
@@ -70,7 +107,9 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 			       char *error,
 			       const size_t error_size) {
 	hitscan_weapon_config_t config;
-	fps_recoil_config_t recoil_config;
+	fps_recoil_config_t aim_recoil_config;
+	fps_recoil_config_t viewmodel_recoil_config;
+	fps_recoil_pattern_config_t pattern_config;
 
 	if (pistol == NULL || assets == NULL || audio == NULL) { return false; }
 	*pistol = (sandbox_pistol_t){0};
@@ -85,19 +124,32 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 		assets, "audio/reload.mp3", error, error_size);
 	pistol->effects = fps_effect_system_create();
 	config = create_pistol_config();
-	recoil_config.return_strength = 48.0f;
-	recoil_config.damping = 12.0f;
-	recoil_config.maximum_pitch = 0.12f;
-	recoil_config.maximum_yaw = 0.06f;
+	aim_recoil_config.return_strength = 48.0f;
+	aim_recoil_config.damping = 12.0f;
+	aim_recoil_config.maximum_pitch = 0.18f;
+	aim_recoil_config.maximum_yaw = 0.09f;
+	viewmodel_recoil_config.return_strength = 52.0f;
+	viewmodel_recoil_config.damping = 13.0f;
+	viewmodel_recoil_config.maximum_pitch = 0.11f;
+	viewmodel_recoil_config.maximum_yaw = 0.055f;
+	pattern_config.points = pistol_recoil_pattern;
+	pattern_config.point_count = sizeof(pistol_recoil_pattern) /
+				     sizeof(pistol_recoil_pattern[0]);
+	pattern_config.recovery_delay = 0.20f;
+	pattern_config.pattern_reset_time = 0.42f;
+	pattern_config.recovery_speed = 7.5f;
+	pattern_config.follow_speed = 32.0f;
 	if (pistol->view_model_mesh == NULL ||
 	    pistol->view_model_material == NULL || pistol->fire_sound == NULL ||
 	    pistol->reload_sound == NULL || pistol->effects == NULL ||
-	    !fps_recoil_initialize(&pistol->recoil, &recoil_config) ||
-	    !hitscan_weapon_initialize(&pistol->weapon, &config)) {
+	    !fps_recoil_initialize(&pistol->aim_recoil, &aim_recoil_config) ||
+	    !fps_recoil_set_pattern(&pistol->aim_recoil, &pattern_config) ||
+	    !fps_recoil_initialize(&pistol->viewmodel_recoil,
+				   &viewmodel_recoil_config) ||
+	    !configure_pistol_weapon(pistol)) {
 		sandbox_pistol_destroy(pistol);
 		return false;
 	}
-	pistol->recoil_direction = 1.0f;
 	pistol->fire_action_duration = config.fire_interval;
 	pistol->reload_action_duration = 1.0f;
 	pistol->has_animator = animator_initialize(
@@ -128,13 +180,18 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 void sandbox_pistol_update(sandbox_pistol_t *pistol,
 			   const float delta_time,
 			   const float movement_speed,
-			   const bool grounded) {
+			   const bool grounded,
+			   const bool crouched) {
 	float target_bob;
 	float blend;
 
 	if (pistol == NULL) { return; }
 	hitscan_weapon_update(&pistol->weapon, delta_time);
-	fps_recoil_update(&pistol->recoil, delta_time);
+	fps_recoil_update(&pistol->aim_recoil, delta_time);
+	fps_recoil_update(&pistol->viewmodel_recoil, delta_time);
+	pistol->movement_speed = movement_speed;
+	pistol->grounded = grounded;
+	pistol->crouched = crouched;
 	if (pistol->has_animator) {
 		animator_update(&pistol->animator, delta_time);
 		if (!animator_is_playing(&pistol->animator)) {
@@ -169,22 +226,27 @@ bool sandbox_pistol_fire(sandbox_pistol_t *pistol,
 			 const vec3_t origin,
 			 const vec3_t direction,
 			 collision_trace_t *trace) {
-	collision_trace_t result = {0};
+	hitscan_accuracy_context_t accuracy = {0};
+	hitscan_shot_result_t shot = {0};
+	fps_recoil_offset_t applied_recoil;
 
-	if (pistol == NULL ||
-	    !hitscan_weapon_fire_timed(&pistol->weapon, world, owner, origin,
-				       direction, pistol->fire_action_duration,
-				       &result)) {
+	if (pistol == NULL) { return false; }
+	accuracy.movement_speed = pistol->movement_speed;
+	accuracy.grounded = pistol->grounded;
+	accuracy.crouched = pistol->crouched;
+	if (!hitscan_weapon_fire_accurate_timed(
+		    &pistol->weapon, world, owner, origin, direction, &accuracy,
+		    pistol->fire_action_duration, &shot)) {
 		return false;
 	}
-	if (trace != NULL) { *trace = result; }
+	if (trace != NULL) { *trace = shot.trace; }
 	pistol->fire_voice =
 		audio_system_play(pistol->audio, pistol->fire_sound, NULL);
-	spawn_shot_effects(pistol, origin, direction, &result);
+	spawn_shot_effects(pistol, origin, shot.direction, &shot.trace);
 	pistol->muzzle_flash_time = 0.045f;
-	fps_recoil_add_impulse(&pistol->recoil, 2.4f,
-			       0.55f * pistol->recoil_direction);
-	pistol->recoil_direction = -pistol->recoil_direction;
+	applied_recoil = fps_recoil_fire_pattern(&pistol->aim_recoil);
+	fps_recoil_add_impulse(&pistol->viewmodel_recoil, 2.4f,
+			       applied_recoil.yaw * 35.0f);
 	if (pistol->has_animator) {
 		(void)animator_play_blended(&pistol->animator, "fire", false,
 					    0.035f);
@@ -211,27 +273,27 @@ bool sandbox_pistol_reload(sandbox_pistol_t *pistol) {
 }
 
 bool sandbox_pistol_reset(sandbox_pistol_t *pistol) {
-	hitscan_weapon_config_t config;
-
 	if (pistol == NULL) { return false; }
-	config = create_pistol_config();
-	fps_recoil_reset(&pistol->recoil);
+	fps_recoil_reset(&pistol->aim_recoil);
+	fps_recoil_reset(&pistol->viewmodel_recoil);
 	pistol->bob_amount = 0.0f;
 	pistol->sway_pitch = 0.0f;
 	pistol->sway_yaw = 0.0f;
-	pistol->recoil_direction = 1.0f;
+	pistol->movement_speed = 0.0f;
+	pistol->grounded = false;
+	pistol->crouched = false;
 	pistol->muzzle_flash_time = 0.0f;
 	fps_effect_system_clear(pistol->effects);
 	if (pistol->has_animator) {
 		(void)animator_play_blended(&pistol->animator, "idle", true,
 					    0.1f);
 	}
-	return hitscan_weapon_initialize(&pistol->weapon, &config);
+	return configure_pistol_weapon(pistol);
 }
 
 fps_recoil_offset_t sandbox_pistol_get_recoil(const sandbox_pistol_t *pistol) {
 	return pistol == NULL ? (fps_recoil_offset_t){0}
-			      : fps_recoil_get_offset(&pistol->recoil);
+			      : fps_recoil_get_offset(&pistol->aim_recoil);
 }
 
 void sandbox_pistol_draw(const sandbox_pistol_t *pistol,
@@ -251,7 +313,7 @@ void sandbox_pistol_draw(const sandbox_pistol_t *pistol,
 		return;
 	}
 	fps_effect_system_draw(pistol->effects, renderer, world_view);
-	recoil = fps_recoil_get_offset(&pistol->recoil);
+	recoil = fps_recoil_get_offset(&pistol->viewmodel_recoil);
 	bob_x = sinf(pistol->bob_time) * 0.018f * pistol->bob_amount;
 	bob_y = fabsf(cosf(pistol->bob_time)) * 0.022f * pistol->bob_amount;
 	transform = transform_create();

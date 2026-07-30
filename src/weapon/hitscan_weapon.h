@@ -20,6 +20,31 @@ typedef struct hitscan_weapon_config {
 	int reserve_ammo;
 } hitscan_weapon_config_t;
 
+typedef struct hitscan_accuracy_config {
+	float standing_inaccuracy;
+	float moving_inaccuracy;
+	float airborne_inaccuracy;
+	float crouched_multiplier;
+	float firing_penalty_per_shot;
+	float maximum_firing_penalty;
+	float penalty_recovery_delay;
+	float penalty_recovery_rate;
+	float reference_move_speed;
+	uint32_t random_seed;
+} hitscan_accuracy_config_t;
+
+typedef struct hitscan_accuracy_context {
+	float movement_speed;
+	bool grounded;
+	bool crouched;
+} hitscan_accuracy_context_t;
+
+typedef struct hitscan_shot_result {
+	collision_trace_t trace;
+	vec3_t direction;
+	float inaccuracy;
+} hitscan_shot_result_t;
+
 typedef struct hitscan_weapon {
 	float damage;
 	float range;
@@ -30,6 +55,11 @@ typedef struct hitscan_weapon {
 	int magazine_size;
 	int ammo;
 	int reserve_ammo;
+	hitscan_accuracy_config_t accuracy;
+	float firing_penalty;
+	float time_since_shot;
+	uint32_t random_state;
+	bool uses_accuracy;
 } hitscan_weapon_t;
 
 /// 指定設定でhitscan武器の状態を初期化する。
@@ -45,6 +75,18 @@ typedef struct hitscan_weapon {
 /// - `false`: 設定または引数が不正だった。
 bool hitscan_weapon_initialize(hitscan_weapon_t *weapon,
 			       const hitscan_weapon_config_t *config);
+
+/// 武器へ移動・空中・連射による射撃精度設定を適用する。
+///
+/// ### Args
+/// - `hitscan_weapon_t *weapon`: 設定する武器。
+/// - `const hitscan_accuracy_config_t *config`: Spreadと回復の設定。
+///
+/// ### Returns
+/// - `true`: 設定に成功した。
+/// - `false`: 引数または数値設定が不正だった。
+bool hitscan_weapon_set_accuracy(hitscan_weapon_t *weapon,
+				 const hitscan_accuracy_config_t *config);
 
 /// 武器の発射クールダウンを更新する。
 ///
@@ -96,6 +138,40 @@ bool hitscan_weapon_fire_timed(hitscan_weapon_t *weapon,
 			       vec3_t direction,
 			       float action_duration,
 			       collision_trace_t *trace);
+
+/// 状態依存のSpreadを適用し、指定時間だけ次の操作をロックして発射する。
+///
+/// ### Args
+/// - `hitscan_weapon_t *weapon`: 発射する武器。
+/// - `world_t *world`: 射撃対象のワールド。
+/// - `entity_t *owner`: 射撃者。存在しない場合は`NULL`。
+/// - `vec3_t origin`: 射撃開始位置。
+/// - `vec3_t direction`: Spread適用前の照準方向。
+/// - `const hitscan_accuracy_context_t *accuracy`: 現在の移動状態。
+/// - `float action_duration`: 発射アニメーション時間。単位は秒。
+/// - `hitscan_shot_result_t *result`: 実際の方向と命中結果。不要なら`NULL`。
+///
+/// ### Returns
+/// - `true`: 弾を消費して発射した。
+/// - `false`: 操作中、弾切れ、または引数が不正だった。
+bool hitscan_weapon_fire_accurate_timed(
+	hitscan_weapon_t *weapon,
+	world_t *world,
+	entity_t *owner,
+	vec3_t origin,
+	vec3_t direction,
+	const hitscan_accuracy_context_t *accuracy,
+	float action_duration,
+	hitscan_shot_result_t *result);
+
+/// 現在の連射精度ペナルティを取得する。
+///
+/// ### Args
+/// - `const hitscan_weapon_t *weapon`: 対象の武器。
+///
+/// ### Returns
+/// - `float`: 照準方向へ加算されるSpread量。
+float hitscan_weapon_get_firing_penalty(const hitscan_weapon_t *weapon);
 
 /// マガジンへ予備弾薬を装填する。
 ///

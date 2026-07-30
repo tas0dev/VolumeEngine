@@ -411,7 +411,9 @@ fixed_update(engine_t *engine, const float delta_time, void *user_data) {
 	horizontal_velocity.y = 0.0f;
 	sandbox_pistol_update(&game_state->pistol, delta_time,
 			      vec3_length(horizontal_velocity),
-			      player_get_ground_entity_id(game_state->player) != 0);
+			      player_get_ground_entity_id(game_state->player) !=
+				      0,
+			      player_is_crouched(game_state->player));
 	if (game_state->fire_requested && player_is_alive(game_state->player)) {
 		(void)sandbox_pistol_fire(&game_state->pistol,
 					  game_state->world,

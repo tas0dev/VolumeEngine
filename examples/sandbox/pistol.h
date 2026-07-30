@@ -25,7 +25,8 @@ typedef struct sandbox_pistol {
 	const mesh_t *view_model_mesh;
 	const material_t *view_model_material;
 	fps_effect_system_t *effects;
-	fps_recoil_t recoil;
+	fps_recoil_t aim_recoil;
+	fps_recoil_t viewmodel_recoil;
 	animator_t animator;
 	bool has_animator;
 	bool reload_sound_event;
@@ -36,7 +37,9 @@ typedef struct sandbox_pistol {
 	float bob_amount;
 	float sway_pitch;
 	float sway_yaw;
-	float recoil_direction;
+	float movement_speed;
+	bool grounded;
+	bool crouched;
 } sandbox_pistol_t;
 
 /// sandbox固有のピストルを初期化する。
@@ -64,10 +67,12 @@ bool sandbox_pistol_initialize(sandbox_pistol_t *pistol,
 /// - `float delta_time`: 経過秒数。
 /// - `float movement_speed`: プレイヤーの水平移動速度。
 /// - `bool grounded`: プレイヤーが接地している場合は`true`。
+/// - `bool crouched`: プレイヤーがしゃがんでいる場合は`true`。
 void sandbox_pistol_update(sandbox_pistol_t *pistol,
 			   float delta_time,
 			   float movement_speed,
-			   bool grounded);
+			   bool grounded,
+			   bool crouched);
 
 /// マウス視点移動をViewModelのswayへ加える。
 ///

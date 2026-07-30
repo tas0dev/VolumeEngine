@@ -106,6 +106,8 @@ bool fps_effect_system_spawn_tracer(fps_effect_system_t *system,
 
 	if (system == NULL || config == NULL ||
 	    system->tracer_count >= FPS_EFFECT_MAX_TRACERS ||
+	    !isfinite(config->start_width) || config->start_width < 0.0f ||
+	    !isfinite(config->end_width) || config->end_width < 0.0f ||
 	    !isfinite(config->lifetime) || config->lifetime <= 0.0f ||
 	    !vector_is_finite(config->start) ||
 	    !vector_is_finite(config->end) ||
@@ -117,6 +119,12 @@ bool fps_effect_system_spawn_tracer(fps_effect_system_t *system,
 	}
 	effect = &system->tracers[system->tracer_count++];
 	effect->config = *config;
+	if (effect->config.start_width == 0.0f) {
+		effect->config.start_width = 0.012f;
+	}
+	if (effect->config.end_width == 0.0f) {
+		effect->config.end_width = effect->config.start_width;
+	}
 	effect->age = 0.0f;
 	return true;
 }
@@ -126,27 +134,33 @@ void fps_effect_system_draw(const fps_effect_system_t *system,
 			    const render_view_t *view) {
 	size_t index;
 	float amount;
+	float width;
 	renderer_color_t color;
+	renderer_color_t glow_color;
 	vec3_t normal;
 	vec3_t reference;
 	vec3_t right;
 	vec3_t up;
 
 	if (system == NULL || renderer == NULL || view == NULL) { return; }
-	if (system->tracer_count > 0) {
-		renderer_begin_debug_lines(renderer);
-		for (index = 0; index < system->tracer_count; index++) {
-			amount = system->tracers[index].age /
-				 system->tracers[index].config.lifetime;
-			color = lerp_color(
-				system->tracers[index].config.start_color,
-				system->tracers[index].config.end_color,
-				amount);
-			(void)renderer_add_debug_line(
-				renderer, system->tracers[index].config.start,
-				system->tracers[index].config.end, color);
-		}
-		renderer_flush_debug_lines(renderer, view);
+	for (index = 0; index < system->tracer_count; index++) {
+		amount = system->tracers[index].age /
+			 system->tracers[index].config.lifetime;
+		color = lerp_color(system->tracers[index].config.start_color,
+				   system->tracers[index].config.end_color,
+				   amount);
+		width = lerp(system->tracers[index].config.start_width,
+			     system->tracers[index].config.end_width, amount);
+		glow_color = color;
+		glow_color.a *= 0.28f;
+		renderer_draw_world_beam(
+			renderer, system->tracers[index].config.start,
+			system->tracers[index].config.end, width * 3.0f,
+			glow_color, RENDERER_BLEND_ADDITIVE, view);
+		renderer_draw_world_beam(
+			renderer, system->tracers[index].config.start,
+			system->tracers[index].config.end, width, color,
+			system->tracers[index].config.blend_mode, view);
 	}
 	for (index = 0; index < system->billboard_count; index++) {
 		amount = system->billboards[index].age /

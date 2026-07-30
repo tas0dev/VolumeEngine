@@ -29,9 +29,12 @@ typedef struct fps_billboard_effect_config {
 typedef struct fps_tracer_effect_config {
 	vec3_t start;
 	vec3_t end;
+	float start_width;
+	float end_width;
 	float lifetime;
 	renderer_color_t start_color;
 	renderer_color_t end_color;
+	renderer_blend_mode_t blend_mode;
 } fps_tracer_effect_config_t;
 
 /// FPS向けの短命な描画エフェクトを管理するシステムを作成する。

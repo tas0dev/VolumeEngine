@@ -80,7 +80,8 @@ static void renderer_draw_sprite_internal(renderer_t *renderer,
 					  vec3_t position,
 					  vec3_t right,
 					  vec3_t up,
-					  float size,
+					  float half_width,
+					  float half_height,
 					  renderer_color_t color,
 					  renderer_blend_mode_t blend_mode,
 					  const mat4_t *view,
@@ -675,7 +676,7 @@ void renderer_draw_world_billboard(renderer_t *renderer,
 			    view->view.elements[8]);
 	up = vec3_create(view->view.elements[1], view->view.elements[5],
 			 view->view.elements[9]);
-	renderer_draw_sprite_internal(renderer, position, right, up, size,
+	renderer_draw_sprite_internal(renderer, position, right, up, size, size,
 				      color, blend_mode, &view->view,
 				      &view->projection);
 }
@@ -689,8 +690,42 @@ void renderer_draw_world_sprite(renderer_t *renderer,
 				const renderer_blend_mode_t blend_mode,
 				const render_view_t *view) {
 	if (view == NULL) { return; }
-	renderer_draw_sprite_internal(renderer, position, right, up, size,
+	renderer_draw_sprite_internal(renderer, position, right, up, size, size,
 				      color, blend_mode, &view->view,
+				      &view->projection);
+}
+
+void renderer_draw_world_beam(renderer_t *renderer,
+			      const vec3_t start,
+			      const vec3_t end,
+			      const float width,
+			      const renderer_color_t color,
+			      const renderer_blend_mode_t blend_mode,
+			      const render_view_t *view) {
+	vec3_t center;
+	vec3_t direction;
+	vec3_t view_forward;
+	vec3_t width_axis;
+	float length;
+
+	if (view == NULL || !isfinite(width) || width <= 0.0f) { return; }
+	direction = vec3_subtract(end, start);
+	length = vec3_length(direction);
+	if (length <= 0.000001f) { return; }
+	direction = vec3_scale(direction, 1.0f / length);
+	view_forward =
+		vec3_create(-view->view.elements[2], -view->view.elements[6],
+			    -view->view.elements[10]);
+	width_axis = vec3_cross(direction, view_forward);
+	if (vec3_length(width_axis) <= 0.000001f) {
+		width_axis = vec3_create(view->view.elements[1],
+					 view->view.elements[5],
+					 view->view.elements[9]);
+	}
+	center = vec3_scale(vec3_add(start, end), 0.5f);
+	renderer_draw_sprite_internal(renderer, center, direction, width_axis,
+				      length * 0.5f, width * 0.5f, color,
+				      blend_mode, &view->view,
 				      &view->projection);
 }
 
@@ -705,8 +740,8 @@ void renderer_draw_view_model_sprite(renderer_t *renderer,
 	view = mat4_identity();
 	renderer_draw_sprite_internal(
 		renderer, position, vec3_create(1.0f, 0.0f, 0.0f),
-		vec3_create(0.0f, 1.0f, 0.0f), size, color, blend_mode, &view,
-		&renderer->view_model_projection);
+		vec3_create(0.0f, 1.0f, 0.0f), size, size, color, blend_mode,
+		&view, &renderer->view_model_projection);
 }
 
 static void
@@ -714,7 +749,8 @@ renderer_draw_sprite_internal(renderer_t *renderer,
 			      const vec3_t position,
 			      vec3_t right,
 			      vec3_t up,
-			      const float size,
+			      const float half_width,
+			      const float half_height,
 			      const renderer_color_t color,
 			      const renderer_blend_mode_t blend_mode,
 			      const mat4_t *view,
@@ -726,8 +762,9 @@ renderer_draw_sprite_internal(renderer_t *renderer,
 	GLint previous_blend_destination;
 
 	if (renderer == NULL || renderer->sprite_shader == NULL ||
-	    view == NULL || projection == NULL || !isfinite(size) ||
-	    size <= 0.0f || vec3_length(right) <= 0.000001f ||
+	    view == NULL || projection == NULL || !isfinite(half_width) ||
+	    half_width <= 0.0f || !isfinite(half_height) ||
+	    half_height <= 0.0f || vec3_length(right) <= 0.000001f ||
 	    vec3_length(up) <= 0.000001f) {
 		return;
 	}
@@ -750,7 +787,8 @@ renderer_draw_sprite_internal(renderer_t *renderer,
 	shader_set_vec3(renderer->sprite_shader, "center", position);
 	shader_set_vec3(renderer->sprite_shader, "right", right);
 	shader_set_vec3(renderer->sprite_shader, "up", up);
-	shader_set_float(renderer->sprite_shader, "size", size);
+	shader_set_vec2(renderer->sprite_shader, "half_size", half_width,
+			half_height);
 	shader_set_vec3(renderer->sprite_shader, "sprite_color",
 			vec3_create(color.r, color.g, color.b));
 	shader_set_float(renderer->sprite_shader, "sprite_alpha", color.a);

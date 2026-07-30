@@ -178,6 +178,23 @@ void renderer_draw_world_sprite(renderer_t *renderer,
 				renderer_color_t color,
 				renderer_blend_mode_t blend_mode,
 				const render_view_t *view);
+/// 2点間へカメラに正対する発光Beamを描画する。
+///
+/// ### Args
+/// - `renderer_t *renderer`: 対象のレンダラー。
+/// - `vec3_t start`: Beamの開始座標。
+/// - `vec3_t end`: Beamの終了座標。
+/// - `float width`: Beam全体の太さ。
+/// - `renderer_color_t color`: 色と最大不透明度。
+/// - `renderer_blend_mode_t blend_mode`: 合成方法。
+/// - `const render_view_t *view`: 描画に使用するビュー。
+void renderer_draw_world_beam(renderer_t *renderer,
+			      vec3_t start,
+			      vec3_t end,
+			      float width,
+			      renderer_color_t color,
+			      renderer_blend_mode_t blend_mode,
+			      const render_view_t *view);
 /// 現在のViewModelパスにカメラローカルの円形Spriteを描画する。
 ///
 /// ### Args
